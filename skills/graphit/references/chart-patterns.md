@@ -27,6 +27,9 @@ Config: requires `series` field for stacking groups.
 CSS grid. X = columns, Y = rows. Background intensity scales linearly (rgba teal, 0.08-0.98). Text flips white at >55% intensity. Headers auto-generated. Capped at 40x40.
 Config: `x` (column), `y` (row), `value` (intensity, falls back to `y`).
 
+### horizontal-bar / hbar
+CSS horizontal bars for long category labels that overlap on vertical bar x-axis. Labels on the left, proportional bars in the middle, formatted values on the right. Each bar colored from the palette. Use instead of `bar` when categories have names longer than ~10 characters.
+
 ### funnel
 CSS horizontal bars narrowing top-to-bottom. First bar = 100% width, rest proportional. Shows step-over-step conversion rate. Colors cycle through palette.
 

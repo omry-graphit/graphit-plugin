@@ -189,7 +189,7 @@ The iframe also provides optional convenience helpers if you want quick standard
 
 These are shortcuts, not requirements. Use them when a standard chart is all you need. Hand-roll when you want full control over the visualization.
 
-`graphit.chart` types: `"bar"`, `"line"`, `"area"`, `"donut"` (alias `"pie"`), `"scatter"` (alias `"bubble"`), `"stacked-bar"` (alias `"stacked"`), `"heatmap"`, `"funnel"`, `"gauge"`, `"sparkline"`. Config: `x` (category field), `y` (value field), `series` (group-by field), `title`, `height` (140-900px), `valueFormat` (`"currency"` | `"percent"` | `"number"`), `colors` (array). Scatter adds: `size` (bubble radius field), `label` (tooltip field). Gauge adds: `min`, `max`, `format`. Sparkline adds: `width`, `showValue`.
+`graphit.chart` types: `"bar"`, `"horizontal-bar"` (alias `"hbar"` - use when category labels are long), `"line"`, `"area"`, `"donut"` (alias `"pie"`), `"scatter"` (alias `"bubble"`), `"stacked-bar"` (alias `"stacked"`), `"heatmap"`, `"funnel"`, `"gauge"`, `"sparkline"`. Config: `x` (category field), `y` (value field), `series` (group-by field), `title`, `height` (140-900px), `valueFormat` (`"currency"` | `"percent"` | `"number"`), `colors` (array). Scatter adds: `size` (bubble radius field), `label` (tooltip field). Gauge adds: `min`, `max`, `format`. Sparkline adds: `width`, `showValue`.
 
 `graphit.kpi` config: `value`, `label`, `format` (`"currency"` | `"percent"` | `"number"`), `compareValue`, `compareLabel`.
 
