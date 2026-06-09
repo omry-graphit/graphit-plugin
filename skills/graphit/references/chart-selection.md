@@ -1,0 +1,83 @@
+# Chart Selection
+
+Consult when choosing chart types for dashboard elements. Matches data shapes to the right visualization.
+
+## Dimension/Measure Defaults
+
+| Dimensions | Measures | Default chart |
+|---|---|---|
+| 1 temporal | 1+ | line |
+| 1 categorical | 1 | bar |
+| 1 categorical | 2+ | bar (grouped or dual axis) |
+| 2 categorical | 1 | bar with series on 2nd dim |
+| 0 | 1 | KPI card |
+| 1 categorical (50+ values) | 1 | table |
+
+When ambiguous, propose 2-3 options and ask the user. Do not guess.
+
+## Full Chart Type Table
+
+| Data shape | Chart type | Required columns |
+|---|---|---|
+| Time series | line | 1 temporal + 1 numeric |
+| Categories | bar | 1 categorical + 1 numeric |
+| Stacked areas | area | 1 temporal/categorical + 1 numeric |
+| Part-whole (max 5 slices) | pie | 1 categorical + 1 numeric |
+| Single metric | KPI card | 1 numeric |
+| Stages | funnel | 1 categorical + 1 numeric |
+| Target/progress | gauge | 1 numeric |
+| Matrix (unpivoted) | heatmap | 2 categorical + 1 numeric |
+| Hierarchy | treemap | 1 categorical + 1 numeric |
+| Flows | sankey | 2 categorical + 1 numeric |
+| Correlation | scatter | 2 numeric |
+| 3 variables | bubble | 3 numeric |
+| Countries | choropleth map | 1 categorical + 1 numeric |
+| Lat/lng | scatter map | 2 numeric (lat + lng) |
+| Detail/raw data | table | any columns |
+
+## Perception Ranking (Cleveland-McGill)
+
+Position > length > angle > area > color.
+
+| Goal | First choice | Never |
+|---|---|---|
+| Trend (8+ points) | line | bar, pie |
+| Trend (2-7 points) | bar (column) | line with dots |
+| Compare (12 or fewer categories) | sorted bar | pie, radar |
+| Compare (13-30 categories) | horizontal bar + top-N | column |
+| Part-to-whole | stacked bar, treemap | pie with 6+ |
+| Distribution | histogram, box | pie, line |
+| Correlation | scatter, bubble | dual-axis |
+| Ranking | sorted bar + min-N | pie, treemap |
+| Funnel | funnel + stage% | pie |
+| KPI vs target | big-number + sparkline | gauge (unbounded) |
+| 2D matrix / cohort | heatmap | bar with 100+ |
+
+## Cardinality Guards
+
+| Cardinality of categorical dim | Action |
+|---|---|
+| 1-5 | Show data labels, no rotation |
+| 6-20 | Default styling |
+| 21-50 | Rotate labels 45 deg, consider Top-N + Other |
+| 50+ | Use table chart or require a filter |
+
+COALESCE categorical dimensions in SQL (`COALESCE(region, 'Other')`) to prevent blank axis labels. For 21+ categories on a bar/line, use a "Top N + Other" window-function pattern:
+
+```sql
+WITH ranked AS (
+  SELECT *, ROW_NUMBER() OVER (ORDER BY metric DESC) AS rn
+  FROM data
+)
+SELECT CASE WHEN rn <= 10 THEN category ELSE 'Other' END AS category,
+       SUM(metric) AS metric
+FROM ranked GROUP BY 1 ORDER BY 2 DESC
+```
+
+## Hard Caps
+
+- Pie: max 5 slices (3 preferred)
+- Line series: max 5-7 (else use small multiples)
+- Stacked bar segments: max 4
+- Categorical colors: max 7 distinct
+- Sort by value DESC unless the axis is ordinal or temporal

@@ -1,0 +1,22 @@
+{
+  "name": "graphit",
+  "version": "0.1.3",
+  "description": "Build custom HTML dashboards from real data using the Graphit CLI. KB-aware queries, entity wrapping, cached data sources.",
+  "author": {
+    "name": "Graphit",
+    "email": "support@graphit-app.com",
+    "url": "https://graphit-app.com"
+  },
+  "homepage": "https://graphit-app.com",
+  "repository": "https://github.com/omry-graphit/graphit-plugin",
+  "keywords": [
+    "graphit",
+    "bi",
+    "dashboard",
+    "custom-dashboard",
+    "data-visualization",
+    "knowledge-base",
+    "sql",
+    "cli"
+  ]
+}

@@ -1,0 +1,121 @@
+# SQL Reference
+
+Consult when writing queries. Data source queries (`graphit query --ds`) run DuckDB. Warehouse queries (`graphit query --warehouse`) run Snowflake. You MUST use the correct dialect.
+
+## DuckDB vs Snowflake Translation
+
+| Snowflake | DuckDB equivalent |
+|---|---|
+| `DATEADD(day, N, date)` | `date + INTERVAL N DAY` |
+| `DATEDIFF(day, a, b)` | `DATE_DIFF('day', a, b)` |
+| `NVL(a, b)` | `COALESCE(a, b)` |
+| `NVL2(a, b, c)` | `CASE WHEN a IS NOT NULL THEN b ELSE c END` |
+| `IFF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` |
+| `TO_CHAR(date, fmt)` | `strftime(date, fmt)` |
+| `ARRAY_AGG(x) WITHIN GROUP (ORDER BY y)` | `LIST(x ORDER BY y)` |
+| `LISTAGG(col, sep)` | `STRING_AGG(col, sep ORDER BY ...)` |
+| `COUNT_IF(cond)` | `COUNT(*) FILTER (WHERE cond)` |
+| `GENERATOR(ROWCOUNT => N)` | `generate_series(0, N-1)` |
+| `CONVERT_TIMEZONE('tz', ts)` | `timezone('tz', ts)` |
+
+### JSON / VARIANT Access
+
+| Engine | Syntax | Example |
+|---|---|---|
+| Snowflake | Colon notation | `col:field::STRING`, `col:parent:child::NUMBER` |
+| DuckDB | Arrow operators | `col->>'field'` (text), `col->'field'` (JSON) |
+
+NEVER use `->>`  in Snowflake or `:field::STRING` in DuckDB.
+
+### Timezone
+
+| Engine | Correct | Wrong |
+|---|---|---|
+| DuckDB | `timezone('Asia/Jerusalem', ts_col)` | `AT TIME ZONE` chains (reverses direction on TIMESTAMPTZ) |
+| Snowflake | `CONVERT_TIMEZONE('Asia/Jerusalem', ts_col)` (2-arg for _TZ) | `AT TIME ZONE` |
+
+## DuckDB Superpowers (not in Snowflake)
+
+| Feature | Example |
+|---|---|
+| `GROUP BY ALL` | `SELECT region, SUM(sales) FROM t GROUP BY ALL` |
+| `SELECT * EXCLUDE` | `SELECT * EXCLUDE (internal_id) FROM t` |
+| `FILTER (WHERE)` | `COUNT(*) FILTER (WHERE status='active')` |
+| `UNION BY NAME` | `SELECT ... UNION ALL BY NAME SELECT ...` |
+
+## Snowflake Notes
+
+- Use `DATE_TRUNC('month', date)` for grouping (not EXTRACT/MONTH/YEAR)
+- Snowflake does NOT support `FILTER (WHERE)` - use `CASE WHEN` instead
+- `COUNT_IF` MUST receive a boolean expression, not a raw INT column. Use `COUNT_IF(is_active = 1)`, not `COUNT_IF(is_active)`
+- String matching: prefer `ILIKE` (case-insensitive) over `LIKE`
+
+## SQL Formatting Standards (Both Engines)
+
+- Keywords UPPERCASE: `SELECT`, `FROM`, `WHERE`, `JOIN`, `GROUP BY`, `ORDER BY`
+- Table/column names UPPERCASE: `ORDERS`, `CUSTOMER_ID`, `TOTAL_REVENUE`
+- Qualify every column with its table alias: `o.ORDER_DATE`, not bare `ORDER_DATE`
+- Use descriptive aliases: `total_revenue`, not `sum1`
+- String literals in single quotes: `'active'`, `'2024-01-01'`
+- Non-ASCII identifiers MUST be double-quoted: `SELECT * FROM "hebrew_table"`
+
+## CTE Pattern
+
+Use CTEs for queries with 3+ JOINs or complex subqueries:
+
+```sql
+WITH MONTHLY_ORDERS AS (
+  SELECT o.CUSTOMER_ID, DATE_TRUNC('month', o.ORDER_DATE) AS MONTH,
+         SUM(o.AMOUNT) AS MONTHLY_REVENUE
+  FROM ORDERS o WHERE o.STATUS = 'complete'
+  GROUP BY o.CUSTOMER_ID, DATE_TRUNC('month', o.ORDER_DATE)
+)
+SELECT c.SEGMENT, AVG(mo.MONTHLY_REVENUE) AS AVG_MONTHLY_REVENUE
+FROM MONTHLY_ORDERS mo JOIN CUSTOMERS c ON mo.CUSTOMER_ID = c.ID
+GROUP BY c.SEGMENT ORDER BY AVG_MONTHLY_REVENUE DESC
+```
+
+## ORDER BY Rules (Always Include)
+
+| Query type | ORDER BY |
+|---|---|
+| Time series | `ORDER BY date_column ASC` |
+| Category breakdowns | `ORDER BY metric_column DESC` |
+| Rankings / top N | `ORDER BY metric_column DESC LIMIT N` |
+
+Do NOT add LIMIT unless the user requests it or the query is a ranking.
+
+## Gap-Filling Pattern (DuckDB)
+
+For heatmaps or continuous time-series needing every cell (even zeros):
+
+```sql
+WITH grid AS (
+  SELECT UNNEST(generate_series(0, 23)) AS hour_of_day
+)
+SELECT g.hour_of_day, COALESCE(t.count, 0) AS count
+FROM grid g
+LEFT JOIN (SELECT hour, COUNT(*) AS count FROM data_source GROUP BY 1) t
+  ON g.hour_of_day = t.hour
+ORDER BY 1
+```
+
+Date series:
+```sql
+SELECT UNNEST(generate_series(
+  CURRENT_DATE - INTERVAL 30 DAY, CURRENT_DATE, INTERVAL 1 DAY
+))::DATE AS date
+```
+
+## Subquery Column Scope
+
+The outer SELECT can ONLY reference columns the subquery exposes (its aliases). Base-table columns aggregated away in the subquery do NOT exist at the outer level.
+
+## Data Source Routing
+
+| Situation | Command | Speed |
+|---|---|---|
+| Table has a cached data source | `graphit query "SQL" --ds <id>` | ~100ms, DuckDB |
+| No data source | `graphit query "SQL" --warehouse --connection <id>` | ~10s, Snowflake |
+
+Always prefer cached data sources. Check with `graphit ds list`. If no data source covers the table, suggest creating one for future speed.

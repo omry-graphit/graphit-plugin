@@ -1,0 +1,117 @@
+---
+alwaysApply: false
+description: "Build Graphit HTML dashboards with KB-aware queries, entity wrapping, and cached data sources"
+globs: []
+---
+
+# Graphit CLI
+
+Build custom HTML dashboards from real data using the Graphit CLI.
+
+## HARD CONSTRAINTS (violating these produces a broken dashboard)
+
+### 1. ZERO external resources
+The dashboard renders in a sandboxed iframe with a strict CSP. External requests are BLOCKED.
+Your HTML must NEVER contain:
+- `<script src="...">` - no Chart.js, D3.js, Alpine.js, ANY external JS
+- `<link href="...">` - no Tailwind CDN, Google Fonts, ANY external CSS
+- `<img src="https://...">` - no external images
+
+If you use ANY `src=` or `href=` pointing to a URL, the dashboard will be blank.
+All CSS in `<style>`, all JS in `<script>`, all fonts from system stack. The iframe has a built-in runtime (`graphit.chart`, `graphit.table`, `graphit.kpi`) for standard visualizations - use it instead of importing libraries.
+
+### 2. ALWAYS query through data sources
+NEVER query the warehouse directly when a cached data source covers the table. Data sources return in ~100ms. Warehouse queries take ~10s and cost Snowflake credits.
+
+Run `graphit ds list` FIRST. If a DS covers your table, use `graphit query "SQL" --ds <id>`. Only use `--warehouse` if NO data source exists and the user approves.
+
+### 3. EVERY element must have entity wrapping
+Without `data-graphit-*` attributes, elements are invisible to the platform. Every chart, KPI card, table, and text section needs ALL FOUR attributes:
+
+```html
+<div data-graphit-id="revenue-trend"
+     data-graphit-label="Revenue Trend"
+     data-graphit-kb="metric:REVENUE,dimension:REGION,table:ORDERS"
+     data-graphit-sql="SELECT region, SUM(revenue) FROM orders GROUP BY region">
+  <!-- chart/KPI/table content here -->
+</div>
+```
+
+| Attribute | Format | Example |
+|-----------|--------|---------|
+| `data-graphit-id` | Unique kebab-case | `"spend-by-source"` |
+| `data-graphit-label` | Human-readable name | `"Ad Spend by Source"` |
+| `data-graphit-kb` | `type:NAME` comma-separated | `"metric:CPI,dimension:MEDIA_SOURCE,table:MARKETING_UA"` |
+| `data-graphit-sql` | SQL query (HTML-encode `<>&"`) | `"SELECT ..."` |
+
+KB types: `metric`, `dimension`, `table`, `rule`. Names are UPPER_SNAKE_CASE matching the KB exactly.
+
+**Label = visible title.** The `data-graphit-label` MUST match the card's visible heading exactly.
+
+### 4. ALWAYS use graphit.resolve() for live data
+NEVER embed query results as static JS variables. The dashboard iframe provides `graphit.resolve()` which fetches live data from cached data sources on every page load.
+
+**Wrong:** Embedding results as `const data = [{...}, ...]` in the HTML.
+**Right:** Using `graphit.resolve({sql, dataSourceId})` in a `<script>` block so data refreshes automatically.
+
+---
+
+## Workflow
+
+1. **Ask the user** what dashboard they want.
+2. **Explore KB** to understand available metrics, dimensions, tables, and rules.
+3. **Find a data source** (`graphit ds list`) - prefer cached data sources over live warehouse.
+4. **Query data to validate** - run queries via the CLI to verify SQL and preview results.
+5. **Build HTML** - write `graphit.resolve()` calls for live data + `graphit.chart/table/kpi` for rendering. All CSS in `<style>`, all JS in `<script>`.
+6. **Save** with `graphit dashboard update-html <id> --file <path>`.
+7. Give the user the dashboard URL.
+
+## graphit.resolve() - Live Data API
+
+```js
+const result = await graphit.resolve({
+  sql: "SELECT region, SUM(revenue) as rev FROM orders GROUP BY region",
+  dataSourceId: "ds_abc123",
+  target: "#chart-container",  // optional: shows loading spinner
+  maxRows: 10000               // optional: default 10K, max 10K
+});
+// Returns: { columns: string[], data: object[], rowCount: number, truncated: boolean }
+```
+
+**Error handling:** Rejects on timeout (60s), bad SQL, or invalid data source ID. Wrap in try/catch.
+
+### Runtime chart helpers
+
+| Helper | Usage |
+|---|---|
+| `graphit.chart(el, {type, data, x, y, ...})` | Bar, line, area, donut, scatter, stacked-bar, heatmap, funnel, gauge, sparkline |
+| `graphit.table(el, {data, columns?, ...})` | Styled HTML table |
+| `graphit.kpi(el, {value, label?, format?})` | KPI card with optional delta |
+
+`graphit.chart` types: `"bar"`, `"line"`, `"area"`, `"donut"` (alias `"pie"`), `"scatter"` (alias `"bubble"`), `"stacked-bar"` (alias `"stacked"`), `"heatmap"`, `"funnel"`, `"gauge"`, `"sparkline"`. Config: `x` (category field), `y` (value field), `series` (group-by), `title`, `height` (140-900px), `valueFormat` (`"currency"` | `"percent"` | `"number"`), `colors` (array). Scatter adds: `size`, `label`. Gauge adds: `min`, `max`, `format`. Sparkline adds: `width`, `showValue`.
+
+### Canonical pattern - entity with live data
+
+```html
+<div data-graphit-id="spend-by-source"
+     data-graphit-label="Ad Spend by Source"
+     data-graphit-kb="metric:CPI,dimension:MEDIA_SOURCE,table:MARKETING_UA"
+     data-graphit-sql="SELECT MEDIA_SOURCE, SUM(APPSFLYER_COST) as spend FROM MARKETING_UA GROUP BY MEDIA_SOURCE ORDER BY spend DESC">
+  <div id="spend-chart"></div>
+</div>
+<script>
+(async function() {
+  var r = await graphit.resolve({
+    sql: "SELECT MEDIA_SOURCE, SUM(APPSFLYER_COST) as spend FROM MARKETING_UA GROUP BY MEDIA_SOURCE ORDER BY spend DESC",
+    dataSourceId: "ds_abc123",
+    target: "#spend-chart"
+  });
+  graphit.chart("#spend-chart", {
+    type: "bar", data: r.data, x: "MEDIA_SOURCE", y: "spend",
+    title: "Ad Spend by Source", valueFormat: "currency"
+  });
+})();
+</script>
+```
+
+For detailed chart selection logic, dashboard planning, SQL reference, domain-specific lenses, Graphit visual style, and chart pattern implementations, see the companion rule files (graphit-planning, graphit-sql, graphit-lenses, graphit-style, graphit-kb, graphit-patterns).
