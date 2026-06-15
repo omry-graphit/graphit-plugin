@@ -82,6 +82,16 @@ Purpose before data. The first response should mirror the user's intent and ask 
 - User says "active users" - ask: what defines active? (logged in? performed action? within what window?)
 - User mentions MQL/SQL - ask: how does your org define the handoff? (Same column can mean 13% or 40%)
 
+## Performance
+
+`graphit.resolve()` is rate-limited to 120 requests/min per user per dashboard. Each call counts as one request. Design for efficiency:
+
+- **Single refresh function.** All queries in ONE `Promise.all` inside one `refresh()` function. Never scatter `graphit.resolve()` across independent event handlers or timeouts - that turns one user action into multiple bursts.
+- **Count your queries per interaction.** 6 charts = 6 requests per filter change = 20 changes/min budget. 12 charts = 10 changes/min. If you have 10+ charts with 3+ filters, consider debouncing filter changes (300ms) so rapid clicks don't each trigger a full refresh.
+- **Reuse trend data for KPIs.** If you already fetch a weekly time series (`SELECT week, SUM(spend) ...`), derive the KPI total and sparkline from that result set in JS instead of running a separate aggregate query. One query serves both the chart and the KPI card.
+- **Avoid redundant refreshes.** If a filter only affects some charts, split into targeted refresh functions (`refreshKPIs()`, `refreshCharts()`) so unchanged sections don't re-query.
+- **No polling.** Never `setInterval(refresh, ...)`. Data sources update on their own schedule - a dashboard that polls wastes the entire rate budget.
+
 ## Pre-Build Checklist
 
 Before generating the HTML:
@@ -92,3 +102,27 @@ Before generating the HTML:
 - [ ] 3+ chart types for 4+ graphs
 - [ ] Every KPI has definition + baseline + direction
 - [ ] No anti-patterns present
+
+## Presenting Dashboard & Connector Results
+
+**After `graphit dashboard list`:**
+
+~~~
+**4 dashboards:**
+
+| Name | ID | URL |
+|---|---|---|
+| **UA Command Center** | dash_abc | https://app.graphit-app.com/custom-dashboard/dash_abc |
+| **Player Quality** | dash_def | https://app.graphit-app.com/custom-dashboard/dash_def |
+~~~
+
+**After `graphit connector list`:**
+
+~~~
+**2 connections:**
+
+| Name | Account | Auth |
+|---|---|---|
+| **prod-snowflake** | xy12345.us-east-1 | OAuth |
+| **staging-sf** | ab67890.us-east-1 | Keypair |
+~~~

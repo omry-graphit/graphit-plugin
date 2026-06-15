@@ -1,0 +1,89 @@
+# Parameterized Metrics
+
+A parameterized metric is a template with `${PARAM:NAME}` tokens in its calculation. Each token maps to a named parameter with a list of values (value_name to SQL fragment). The system auto-generates child variants for every combination of parameter values.
+
+Example: ROAS with parameters REVENUE (9 values) and DN (4 values) produces 36 validated child metrics from 1 template.
+
+## When to Parameterize
+
+**Create parameterized** when columns follow a variant pattern:
+- `total_iap`, `total_iap_new_users`, `estimated_gross_iap` -> one REVENUE parameter
+- Metrics that differ only by a WHERE clause (D7, D30, D90) -> one DN parameter
+
+**Stay standalone** when:
+- Metric has no natural variants
+- Only 1-2 variants (template overhead not worth it)
+- Variants use fundamentally different formulas
+
+## Creating a Parameterized Metric
+
+Use `${PARAM:NAME}` tokens in the calculation, then pass `parameters` with the value map. The `placeholder` field is optional (omit it for the new token format):
+
+```json
+"calculation": "SUM(${PARAM:REVENUE}) / SUM(cost) * 100 ${PARAM:DN}",
+"parameters": [
+  {
+    "name": "REVENUE",
+    "values": {"ALL_BOOKINGS": "total_iap", "NEW_BOOKINGS": "total_iap_new_users"},
+    "default_value": "ALL_BOOKINGS"
+  },
+  {
+    "name": "DN",
+    "values": {"D0": "", "D7": "WHERE day <= 7"},
+    "default_value": "D0"
+  }
+]
+```
+
+| Rule | Detail |
+|------|--------|
+| Token matching | Every `${PARAM:NAME}` in the calculation must have a matching parameter by name |
+| Empty values | Valid as no-ops (e.g. D0 adds no filter) |
+| Variant cap | Max 100 (Cartesian product of all parameter values) |
+| Child naming | Auto-generated: `{PARENT}_{VALUE1}_{VALUE2}` (e.g. ROAS_ALL_BOOKINGS_D7) |
+
+## Editing a Template
+
+All edits go through the parent template. Children are read-only.
+
+| User intent | Edit action |
+|-------------|-------------|
+| Change formula | Edit `calculation` on the template - children re-generate |
+| Add a variant (e.g. D120) | Edit `parameters`, add the new value to the relevant parameter |
+| Remove variants | Edit `parameters`, remove values from the relevant parameter |
+| Change description/topics | Edit those fields on the template - no child re-generation |
+
+If a child metric is targeted for edit or delete, redirect to the parent:
+"ROAS_ALL_BOOKINGS_D7 is a variant of ROAS. Edit the parent template ROAS instead."
+
+## Using Parameterized Metrics in Queries
+
+When a user asks for a specific variant (e.g. "show me D7 ROAS for new users"):
+
+1. Find the template in KB context (marked with `[P:N]` in the tree)
+2. Infer axis values from the user's message: REVENUE=NEW_BOOKINGS, DN=D7
+3. Use `read` with `entity_type="metric"` and pass `axis_values` to get the resolved child
+4. Use the returned validated child calculation in your graph SQL
+
+### NEVER
+- Substitute tokens manually in the template formula. Always use the backend-returned child SQL, which has been pre-validated.
+
+### Defaults and Errors
+- **Default resolution:** When the user doesn't specify parameters, pass empty `axis_values` - the backend fills defaults.
+- **Invalid values:** If you pass an invalid axis value, the backend returns valid options. Retry with a valid value or ask the user.
+
+## Contrast: Wrong vs Right
+
+| Wrong | Right |
+|-------|-------|
+| Manually replace `${PARAM:REVENUE}` with `total_iap` in the formula and pass to graph SQL | Use `read` with `axis_values` to get pre-validated child calculation |
+| Create separate ROAS_ALL_BOOKINGS, ROAS_NEW_BOOKINGS as standalone metrics | Create one ROAS template with a REVENUE parameter |
+| Edit ROAS_ALL_BOOKINGS_D7 directly | Edit the parent ROAS template instead |
+
+## Deleting a Template
+
+Delete on the parent cascade-deletes all children. Blast radius includes all children plus their downstream refs (graphs, rules, synonyms).
+
+## Verification
+
+Verify on a template sets `verified=True` on the parent and all children.

@@ -4,6 +4,8 @@ Consult when the user's data signals match a specific business domain. Each lens
 
 Detect the domain from column names and user intent. Apply universal planning rules first (see dashboard-planning.md), then layer domain-specific patterns.
 
+Several high-value lens charts - **waterfall** (P&L / ARR bridges), **bullet** (KPI vs target), **Lorenz** (revenue concentration), and **histogram** (attainment distribution) - are NOT native `graphit.chart()` types, so `graphit.chart()` throws on those names. Build them as hand-rolled SVG (see `chart-selection.md` for the native-vs-hand-rolled split). The native lens charts (line, bar, stacked-bar, heatmap, funnel, KPI, sparkline) render through `graphit.chart` / `graphit.kpi`.
+
 ---
 
 ## Marketing & Attribution

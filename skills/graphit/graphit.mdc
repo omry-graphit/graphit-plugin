@@ -1,4 +1,5 @@
 ---
+skill_version: "0.1.37"
 alwaysApply: false
 description: "Build Graphit HTML dashboards with KB-aware queries, entity wrapping, and cached data sources"
 globs: []
@@ -7,6 +8,23 @@ globs: []
 # Graphit CLI
 
 Build custom HTML dashboards from real data using the Graphit CLI.
+
+## Session Start
+
+Run `graphit plugin status` at the start of every Graphit session and whenever the user asks about Graphit updates, plugin health, or stale instructions. This command is the source of truth for CLI, plugin-bundle, skill, ref, hook, and legacy copied-file version health; do not invent a manual version check.
+If it reports action needed, tell the user the exact remediation it prints before proceeding.
+
+## Install / Update Model
+
+The Graphit plugin bundle is the default and source of truth for Claude Code and Codex. It contains the CLI, skills, refs, hooks, status script, and manifests. Claude Code/Codex users should update Graphit through their assistant plugin manager, not by running copied-skill setup.
+
+`graphit setup` is only for legacy/fallback copied-file installs, mainly Cursor or environments without plugin support. If `graphit plugin status` reports Claude Code/Codex copied snapshots, tell the user to remove them with `graphit setup --remove-legacy-copies` after confirming the plugin is installed. Use `graphit setup --legacy-copy` only when the plugin path is unavailable.
+
+## CLI Health Gate
+
+ALWAYS run `graphit plugin status` before diagnosing, retrying, or inventing a workaround when Graphit CLI behavior looks wrong. This includes unknown commands, unrecognized flags, missing commands described in this rule, stale-looking output, copied-skill warnings, non-zero exits with unclear messages, or the user saying Graphit/CLI/plugin/skill is not working.
+If `graphit plugin status` reports action needed, stop and tell the user the exact remediation first. Do not continue with stale instructions unless the user explicitly asks you to proceed anyway.
+Do NOT suggest updating for normal operational failures (expired auth, bad SQL, entity not found).
 
 ## HARD CONSTRAINTS (violating these produces a broken dashboard)
 
@@ -18,12 +36,17 @@ Your HTML must NEVER contain:
 - `<img src="https://...">` - no external images
 
 If you use ANY `src=` or `href=` pointing to a URL, the dashboard will be blank.
-All CSS in `<style>`, all JS in `<script>`, all fonts from system stack. The iframe has a built-in runtime (`graphit.chart`, `graphit.table`, `graphit.kpi`) for standard visualizations - use it instead of importing libraries.
+All CSS in `<style>`, all JS in `<script>`, all fonts from system stack. The iframe has a built-in runtime (`graphit.chart`, `graphit.table`, `graphit.kpi`, `graphit.presentation`) for standard visualizations - use it instead of importing libraries.
 
 ### 2. ALWAYS query through data sources
 NEVER query the warehouse directly when a cached data source covers the table. Data sources return in ~100ms. Warehouse queries take ~10s and cost Snowflake credits.
 
-Run `graphit ds list` FIRST. If a DS covers your table, use `graphit query "SQL" --ds <id>`. Only use `--warehouse` if NO data source exists and the user approves.
+**Before writing ANY query:**
+1. Run `graphit ds list` to see what data sources exist
+2. If a DS covers your table, use `graphit query "SQL" --ds <id>` (DuckDB syntax)
+3. Only use `graphit query "SQL" --warehouse --connection <id>` if NO data source exists and the user approves
+
+**Use the data source name in SQL** (e.g. `FROM MARKETING_UA_DS`), not the raw source table. The DS is a KB table - governance rules target it directly, and users recognize DS names from the platform.
 
 ### 3. EVERY element must have entity wrapping
 Without `data-graphit-*` attributes, elements are invisible to the platform. Every chart, KPI card, table, and text section needs ALL FOUR attributes:
@@ -31,8 +54,8 @@ Without `data-graphit-*` attributes, elements are invisible to the platform. Eve
 ```html
 <div data-graphit-id="revenue-trend"
      data-graphit-label="Revenue Trend"
-     data-graphit-kb="metric:REVENUE,dimension:REGION,table:ORDERS"
-     data-graphit-sql="SELECT region, SUM(revenue) FROM orders GROUP BY region">
+     data-graphit-sql="SELECT {{dim:REGION}} AS region, {{metric:REVENUE}} AS revenue FROM orders GROUP BY region"
+     data-graphit-ds="ds_abc123">
   <!-- chart/KPI/table content here -->
 </div>
 ```
@@ -41,14 +64,23 @@ Without `data-graphit-*` attributes, elements are invisible to the platform. Eve
 |-----------|--------|---------|
 | `data-graphit-id` | Unique kebab-case | `"spend-by-source"` |
 | `data-graphit-label` | Human-readable name | `"Ad Spend by Source"` |
-| `data-graphit-kb` | `type:NAME` comma-separated | `"metric:CPI,dimension:MEDIA_SOURCE,table:MARKETING_UA"` |
-| `data-graphit-sql` | SQL query (HTML-encode `<>&"`) | `"SELECT ..."` |
+| `data-graphit-sql` | Executable SQL (HTML-encode `<>&"`) | `"SELECT ..."` |
+| `data-graphit-ds` | Data source ID from `graphit ds list` | `"ds_abc123"` |
 
-KB types: `metric`, `dimension`, `table`, `rule`. Names are UPPER_SNAKE_CASE matching the KB exactly.
+KB asset references are derived automatically from `{{metric:X}}` / `{{dim:X}}` templates in your SQL.
+
+**SQL must be complete and executable.** The platform runs `data-graphit-sql` against the data source when a user opens the entity's details panel. Write the full query from the `graphit.resolve()` call - never abbreviate, truncate, or use placeholders. It MUST use the real DS table name and only columns that exist in the DS.
 
 **Label = visible title.** The `data-graphit-label` MUST match the card's visible heading exactly.
 
-### 4. ALWAYS use graphit.resolve() for live data
+### 4. Permission errors
+The CLI enforces the same permission model as the platform:
+- **403 "Analyst seat required"** - viewer-seat users are blocked from all CLI commands except `graphit auth` and `graphit me`. Viewers use the platform UI.
+- **404 "not found"** - returned for dashboards the user cannot access (private dashboards owned by others, team dashboards the user is not on). The API does not distinguish "does not exist" from "you cannot access it."
+- **423 "Shared dashboard requires an active editing session"** - shared dashboard mutations require the user to enter Edit mode on the platform first. Tell the user to open the dashboard and click **Edit**. Private dashboards are unaffected.
+- Connector create/delete are restricted to org admins (owner/admin role).
+
+### 5. ALWAYS use graphit.resolve() for live data
 NEVER embed query results as static JS variables. The dashboard iframe provides `graphit.resolve()` which fetches live data from cached data sources on every page load.
 
 **Wrong:** Embedding results as `const data = [{...}, ...]` in the HTML.
@@ -56,15 +88,167 @@ NEVER embed query results as static JS variables. The dashboard iframe provides 
 
 ---
 
-## Workflow
+## How to Work (governs both workflows below)
 
-1. **Ask the user** what dashboard they want.
-2. **Explore KB** to understand available metrics, dimensions, tables, and rules.
-3. **Find a data source** (`graphit ds list`) - prefer cached data sources over live warehouse.
-4. **Query data to validate** - run queries via the CLI to verify SQL and preview results.
-5. **Build HTML** - write `graphit.resolve()` calls for live data + `graphit.chart/table/kpi` for rendering. All CSS in `<style>`, all JS in `<script>`.
-6. **Save** with `graphit dashboard update-html <id> --file <path>`.
-7. Give the user the dashboard URL.
+You are a colleague building WITH the user, not a batch job that explores in silence and returns a finished product. Two habits make the difference: **short iterations** and **narration**.
+
+**Short iterations.** Do one thing, show it, let the user react, then do the next: explore the KB and report what you found; validate one query and show the rows; build one section and show it. Each small step is a cheap chance for the user to redirect before you have built in the wrong direction.
+
+**Always narrate.** The user cannot see your command output: the KB you listed, the SQL you ran, the rows that came back are invisible unless you surface them. After each step, say what you found, what it means, and what you are about to do next. Exception: if the user says "just build it" or "go", drop the commentary and work straight through.
+
+The difference in practice:
+- **Weak (solo):** silently list the KB, silently run several queries, then save a complete dashboard and announce "Done."
+- **Strong (collaborative):** "Found a **Marketing UA** data source with `{{metric:CPI}}` and `{{metric:ROAS}}` already defined. Starting with a spend-vs-installs trend - querying now." Then, after showing rows: "Spend tracks installs except in March. Want that as the first graph, or should I look at ROAS first?"
+
+---
+
+## Workflow: Dashboard Build
+
+1. **Understand.** Ask what the dashboard should answer. Don't query until you know the goal - one clarifying question beats a wrong dashboard.
+2. **Scope to the domain, then work down: domain -> data source -> assets.** Start narrow, not broad. Ask the user which business domain this dashboard is about (or infer it and confirm). Then `graphit kb explore domain <NAME>` to see that domain's data sources and the metrics and dimensions defined on them. Reach for broad `graphit kb search` only as a fallback. Tell the user what you found - the data source, the metrics and dimensions you'll use, and the graphs you plan - before building.
+3. **Understand the business question.** Before touching SQL, apply the domain lenses to classify the user's goal. Match column names and user intent against the five lens detection signals (Marketing, Finance, Product/Growth, Operational, Sales). Once the lens is identified: check its canonical metrics and clarification questions. Ask at most ONE clarifying question using collaborative phrasing - state your assumption and offer to redirect. Map the user's goal to specific metric and dimension concepts the dashboard needs - name them. Show the user the concept list, then check it against the KB.
+4. **KB-readiness gate (BLOCKING).** Check the KB against the specific concepts from step 3 - not a vague "does the KB have stuff?" but "does the KB have the ROAS, CPI, and LTV:CAC that this marketing dashboard needs?" Show a compact gap table: which concepts exist (with formula) and which are missing. If covered, proceed to step 5. If missing key assets, STOP - do not build on raw ad-hoc SQL. Propose creating the assets, route to KB Build workflow first, return here after.
+5. **Pick the data source, and handle gaps.** Use the cached data source in that domain (~100ms); use its name in SQL (`FROM MARKETING_UA_DS`). If something is missing, look for relationships (`graphit kb list relationships`) before proposing a new data source.
+6. **Validate each query, and show the result.** Write SQL with `{{metric:NAME}}` / `{{dim:NAME}}` reference syntax, run with `--verbose`, and for EVERY query show the user: the reference-syntax query, a small markdown table of rows, the row count, and the trust tier. If zero rows or nulls, diagnose.
+7. **Get approval, then build.** Once the user is happy with data and plan, assemble the HTML: `graphit.resolve()` for live data, `graphit.chart/table/kpi` for rendering, every entity wrapped, all CSS in `<style>`, all JS in `<script>`. For large dashboards, add entities incrementally.
+8. **Save - prefer entity updates - then hand off.** New dashboard: `graphit dashboard update-html <id> --file <path>`. Existing: prefer `graphit dashboard update-entity <id> <entity_id>`. If `entity_sql_warnings` appear, fix and re-save. Give the user the dashboard URL.
+
+## Workflow: KB Build / Onboarding
+
+When the user wants to build or populate their KB from files, schemas, or scratch. Consult companion rules: graphit-kb-graph-structure (graph model), graphit-kb-traversal (tool selection), graphit-kb-actions (CLI commands), graphit-kb-awareness (when to propose assets), graphit-parameterized-metrics (template metrics), graphit-data-sources (shaping sources for speed).
+
+1. **Audit current KB state FIRST.** `graphit kb list domains`, then `graphit kb explore domain <NAME>` for each (returns full tree in one call). Add `graphit kb list synonyms` and `graphit kb list relationships` for globals. Present tree summary.
+2. **Analyze input.** Read the user's files/schema. Classify every concept by asset type (see graphit-kb-explanation for definitions, graphit-kb-awareness for signals).
+3. **Present a tree plan** showing Domain > Table > Topic > Asset hierarchy. Mark existing assets with (exists), new ones with **NEW**. Include global items (synonyms, relationships) at the bottom. Propose parameterized templates for variant metrics (D7/D30/D90).
+4. **Wait for approval.** Do not create anything until confirmed.
+5. **Execute top-down.** Create in order: domains, topics, metrics (with --topics), dimensions, rules, synonyms, relationships, then attachments (domain->table, secondary_tables). Each create validates against real data and returns sample results; if validation fails (422), fix the formula before retrying. Use `--skip-validate` for batch speed.
+6. **After each metric/dimension/rule create**, present the `validation` section: show the sample query, render sample data as a table, surface warnings. If validation was skipped, say why. If it failed (422), show the error and fix.
+7. **Verify.** Re-traverse with `graphit kb explore domain <NAME>`, confirm counts match plan.
+
+---
+
+## Presenting Results to the User
+
+You are the rendering layer - format and present every CLI result using markdown. Never silently consume output.
+
+**Formatting fundamentals:** Bold every KB asset/table/DS name (**CPI**, **MARKETING_UA_DS**). Markdown tables for tabular data. Code blocks (```sql) for every SQL query. Format numbers (commas, $, %). Narrate between steps.
+
+**After `graphit query`** - ground in KB, show five sections:
+1. **KB Assets:** bold names of all referenced metrics/dimensions/tables
+2. **Query:** original SQL with `{{metric:X}}` references in ```sql block
+3. **Resolved SQL:** expanded SQL (always use `--verbose`) in ```sql block
+4. **Results:** markdown table, row count, DS ID
+5. **Governance:** tier, KB refs, rules enforced (**bold names**)
+- For ad-hoc queries: show query + results + governance, suggest KB reference equivalent
+
+**After `graphit kb list`** - count summary + table with bold names
+**After `graphit kb get`** - entity heading + key-value table
+**After `graphit kb search`** - result count + table with type column
+**After `graphit kb explore`** - tree structure: Asset > Tables > Dimensions > Rules
+**After `graphit ds list`** - table with Name, ID, Rows, Status, Governed + recommend which DS to use
+**After `graphit ds create`** - shows creation progress (materializing -> scanning schema -> verification link)
+**After `graphit ds verify <id>`** - scans schema and prints verification link
+**After `graphit ds refresh --all`** - live status table showing each DS name, status, row count
+**After `graphit governance status`** - mode + conformance table
+**After errors** - bold error message + actionable fix suggestion
+
+**Never:** run queries silently, present raw JSON, skip governance footer, omit SQL code blocks, show tables without bold asset names.
+
+---
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `graphit auth login` | Authenticate with Graphit |
+| `graphit auth status` | Show current auth status |
+| `graphit auth logout` | Clear stored credentials |
+| `graphit plugin status` | Check plugin bundle, CLI, skill, refs, hooks, copied legacy files, and update health |
+| `graphit setup` | Legacy copied-file fallback for Cursor/non-plugin environments |
+| `graphit setup --remove-legacy-copies` | Remove old Claude Code/Codex copied snapshots so the plugin bundle is source of truth |
+| `graphit kb list <type>` | List entities: metric, dimension, table, rule, domain, synonym, template, relationship, topic |
+| `graphit kb get <type> <name>` | Full entity details by name |
+| `graphit kb search <query>` | Search across all KB types (optional `--type` filter) |
+| `graphit kb explore metric <name>` | Metric -> tables -> dimensions graph |
+| `graphit kb explore domain <name>` | Domain -> tables -> assets full tree (preferred starting point) |
+| `graphit kb create metric --name X --sql "..." --table T` | Create a metric (optional `--default-dimensions "D1,D2"`). Validates against real data; blocks on failure (422). Use `--skip-validate` to bypass. |
+| `graphit kb create dimension --name X --expr "..." --table T` | Create a dimension (type auto-inferred; override with `--type` / `--output-type`). Validates; shows cardinality + NULL rate. |
+| `graphit kb create rule --name X --sql "..." --table T` | Create a rule. Validates as WHERE clause; warns if zero rows match. |
+| `graphit kb create synonym --term X --canonical Y --type metric` | Create a synonym (type: metric, column, table) |
+| `graphit kb create domain --name X` | Create a domain (optional `--color "#hex"`) |
+| `graphit kb create relationship --name X --primary-table T --primary-column C --related-table T2 --related-column C2` | Create a JOIN relationship |
+| `graphit kb create topic --name X` | Create a topic (business-concept tag) |
+| `graphit kb create template --name X --file template.html` | Save a reusable chart template (--file or --render-code) |
+| `graphit kb update metric NAME --topics "A,B"` | Attach topics to a metric (also works on dimension, rule) |
+| `graphit kb update metric NAME --default-dimensions "D1,D2"` | Set default grouping dimensions for a metric |
+| `graphit kb update metric NAME --secondary-tables "T1,T2"` | Reference metric onto additional tables (also dimension, rule) |
+| `graphit kb update metric NAME --parameters '<json>'` | Set parameterized metric template (JSON array, or `--parameters-file`) |
+| `graphit kb update table NAME --domain DOMAIN` | Assign domain to table (cascades to all assets on table) |
+| `graphit kb update domain NAME --color "#hex"` | Update domain color |
+| `graphit kb update synonym TERM --canonical Y` | Update synonym target |
+| `graphit kb update relationship NAME --primary-column C` | Update relationship columns |
+| `graphit kb update topic NAME --description "..."` | Update topic description |
+| `graphit kb update template NAME --file template.html` | Update template render code |
+| `graphit kb update <type> <name> --description "..."` | Update description (all types) |
+| `graphit kb delete <type> <name> --yes` | Delete any entity (all types supported) |
+| `graphit ds list` | List cached data sources (use these for fast queries) |
+| `graphit ds create --name "..." --sql "..."` | Create DS, poll until ready, auto-scan schema, print verification link |
+| `graphit ds create --name "..." --sql "..." --skip-scan` | Create DS without auto-scan |
+| `graphit ds verify <id>` | Scan schema and print verification link for an unverified DS |
+| `graphit ds refresh --all` | Refresh all data sources, wait for completion with live status |
+| `graphit ds refresh --all --skip-empty` | Refresh non-empty data sources only |
+| `graphit ds refresh --all --no-wait` | Trigger all refreshes without waiting |
+| `graphit ds refresh <id> [id2...]` | Refresh one or more data sources by ID |
+| `graphit ds update <id> --governed-mode on\|off` | Enable/disable governed mode on a data source |
+| `graphit ds update <id> --max-rows N` | Set max rows cap on a data source |
+| `graphit query "<sql>" --ds <id>` | Query cached data source (~100ms) |
+| `graphit query "<sql>" --ds <id> --override-rules RULE1 RULE2` | Query with governance rule overrides |
+| `graphit query "<sql>" --ds <id> --verbose` | Show expanded SQL and trust tier |
+| `graphit query "<sql>" --warehouse --connection <id>` | Query live Snowflake (~10s) |
+| `graphit governance status` | Show governance mode and conformance stats |
+| `graphit governance set <mode>` | Set governance mode (observe/warn/strict) |
+| `graphit governance audit` | View recent governance audit events |
+| `graphit dashboard create --name "..."` | Create dashboard (returns ID) |
+| `graphit dashboard get-html <id>` | Get current HTML content of a dashboard |
+| `graphit dashboard update-html <id> --file <path>` | Upload HTML to dashboard (full page replace) |
+| `graphit dashboard update-entity <id> <entity_id> --file <path>` | Update a single entity's inner HTML (optional `--title`, `--stdin`) |
+| `graphit dashboard list` | List dashboards with sharing metadata (permission, visibility, teams, is_locked) |
+| `graphit dashboard list --view mine` | Only dashboards you own |
+| `graphit dashboard list --view shared` | Only dashboards shared with you |
+| `graphit dashboard list --team <id>` | Only dashboards shared with a specific team |
+| `graphit team list` | List teams you belong to (org admins see all) |
+| `graphit dashboard export <id>` | Export as PNG (default) or PDF (`--format pdf`, `--output <path>`). Presentations auto-export as multi-page PDF. Custom multi-page: `data-graphit-page="N"` (0-indexed). |
+| `graphit metadata schemas --connection <id>` | List Snowflake schemas |
+| `graphit metadata tables --schema <name> --connection <id>` | List tables in a Snowflake schema |
+| `graphit connector list` | List active connections |
+| `graphit connector add snowflake-keypair --account X --user Y --key <path> --warehouse W` | Add Snowflake keypair connection (admin only). OAuth and GitHub connections are configured via the web app. |
+| `graphit connector test <id>` | Test a connection |
+| `graphit connector remove <id> --yes` | Remove a connection (admin only) |
+
+---
+
+## Query Governance and Reference Syntax
+
+Use KB references for governed queries:
+- `{{metric:NAME}}` - expands to metric calculation, e.g. `{{metric:CPI}}`
+- `{{metric:NAME(K=V)}}` - parameterized metric, e.g. `{{metric:ARPU(DAY=7)}}`
+- `{{dim:NAME}}` - expands to dimension expression
+- `{{metric_raw:NAME}}` - raw expression (no aggregate)
+
+**Parameterized metrics:** Some metrics require parameters (check `graphit kb list metric` - `params` column). Use `{{metric:ARPU(DAY=7)}}` to resolve `${PARAM:DAY}`. Pre-baked variants (ARPU_D7, ROAS_D30) need no parameters.
+
+```bash
+graphit query "SELECT {{dim:INSTALL_MONTH}}, {{metric:CPI}} as cpi FROM MARKETING_UA_DS GROUP BY 1" --ds ds_abc123
+graphit query "SELECT {{metric:ARPU(DAY=7)}} as arpu FROM MARKETING_UA_DS" --ds ds_abc123  # parameterized
+graphit query "SELECT * FROM events" --ds ds_123 --override-rules EXCLUDE_RETARGETING   # bypass rule
+graphit governance status   # view mode and conformance
+graphit governance set warn # change mode (admin)
+graphit ds update <id> --governed-mode on  # enable governance on DS
+```
+
+Reference syntax in `graphit.resolve()` calls works the same way - server expands at query time. Trust tiers: **governed** (KB refs), **verified** (matches KB), **ad-hoc** (inline). Strict mode blocks ad-hoc on governed DSes.
+
+---
 
 ## graphit.resolve() - Live Data API
 
@@ -78,31 +262,52 @@ const result = await graphit.resolve({
 // Returns: { columns: string[], data: object[], rowCount: number, truncated: boolean }
 ```
 
-**Error handling:** Rejects on timeout (60s), bad SQL, or invalid data source ID. Wrap in try/catch.
+**Error handling:** Rejects on timeout (120s), bad SQL, or invalid data source ID. Wrap in try/catch.
+
+**Rate limit:** 120 requests/min per user per dashboard. A 6-chart dashboard uses 6 requests per filter change (~20 changes/min budget). Batch all queries in a single `Promise.all`.
+
+### First-paint loading state
+
+The HTML paints before the SDK connects, so bake a pure-CSS spinner overlay into the page; the SDK adopts it and removes it when that element's `graphit.resolve()` settles. Add once to the page `<style>`:
+
+```css
+@keyframes gh-spin{to{transform:rotate(360deg)}}
+.gh-loading{position:relative;min-height:120px}
+.gh-loading-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:9998;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);background:color-mix(in srgb,var(--graphit-surface-raised,#fff) 50%,transparent);border-radius:inherit}
+.gh-loading-spin{animation:gh-spin .7s linear infinite}
+```
+
+Add the overlay inside EVERY element you pass as `target:` - and ONLY those elements. Keep the class names exactly as shown; they are the contract the SDK uses. NEVER write text placeholders ("Loading...") - they never animate and make slow loads look stuck. See the canonical pattern below for the overlay markup.
 
 ### Runtime chart helpers
 
 | Helper | Usage |
 |---|---|
-| `graphit.chart(el, {type, data, x, y, ...})` | Bar, line, area, donut, scatter, stacked-bar, heatmap, funnel, gauge, sparkline |
-| `graphit.table(el, {data, columns?, ...})` | Styled HTML table |
-| `graphit.kpi(el, {value, label?, format?})` | KPI card with optional delta |
+| `graphit.chart(el, {type, data, x, y, ...})` | Bar, horizontal-bar, line, area, donut, scatter, stacked-bar, heatmap, funnel, gauge, sparkline |
+| `graphit.table(el, {data, columns?, maxRows?})` | Styled HTML table. `columns` is a `string[]` of data keys (NOT objects) |
+| `graphit.kpi(el, {value, label?, format?})` | KPI card with optional delta (`compareValue`, `compareLabel`) |
+| `graphit.presentation(el)` | Full-screen slide deck. Returns builder: `.slide({bg, layout, html})` then `.start()`. See graphit-presentations rule. |
+| `graphit.filter(id, {label, field?, default?})` | Headless filter (zero DOM). Returns `{get, set, subscribe}` handle. See graphit-filters rule. |
+| `graphit.param(id, {label, default?, options?})` | Headless parameter (zero DOM). Same handle API. |
+| `graphit.bind(el, {sql, dataSourceId, params, deps?, render})` | Auto re-resolve on filter/param change. See graphit-filters rule. |
 
-`graphit.chart` types: `"bar"`, `"line"`, `"area"`, `"donut"` (alias `"pie"`), `"scatter"` (alias `"bubble"`), `"stacked-bar"` (alias `"stacked"`), `"heatmap"`, `"funnel"`, `"gauge"`, `"sparkline"`. Config: `x` (category field), `y` (value field), `series` (group-by), `title`, `height` (140-900px), `valueFormat` (`"currency"` | `"percent"` | `"number"`), `colors` (array). Scatter adds: `size`, `label`. Gauge adds: `min`, `max`, `format`. Sparkline adds: `width`, `showValue`.
+`graphit.chart` types: `"bar"`, `"horizontal-bar"` (alias `"hbar"`), `"line"`, `"area"`, `"donut"` (alias `"pie"`), `"scatter"` (alias `"bubble"`), `"stacked-bar"` (alias `"stacked"`), `"heatmap"`, `"funnel"`, `"gauge"`, `"sparkline"`. Config: `x`, `y`, `series`, `title`, `height` (140-900px), `valueFormat` (`"currency"` | `"percent"` | `"number"`), `colors`. Dual axis (bar/line/area): `y2`, `y2Format`, `y2Label`; `y2` and `series` are mutually exclusive. Scatter adds: `size`, `label`. Gauge: `min`, `max`, `format`. Sparkline: `width`, `showValue`.
 
 ### Canonical pattern - entity with live data
 
 ```html
 <div data-graphit-id="spend-by-source"
      data-graphit-label="Ad Spend by Source"
-     data-graphit-kb="metric:CPI,dimension:MEDIA_SOURCE,table:MARKETING_UA"
-     data-graphit-sql="SELECT MEDIA_SOURCE, SUM(APPSFLYER_COST) as spend FROM MARKETING_UA GROUP BY MEDIA_SOURCE ORDER BY spend DESC">
-  <div id="spend-chart"></div>
+     data-graphit-sql="SELECT {{dim:MEDIA_SOURCE_DIMENSION}} AS source, {{metric:CPI}} AS cpi FROM MARKETING_UA_DS GROUP BY source ORDER BY cpi DESC"
+     data-graphit-ds="ds_abc123">
+  <div id="spend-chart" class="gh-loading">
+    <div class="gh-loading-overlay"><svg class="gh-loading-spin" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="var(--graphit-border,#e5e5e5)" stroke-width="2.5"/><path d="M12 2a10 10 0 0 1 10 10" stroke="var(--graphit-accent,#4DB6AC)" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+  </div>
 </div>
 <script>
 (async function() {
   var r = await graphit.resolve({
-    sql: "SELECT MEDIA_SOURCE, SUM(APPSFLYER_COST) as spend FROM MARKETING_UA GROUP BY MEDIA_SOURCE ORDER BY spend DESC",
+    sql: "SELECT MEDIA_SOURCE, SUM(APPSFLYER_COST) as spend FROM MARKETING_UA_DS GROUP BY MEDIA_SOURCE ORDER BY spend DESC",
     dataSourceId: "ds_abc123",
     target: "#spend-chart"
   });
@@ -114,4 +319,4 @@ const result = await graphit.resolve({
 </script>
 ```
 
-For detailed chart selection logic, dashboard planning, SQL reference, domain-specific lenses, Graphit visual style, and chart pattern implementations, see the companion rule files (graphit-planning, graphit-sql, graphit-lenses, graphit-style, graphit-kb, graphit-patterns).
+For detailed chart selection, dashboard planning, SQL reference, domain lenses, visual style, KB structure, chart patterns, governance, presentations, filters, and data source shaping, see the companion rule files.

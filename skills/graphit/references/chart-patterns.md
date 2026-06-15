@@ -1,6 +1,6 @@
 # Chart Patterns
 
-All chart types are available via `graphit.chart()`. All data comes from `graphit.resolve()` - never embed static data.
+The chart types documented below are the native `graphit.chart()` types. Anything not listed here (treemap, sankey, maps, box) is hand-rolled SVG - see `chart-selection.md` for the native-vs-hand-rolled split. All data comes from `graphit.resolve()` - never embed static data.
 
 **NEVER use `<canvas>`.** Canvas produces blurry charts inside the sandboxed iframe due to DPI scaling issues.
 
@@ -8,9 +8,12 @@ All chart types are available via `graphit.chart()`. All data comes from `graphi
 
 ### bar
 SVG vertical bars. Multi-series: grouped side-by-side. Y-axis: 4 grid lines with formatted labels. X-axis: category labels (sampled if >12). Rounded top corners (rx=3). `<title>` tooltips per bar.
+**Dual axis (combo chart):** `y2` field adds a dashed line overlay on a secondary right-side Y-axis. Bars use the left scale, the line uses the right scale. Config: `y2`, `y2Format`, `y2Label`.
 
 ### line / area
 SVG line with circle dots at each point. Area adds filled path below (opacity 0.18). Multi-series: separate colored paths. Y-axis scaled to data range (min to max). `<title>` tooltips per dot.
+**Dual axis:** `y2` field adds a secondary right-side Y-axis with independent scaling. Secondary line is dashed (`stroke-dasharray="6 3"`). `y2` and `series` are mutually exclusive.
+Config: `y2` (secondary value field), `y2Format` (right axis format), `y2Label` (legend name for secondary).
 
 ### donut / pie
 SVG pie slices with center hole (58% of radius). Center shows formatted total. Legend below with color swatches. Each slice is a wedge path from center.
@@ -41,20 +44,17 @@ Config: `value`, `min` (default 0), `max` (default 100), `format`, `label`, `col
 Inline SVG polyline for KPI cards or table cells. No axes, no grid - just trend shape. Single data point renders as a dot.
 Config: `y`, `width` (default 120), `height` (default 32), `label`, `showValue` (default true), `valueFormat`.
 
+## Saved templates
+
+Templates are reusable chart components saved to the org's KB. At dashboard load, the SDK fetches the org's template bundle and registers them alongside built-in types.
+
+**Usage:** `graphit.TEMPLATE_NAME(el, {data, value: 'revenue', label: 'Revenue'})` or via `graphit.chart(el, {type: 'TEMPLATE_NAME', ...})`.
+
+Templates are org-specific - they exist only when users have saved them. The agent's context provider lists available templates each turn. Use `list_templates()` to discover them and `get_template(name)` to read the render code.
+
 ## Color tokens
 
-| Token | Usage |
-|---|---|
-| `var(--graphit-accent)` | Primary brand teal |
-| `var(--graphit-success)` | Positive/good |
-| `var(--graphit-warning)` | Caution |
-| `var(--graphit-error)` | Negative/bad |
-| `var(--graphit-fg)` | Primary text |
-| `var(--graphit-fg-muted)` | Secondary text |
-| `var(--graphit-fg-subtle)` | Labels, placeholders |
-| `var(--graphit-border)` | Borders, grid lines |
-| `var(--graphit-surface-raised)` | Card backgrounds |
-| `var(--graphit-surface-sunken)` | Inset areas |
+Use theme CSS variables for all structural colors so charts adapt to light and dark mode. The full token table and usage rules live in `graphit-style.md` - that is the single source; do not re-list tokens here. Chart series colors come from the runtime palette automatically.
 
 ## Tooltip pattern (for hand-rolled charts)
 

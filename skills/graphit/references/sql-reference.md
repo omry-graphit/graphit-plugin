@@ -111,6 +111,26 @@ SELECT UNNEST(generate_series(
 
 The outer SELECT can ONLY reference columns the subquery exposes (its aliases). Base-table columns aggregated away in the subquery do NOT exist at the outer level.
 
+## Cache-Friendly SQL (Canvas Resolve)
+
+Canvas `graphit.resolve()` queries that follow these shapes serve from a semantic cache in ~10ms on filter changes instead of a full DuckDB recompute (5-37s on wide data sources). Write resolve SQL in this style by default.
+
+**Shape rules:**
+- Single table (no JOIN/UNION)
+- WHERE as flat AND of `column = literal`, `column IN (...)`, `column BETWEEN ... AND ...` conjuncts
+- Bare aggregates only: `SUM(col)`, `COUNT(*)`, `MIN(col)`, `MAX(col)` - no wrapping functions (`ROUND(SUM(x))`), no aggregate arithmetic (`SUM(a)/NULLIF(SUM(b),0)`), no `AVG` (v2)
+- Literal dates (`>= '2026-01-01'`), never `CURRENT_DATE` expressions
+- GROUP BY column names or ordinals; ORDER BY / LIMIT allowed (outer only)
+- CTEs are fine when the CTE body follows the same rules
+- Top-N rank queries: project the sort metric in SELECT (`SELECT dim, SUM(metric) AS rv ... ORDER BY rv DESC LIMIT N`), not only in ORDER BY
+
+**Shapes that skip the cache** (fall back to normal execution, still correct):
+- `COUNT(DISTINCT x)`, window functions, HAVING, QUALIFY
+- OR / NOT in WHERE
+- Ratio metrics (`SUM(a)/NULLIF(SUM(b),0)`) - compute client-side or use two resolves
+- `CURRENT_DATE`-relative predicates
+- Top-N with aggregate only in ORDER BY (`SELECT dim FROM t GROUP BY dim ORDER BY SUM(metric) DESC LIMIT N` - no decomposable aggregate in SELECT)
+
 ## Data Source Routing
 
 | Situation | Command | Speed |
@@ -119,3 +139,91 @@ The outer SELECT can ONLY reference columns the subquery exposes (its aliases). 
 | No data source | `graphit query "SQL" --warehouse --connection <id>` | ~10s, Snowflake |
 
 Always prefer cached data sources. Check with `graphit ds list`. If no data source covers the table, suggest creating one for future speed.
+
+## Presenting Query Results
+
+After every `graphit query`, present results grounded in the KB. Always show which KB assets were used - this is what makes governed queries valuable.
+
+**When using KB reference syntax** (`{{metric:X}}`, `{{dim:X}}`), show all five sections:
+
+~~~
+**KB Assets:** dimension **CAMPAIGN_CATEGORY**, metric **TOTAL_INSTALLS**, metric **CPI**, table **MARKETING_UA_DS**
+
+**Query:**
+```sql
+SELECT
+    {{dim:CAMPAIGN_CATEGORY}} AS category,
+    {{metric:TOTAL_INSTALLS}} AS installs,
+    {{metric:CPI}} AS cpi
+FROM MARKETING_UA_DS
+WHERE ACTIVITY_TIME >= '2026-01-01'
+GROUP BY {{dim:CAMPAIGN_CATEGORY}}
+ORDER BY installs DESC
+```
+
+**Resolved SQL:**
+```sql
+SELECT
+    CASE WHEN IS_RETARGETING THEN 'Retargeting'
+         WHEN IS_CTV THEN 'Connected TV'
+         ELSE 'User Acquisition' END AS category,
+    SUM(INSTALLS) AS installs,
+    SUM(APPSFLYER_COST) / NULLIF(SUM(INSTALLS), 0) AS cpi
+FROM MARKETING_UA_DS
+WHERE ACTIVITY_TIME >= '2026-01-01'
+GROUP BY 1
+ORDER BY installs DESC
+```
+
+**Results** (3 rows via **ds_abc123**):
+
+| Category | Installs | CPI |
+|---|---:|---:|
+| User Acquisition | 80,605 | $0.79 |
+| Retargeting | 12,300 | $1.24 |
+| Connected TV | 3,100 | $2.80 |
+
+**Governance:** governed - 3 KB refs, 2 rules enforced (**EXCLUDE_ORGANIC**, **MIN_SPEND**). Max rows: 1,000.
+~~~
+
+**When using inline SQL** (no `{{metric:X}}`), show query + results + governance:
+
+~~~
+**Query:**
+```sql
+SELECT media_source, SUM(spend) AS spend FROM MARKETING_UA_DS GROUP BY 1
+```
+
+**Results** (6 rows via **ds_abc123**):
+
+| Media Source | Spend |
+|---|---:|
+| Facebook | $42,100 |
+| Google UAC | $38,500 |
+
+**Governance:** ad-hoc - 0 KB refs. Consider using `{{metric:TOTAL_SPEND}}` for governed tier.
+~~~
+
+For ad-hoc queries, suggest the KB reference equivalent when one exists. This nudges users toward governed queries.
+
+**Always use `--verbose`** to get the resolved SQL. If the user didn't pass it, re-run with `--verbose` so you can show both the reference query and the expanded SQL.
+
+Zero rows: explain what you checked and hypothesize why (wrong date range, filter too strict, table empty).
+
+## Presenting Data Source Results
+
+After `graphit ds list`:
+
+~~~
+**3 data sources:**
+
+| Name | ID | Rows | Status | Governed |
+|---|---|---:|---|---|
+| **MARKETING_UA_DS** | ds_abc123 | 1,247,832 | active | yes |
+| **PLAYER_QUALITY** | ds_def456 | 892,104 | active | no |
+| **REVENUE_EVENTS** | ds_ghi789 | 3,412,006 | stale | yes |
+
+Using **MARKETING_UA_DS** (ds_abc123) which covers spend, installs, and ROAS columns.
+~~~
+
+End with a recommendation of which DS to use, or note if none covers the needed table.

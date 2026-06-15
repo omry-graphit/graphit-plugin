@@ -1,0 +1,30 @@
+{
+  "description": "Graphit plugin status checks",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/plugin-status.mjs", "--hook", "SessionStart"],
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/plugin-status.mjs", "--hook", "UserPromptSubmit"],
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
