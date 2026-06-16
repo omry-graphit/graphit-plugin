@@ -1,6 +1,7 @@
 {
-  "$schema": "https://cdn.anthropic.com/schemas/claude-plugins/marketplace.schema.json",
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "graphit-plugin",
+  "description": "Graphit CLI plugin for AI coding assistants - build custom HTML dashboards from real data",
   "owner": {
     "name": "Graphit",
     "email": "support@graphit-app.com",
@@ -10,17 +11,10 @@
     {
       "name": "graphit",
       "description": "Build custom HTML dashboards from real data. KB-aware queries, entity wrapping, cached data sources.",
-      "source": ".",
+      "source": "./",
       "version": "0.1.37",
       "category": "data-visualization",
-      "tags": [
-        "bi",
-        "dashboard",
-        "sql",
-        "data",
-        "visualization",
-        "analytics"
-      ]
+      "tags": ["bi", "dashboard", "sql", "data", "visualization", "analytics"]
     }
   ]
 }
