@@ -2,8 +2,12 @@
 # @graphit/cli via npx. Reads + validates the resolver cache (user-writable, so
 # untrusted) and falls back to the stamped floor version when absent/invalid.
 
+if (-not $env:GRAPHIT_PLUGIN_ROOT) {
+  $env:GRAPHIT_PLUGIN_ROOT = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+}
+
 # graphit:floor (stamped by scripts/sync-plugin-version.mjs from cli/package.json)
-$FloorVersion = "0.1.107"
+$FloorVersion = "0.2.0"
 
 $PackageName = "@graphit/cli"
 # Strict semver: anything else is rejected so a tampered cache cannot inject.

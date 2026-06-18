@@ -6,8 +6,15 @@
 # untrusted), and falls back to the stamped floor version when the cache is absent
 # or invalid. The floor keeps first-run and offline working.
 
+# Tell the npm CLI which plugin bundle launched it. Existing stale wrappers may
+# not have this yet, so the CLI also inspects Claude's installed plugin registry.
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+if [ -z "${GRAPHIT_PLUGIN_ROOT:-}" ]; then
+  export GRAPHIT_PLUGIN_ROOT="$(cd "${script_dir}/.." && pwd -P)"
+fi
+
 # graphit:floor (stamped by scripts/sync-plugin-version.mjs from cli/package.json)
-FLOOR_VERSION="0.1.107"
+FLOOR_VERSION="0.2.0"
 
 PACKAGE_NAME="@graphit/cli"
 # Strict semver: anything else is rejected so a tampered cache cannot inject.
