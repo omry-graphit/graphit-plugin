@@ -44,6 +44,9 @@ Config: `value`, `min` (default 0), `max` (default 100), `format`, `label`, `col
 Inline SVG polyline for KPI cards or table cells. No axes, no grid - just trend shape. Single data point renders as a dot.
 Config: `y`, `width` (default 120), `height` (default 32), `label`, `showValue` (default true), `valueFormat`.
 
+## Value formatting
+`valueFormat` (charts), `format` (`kpi`/`gauge`), and `columnFormats` (`graphit.table`, mapping column name -> format) all take `"currency"`, `"percent"`, or `"number"`. **`"percent"` only appends `%` - it does NOT multiply by 100.** A 0-1 ratio renders as `0.42%`, not `42%`; multiply ratios/rates by 100 in SQL (`* 100.0 ... AS x_pct`) so the value is already 0-100. Table columns without a `columnFormats` entry render raw.
+
 ## Saved templates
 
 Templates are reusable chart components saved to the org's KB. At dashboard load, the SDK fetches the org's template bundle and registers them alongside built-in types.

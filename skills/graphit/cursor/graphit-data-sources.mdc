@@ -1,17 +1,12 @@
-# Data Sources: Routing and Building for Speed
+---
+alwaysApply: false
+description: "Graphit: Consult when creating or shaping a data source. A source's shape (set by its source SQL) decides dashboard speed and whether filter changes are cacheable: pre-aggregate to the query grain, narrow columns, keep high-cardinality dimensions out of the base."
+globs: []
+---
+
+# Data Sources: Building for Speed
 
 A data source's shape - set by its source SQL at creation - decides how fast every dashboard built on it will be, and whether filter changes feel instant. Get this right when you create the source; it can't be fixed later in the dashboard SQL.
-
-## Routing: which source to query
-
-Always prefer a cached data source over the live warehouse. Check what exists with `graphit ds list` before writing any query.
-
-| Situation | Command | Speed |
-|---|---|---|
-| The table has a cached data source | `graphit query "SQL" --ds <id>` | roughly 100ms, DuckDB |
-| No data source covers the table | `graphit query "SQL" --warehouse --connection <id>` | roughly 10s, Snowflake |
-
-If no data source covers the table the user needs, propose creating one for future speed rather than defaulting to repeated warehouse queries. Dialect differs by route (DuckDB for `--ds`, Snowflake for `--warehouse`); see `sql-reference.md`.
 
 ## Why source shape decides dashboard speed
 
@@ -85,21 +80,3 @@ The CLI fires all refreshes in parallel and polls until every source is ready. L
 ## Deleting data sources
 
 There is no `graphit ds delete` command. Deleting a data source cascades to GCS storage and the KB table, which removes all metrics, dimensions, and rules defined on it. Direct the user to delete from the platform UI (Sources Hub) where the confirmation flow shows what will be affected.
-
-## Presenting data source results
-
-The user cannot see the raw CLI output - you are the rendering layer. After `graphit ds list`, present a markdown table and end with a recommendation of which source to use (or note that none covers the needed table):
-
-~~~
-**3 data sources:**
-
-| Name | ID | Rows | Status | Governed |
-|---|---|---:|---|---|
-| **MARKETING_UA_DS** | ds_abc123 | 1,247,832 | active | yes |
-| **PLAYER_QUALITY** | ds_def456 | 892,104 | active | no |
-| **REVENUE_EVENTS** | ds_ghi789 | 3,412,006 | stale | yes |
-
-Using **MARKETING_UA_DS** (ds_abc123), which covers spend, installs, and ROAS columns.
-~~~
-
-Bold every data source name. If a source is stale, say so and offer to refresh it before querying.

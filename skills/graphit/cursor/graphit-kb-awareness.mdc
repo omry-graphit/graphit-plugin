@@ -1,0 +1,96 @@
+---
+alwaysApply: false
+description: "Graphit: > Load when: planning graphs that involve metrics (aggregations) or dimensions (grouping/filtering columns), or when the user references a business co"
+globs: []
+---
+
+# KB-Aware Planning
+
+> Load when: planning graphs that involve metrics (aggregations) or dimensions (grouping/filtering columns), or when the user references a business concept that might already exist as a KB asset.
+
+Before writing inline SQL with raw aggregations or column references, check whether a KB asset already defines the concept. Using KB assets ensures consistent formulas across dashboards and makes future graphs faster to create.
+
+## KB-First Discovery
+
+Before proposing graphs with inline aggregations or custom column expressions:
+
+1. Check the KB Overview in the system prompt for existing metrics and dimensions
+2. If the KB Overview shows assets that match the user's request, reference them by name
+3. If no matching asset exists, recommend creating it first, then build the graph referencing the new asset
+
+If the KB Overview shows tables but no metrics or dimensions, this is the strongest signal to suggest KB asset creation. Propose foundational metrics and dimensions based on the table schema before planning any graphs. If the user explicitly declines ("just build it", "skip KB"), respect that and work from table schema.
+
+## When to Propose KB Asset Creation
+
+| Signal | Proposed asset | Why |
+|--------|---------------|-----|
+| User requests a business metric (revenue, DAU, conversion rate) with no KB match | Metric | Reusable formula across dashboards |
+| User groups by a derived expression (date bucket, category mapping, JSON extraction) | Dimension | Consistent grouping logic |
+| User describes a business rule ("active means logged in within 30 days") | Rule | Applied automatically to future queries |
+| User uses a business term not in KB ("GMV", "churn", "ARPU") | Synonym | Maps colloquial terms to defined metrics |
+
+Propose creation as the default path: "Your KB doesn't have a revenue metric yet. I'd recommend creating one first - that way it's reusable across all your dashboards with a consistent formula. Then I'll build the graph using it. Sound good?"
+
+## Metric vs Dimension Distinction
+
+| Property | Metric | Dimension |
+|----------|--------|-----------|
+| Formula type | Aggregation required (SUM, COUNT, AVG, MIN, MAX) | Row-level only (no aggregates) |
+| Table scope | Can reference multiple tables | Exactly one table |
+| Purpose | Measures (what you count/sum) | Grouping axes (how you slice) |
+| Example | `SUM(ORDERS.AMOUNT)` | `DATE_TRUNC('month', EVENTS.EVENT_TS)` |
+| Invalid example | `ORDERS.AMOUNT` (no aggregate) | `SUM(EVENTS.DURATION)` (has aggregate) |
+
+## Topics
+
+When creating any KB asset, consider which business topic it belongs to and pass `topics` (e.g., `["ACQUISITION"]`, `["MONETIZATION"]`). Check the KB Overview for existing topic names first to avoid duplicates. UPPER_SNAKE_CASE.
+
+## Dimension Type Inference
+
+When creating dimensions, `output_type` and `semantic_type` are auto-inferred from the table's column schema for simple column references (e.g., a DATE column becomes `output_type=DATE`, `semantic_type=temporal`). Only override with `--type` / `--output-type` when the inferred type is wrong (e.g., a CASE expression that produces categorical output from a numeric column).
+
+## Metric Default Dimensions
+
+When creating metrics, pass `--default-dimensions "D1,D2"` to declare which dimensions the metric naturally groups by. This populates the "USED BY METRICS" section on dimension detail views and helps users discover natural slicing axes.
+
+## Reuse Over Reinvention
+
+When planning multi-graph dashboards, identify shared concepts across graphs and propose KB assets for them:
+
+- If 3 graphs all use `SUM(ORDERS.AMOUNT)`, propose a TOTAL_REVENUE metric once
+- If 2 graphs group by `DATE_TRUNC('month', TS)`, propose a MONTHLY dimension once
+- Reference the KB asset by name in subsequent graphs instead of repeating the formula
+
+## Cross-Table Referencing
+
+When a metric or dimension already exists on one table and the user wants the same concept on a sibling table with identical columns, **reference it** instead of creating a duplicate:
+
+`edit(entity_type="metric", id="TOTAL_REVENUE", secondary_tables=["ORDERS_12M"])`
+
+- Metrics/dimensions: the target table must contain every column the formula references (validated on save).
+- Rules: the target table just needs to exist (no column check).
+- This is a pointer, not a copy. Edits propagate to all placements.
+- In the KB tree, referenced placements appear with a `*` suffix and link back to the original.
+
+Suggest referencing when: the user has sibling data sources with the same schema (e.g., 6M and 12M windows), or asks to "make X available on Y table".
+
+> For metric formula syntax, aggregation patterns, and WHERE clause rules, see `kb_authoring/references/formula-syntax.md`. For creating KB assets, hand off to `kb_authoring`.
+
+## KB Graph Navigation
+
+For structural questions about the KB (what is a topic, what depends on X, how do domains work), graph traversal, or KB organization requests, activate the `kb_navigation` shared skill. It provides:
+
+- `kb_explore` tool for graph traversal (what depends on X, what joins with Y)
+- Structural explanations grounded in actual KB data
+- Full action parity with the manual KB page UI
+- Topic and domain filtering via `search` tool
+
+**When to activate kb_navigation vs stay in current skill:**
+
+| User Intent | Activate kb_navigation? |
+|-------------|------------------------|
+| "What is a topic?" or "How do domains work?" | Yes - structural question |
+| "What depends on this table?" | Yes - graph traversal |
+| "Organize my KB" or "Clean up topics" | Yes - KB management |
+| "Show me revenue metrics for my graph" | No - use search + read, stay in current skill |
+| "Create a metric called X" | No - use kb_expert or kb_authoring |

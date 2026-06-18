@@ -84,13 +84,7 @@ Purpose before data. The first response should mirror the user's intent and ask 
 
 ## Performance
 
-`graphit.resolve()` is rate-limited to 120 requests/min per user per dashboard. Each call counts as one request. Design for efficiency:
-
-- **Single refresh function.** All queries in ONE `Promise.all` inside one `refresh()` function. Never scatter `graphit.resolve()` across independent event handlers or timeouts - that turns one user action into multiple bursts.
-- **Count your queries per interaction.** 6 charts = 6 requests per filter change = 20 changes/min budget. 12 charts = 10 changes/min. If you have 10+ charts with 3+ filters, consider debouncing filter changes (300ms) so rapid clicks don't each trigger a full refresh.
-- **Reuse trend data for KPIs.** If you already fetch a weekly time series (`SELECT week, SUM(spend) ...`), derive the KPI total and sparkline from that result set in JS instead of running a separate aggregate query. One query serves both the chart and the KPI card.
-- **Avoid redundant refreshes.** If a filter only affects some charts, split into targeted refresh functions (`refreshKPIs()`, `refreshCharts()`) so unchanged sections don't re-query.
-- **No polling.** Never `setInterval(refresh, ...)`. Data sources update on their own schedule - a dashboard that polls wastes the entire rate budget.
+Live data goes through `graphit.resolve()`, which is rate-limited per user per dashboard. Budget your queries per interaction - batch them, reuse trend data for KPIs, split targeted refreshes, and never poll. The full rate-limit budget and the efficient-refresh patterns live in `runtime.md`.
 
 ## Pre-Build Checklist
 

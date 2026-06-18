@@ -1,9 +1,11 @@
 ---
-skill_version: "0.1.37"
+skill_version: "0.1.54"
 alwaysApply: false
 description: "Build Graphit HTML dashboards with KB-aware queries, entity wrapping, and cached data sources"
 globs: []
 ---
+
+> FROZEN - not maintained for Claude Code + Codex; may be stale. Source of truth is SKILL.md + references/.
 
 # Graphit CLI
 
@@ -11,8 +13,17 @@ Build custom HTML dashboards from real data using the Graphit CLI.
 
 ## Session Start
 
-Run `graphit plugin status` at the start of every Graphit session and whenever the user asks about Graphit updates, plugin health, or stale instructions. This command is the source of truth for CLI, plugin-bundle, skill, ref, hook, and legacy copied-file version health; do not invent a manual version check.
-If it reports action needed, tell the user the exact remediation it prints before proceeding.
+Before anything else, run `graphit plugin status` and show the user a version banner:
+
+```
+Graphit
+  Skill:  {skill_version from this file's frontmatter}
+  CLI:    {output of graphit --version}
+  Status: {OK or action needed from plugin status}
+```
+
+If `graphit plugin status` reports action needed, show the exact remediation before proceeding.
+If `graphit plugin status` fails with "command not found" or "unknown command", the CLI is too old. Show `CLI: {version} (outdated)` and tell the user to update: `npm update -g @graphit/cli`. Do not proceed with an outdated CLI.
 
 ## Install / Update Model
 
@@ -86,6 +97,12 @@ NEVER embed query results as static JS variables. The dashboard iframe provides 
 **Wrong:** Embedding results as `const data = [{...}, ...]` in the HTML.
 **Right:** Using `graphit.resolve({sql, dataSourceId})` in a `<script>` block so data refreshes automatically.
 
+### 6. NEVER build a dashboard on ad-hoc SQL when KB assets are missing
+The KB-readiness gate in Workflow Step 4 is BLOCKING. When you check the KB and find it is missing metrics or dimensions the dashboard needs, you MUST create them before writing any HTML. Do not offer to skip. Do not ask "should I use ad-hoc SQL instead?" Do not frame it as the user's choice. The gate exists because ad-hoc SQL bypasses governance, breaks provenance, and produces untrustworthy graphs. The only question to ask is "here's my KB plan - approve?" not "should I follow my own instructions?"
+
+**Wrong:** "The KB has no metrics defined for caching performance. Should I build the dashboard with ad-hoc SQL or create KB assets first? Your call."
+**Right:** "The KB is missing 3 metrics this dashboard needs: RESULT_CACHE_HIT_RATE, DS_QUERY_LATENCY, QUERY_FAILURE_RATE. Creating them now - here's the plan: [tree]. Approve?"
+
 ---
 
 ## How to Work (governs both workflows below)
@@ -95,6 +112,11 @@ You are a colleague building WITH the user, not a batch job that explores in sil
 **Short iterations.** Do one thing, show it, let the user react, then do the next: explore the KB and report what you found; validate one query and show the rows; build one section and show it. Each small step is a cheap chance for the user to redirect before you have built in the wrong direction.
 
 **Always narrate.** The user cannot see your command output: the KB you listed, the SQL you ran, the rows that came back are invisible unless you surface them. After each step, say what you found, what it means, and what you are about to do next. Exception: if the user says "just build it" or "go", drop the commentary and work straight through.
+
+**Workflow gates are not optional.** When a step says BLOCKING or STOP, execute it. Do not offer to skip, do not say "your call", do not reframe it as optional. The KB-readiness gate (Step 4) is the most common one: if the KB is missing metrics or dimensions the dashboard needs, create them before writing HTML. The only question to ask is "here's my KB plan - approve?" not "should I follow the plan?"
+
+- **Wrong:** "The KB is empty. Should I skip KB creation and use ad-hoc SQL, or build assets first?"
+- **Right:** "The KB is empty. Here are the 7 metrics and 4 dimensions this dashboard needs: [tree]. Approve so I can create them?"
 
 The difference in practice:
 - **Weak (solo):** silently list the KB, silently run several queries, then save a complete dashboard and announce "Done."
@@ -204,6 +226,7 @@ You are the rendering layer - format and present every CLI result using markdown
 | `graphit query "<sql>" --ds <id>` | Query cached data source (~100ms) |
 | `graphit query "<sql>" --ds <id> --override-rules RULE1 RULE2` | Query with governance rule overrides |
 | `graphit query "<sql>" --ds <id> --verbose` | Show expanded SQL and trust tier |
+| `graphit query "<sql>" --ds <id> --approve-adhoc` | Approve running an ad-hoc measure query on a governed source |
 | `graphit query "<sql>" --warehouse --connection <id>` | Query live Snowflake (~10s) |
 | `graphit governance status` | Show governance mode and conformance stats |
 | `graphit governance set <mode>` | Set governance mode (observe/warn/strict) |
@@ -246,7 +269,7 @@ graphit governance set warn # change mode (admin)
 graphit ds update <id> --governed-mode on  # enable governance on DS
 ```
 
-Reference syntax in `graphit.resolve()` calls works the same way - server expands at query time. Trust tiers: **governed** (KB refs), **verified** (matches KB), **ad-hoc** (inline). Strict mode blocks ad-hoc on governed DSes.
+Reference syntax in `graphit.resolve()` calls works the same way - server expands at query time. Trust tiers: **governed** (KB refs), **verified** (matches KB), **ad-hoc** (inline). On a governed DS, an ad-hoc **measure** query (aggregate / `GROUP BY` without `{{metric:X}}`) is gated: warn mode rejects it (rewrite with `{{metric:X}}`, or ask the user and re-run with `--approve-adhoc`); strict hard-blocks all ad-hoc. Exploration (`SELECT *`, `COUNT(*)`, `DISTINCT`) runs free.
 
 ---
 
@@ -284,14 +307,20 @@ Add the overlay inside EVERY element you pass as `target:` - and ONLY those elem
 | Helper | Usage |
 |---|---|
 | `graphit.chart(el, {type, data, x, y, ...})` | Bar, horizontal-bar, line, area, donut, scatter, stacked-bar, heatmap, funnel, gauge, sparkline |
-| `graphit.table(el, {data, columns?, maxRows?})` | Styled HTML table. `columns` is a `string[]` of data keys (NOT objects) |
+| `graphit.table(el, {data, columns?, maxRows?, columnFormats?})` | Styled HTML table. `columns` is a `string[]` of data keys (NOT objects). `columnFormats` maps column name -> `"currency"`/`"percent"`/`"number"` (same formats and no-scaling percent rule as chart `valueFormat`); unlisted columns render raw |
 | `graphit.kpi(el, {value, label?, format?})` | KPI card with optional delta (`compareValue`, `compareLabel`) |
 | `graphit.presentation(el)` | Full-screen slide deck. Returns builder: `.slide({bg, layout, html})` then `.start()`. See graphit-presentations rule. |
 | `graphit.filter(id, {label, field?, default?})` | Headless filter (zero DOM). Returns `{get, set, subscribe}` handle. See graphit-filters rule. |
 | `graphit.param(id, {label, default?, options?})` | Headless parameter (zero DOM). Same handle API. |
 | `graphit.bind(el, {sql, dataSourceId, params, deps?, render})` | Auto re-resolve on filter/param change. See graphit-filters rule. |
+| `graphit.dateRange(id, {label?, default?})` | Headless date filter with presets built in. Handle: `get()`->`{preset,start,end}`, `set(presetId)`, `setRange`, `start`/`end`/`deps`. See graphit-filters rule. |
+| `graphit.cascade(el, {column, source, dataSourceId, filters, deps, selection?, preload?, render})` | "Only relevant values" dependent dropdowns - distinct values constrained by upstream filters. `preload:true` = load cross-product once + filter in-memory (instant; low-cardinality). See graphit-filters rule. |
+
+**Logic vs styling.** `filter`, `param`, `bind`, `dateRange`, `cascade` are headless logic (zero imposed styling - you own the markup); `chart`, `table`, `kpi`, `presentation`, `dropdown` render a fixed house style. A control persists to saved views ONLY if registered with `graphit.filter`/`param`/`dateRange`; `graphit.chart` cannot be deeply restyled - hand-draw with SVG/CSS for custom looks. Explain these trade-offs to the user when relevant.
 
 `graphit.chart` types: `"bar"`, `"horizontal-bar"` (alias `"hbar"`), `"line"`, `"area"`, `"donut"` (alias `"pie"`), `"scatter"` (alias `"bubble"`), `"stacked-bar"` (alias `"stacked"`), `"heatmap"`, `"funnel"`, `"gauge"`, `"sparkline"`. Config: `x`, `y`, `series`, `title`, `height` (140-900px), `valueFormat` (`"currency"` | `"percent"` | `"number"`), `colors`. Dual axis (bar/line/area): `y2`, `y2Format`, `y2Label`; `y2` and `series` are mutually exclusive. Scatter adds: `size`, `label`. Gauge: `min`, `max`, `format`. Sparkline: `width`, `showValue`.
+
+**Percent does NOT scale.** `"percent"` only appends `%` - it does not multiply by 100. A 0-1 ratio (retention, conversion, share, churn) renders as `0.42%`, not `42%`. Multiply ratios by 100 in SQL (`SUM(retained) * 100.0 / NULLIF(SUM(cohort), 0) AS retention_pct`) then use `valueFormat: "percent"`. Charts use `valueFormat`; `kpi`/`gauge`/`filter` use `format`.
 
 ### Canonical pattern - entity with live data
 

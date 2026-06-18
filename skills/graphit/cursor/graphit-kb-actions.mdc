@@ -1,0 +1,114 @@
+---
+alwaysApply: false
+description: "Graphit: Every KB action has a CLI equivalent. The tool syntax below maps to CLI commands:"
+globs: []
+---
+
+# KB Actions - CLI Parity Matrix
+
+Every KB action has a CLI equivalent. The tool syntax below maps to CLI commands:
+
+| Agent Tool Syntax | CLI Command |
+|---|---|
+| `create(entity_type="metric", name=..., calculation=...)` | `graphit kb create metric --name X --sql "..." --table T` (optional `--default-dimensions "D1,D2"`, `--skip-validate`) |
+| `create(entity_type="dimension", name=..., expression=...)` | `graphit kb create dimension --name X --expr "..." --table T` (type auto-inferred; override with `--type` / `--output-type`, `--skip-validate`) |
+| `create(entity_type="rule", name=..., rule_text=...)` | `graphit kb create rule --name X --sql "..." --table T` (`--skip-validate` to bypass data validation) |
+| `create(entity_type="synonym", term=..., canonical=...)` | `graphit kb create synonym --term X --canonical Y --type metric` |
+| `create(entity_type="domain", name=...)` | `graphit kb create domain --name X --description "..."` |
+| `create(entity_type="relationship", ...)` | `graphit kb create relationship --name X --primary-table T --primary-column C --related-table T2 --related-column C2` |
+| `create(entity_type="topic_metadata", name=...)` | `graphit kb create topic --name X --description "..."` |
+| `edit(entity_type=..., id=..., field=value)` | `graphit kb update <type> NAME --field value` |
+| `edit(entity_type="table", id=..., domain_id=...)` | `graphit kb update table NAME --domain DOMAIN` |
+| `edit(entity_type="metric", id=..., secondary_tables=[...])` | `graphit kb update metric NAME --secondary-tables "TABLE1,TABLE2"` |
+| `edit(entity_type="metric", id=..., default_dimensions=[...])` | `graphit kb update metric NAME --default-dimensions "D1,D2"` |
+| `edit(entity_type="metric", id=..., topics=[...])` | `graphit kb update metric NAME --topics "TOPIC1,TOPIC2"` |
+| `edit(entity_type="metric", id=..., parameters=[...])` | `graphit kb update metric NAME --parameters '<json>' --parameters-file params.json` |
+| `delete(entity_type=..., id=...)` | `graphit kb delete <type> NAME --yes` |
+| `search(query="...")` | `graphit kb search "query"` |
+| `list(entity_type="domain")` | `graphit kb list domains` |
+| `read(entity_type="metric", name=...)` | `graphit kb get metric NAME` |
+| `kb_explore(entity_type="table", entity_name="X")` | `graphit kb explore table X` |
+
+Full CRUD parity: all agent actions have CLI equivalents.
+
+## Validation Results (metric/dimension/rule creates)
+
+Every metric/dimension/rule create returns a `validation` object in the JSON response. You MUST present it to the user:
+- **pass**: render `sample_data` as a markdown table using `sample_columns` as headers. For metrics show computed values, for dimensions show top values + counts, for rules show matching row count. Surface any `warnings`.
+- **skipped**: tell the user and quote the `skip_reason`.
+- **fail** (422): asset was NOT created. Show the error and `sample_query`. Fix the formula, retry.
+
+Never silently skip validation results.
+
+## Asset CRUD
+
+| UI Action | Agent Tool Path |
+|-----------|----------------|
+| Create metric | `create(entity_type="metric", name=..., calculation=..., dependencies=...)` |
+| Create dimension | `create(entity_type="dimension", name=..., table_name=..., expression=...)` |
+| Create rule | `create(entity_type="rule", name=..., rule_text=...)` |
+| Create synonym | `create(entity_type="synonym", term=..., canonical=..., canonical_type=...)` |
+| Create relationship | `create(entity_type="relationship", primary_table=..., primary_column=..., related_table=..., related_column=...)` |
+| Edit any asset | `edit(entity_type=..., id=..., field=new_value)` |
+| Delete any asset | `delete(entity_type=..., id=...)` |
+| Toggle verified | `edit(entity_type=..., id=..., verified=true/false)` |
+
+## Topic Management
+
+| UI Action | Agent Tool Path |
+|-----------|----------------|
+| Create topic | `create(entity_type="topic_metadata", name=..., description=...)` |
+| Edit topic description | `edit(entity_type="topic_metadata", id=..., description=...)` |
+| Delete topic metadata | `delete(entity_type="topic_metadata", id=...)` |
+| Toggle topic verified | `edit(entity_type="topic_metadata", id=..., verified=true/false)` |
+| Add topic to asset | `edit(entity_type="metric", id=..., topics=[...existing, "NEW_TOPIC"])` - append to existing list |
+| Remove topic from asset | `edit(entity_type="metric", id=..., topics=[...without removed])` - filter out the topic |
+| Move asset between topics | `edit(entity_type="metric", id=..., topics=["NEW_TOPIC"])` - replace the list |
+| Rename topic (cascade) | `edit(entity_type="topic_metadata", id=..., name=...)` then batch `edit` on each asset that references the old name |
+| Bulk reassign topics | Present plan via `ask_user`, then execute N `edit` calls on approval |
+
+## Domain Management
+
+| UI Action | Agent Tool Path |
+|-----------|----------------|
+| Create domain | `create(entity_type="domain", name=..., description=..., color=...)` |
+| Edit domain | `edit(entity_type="domain", id=..., description=..., color=...)` |
+| Delete domain | `delete(entity_type="domain", id=...)` |
+
+## Domain Assignment (Cascade Model)
+
+Domain is a single **home** set on the table; every asset on that table inherits it. Assets never store their own home domain - set it on the table, not the asset.
+
+| UI Action | Agent Tool Path |
+|-----------|----------------|
+| Set a table's home domain | `edit(entity_type="table", id=..., domain_id="MARKETING")` - cascades to every asset on that table |
+| Clear a table's home domain | `edit(entity_type="table", id=..., domain_id=None)` - its assets fall back to Uncategorized |
+| Reference asset onto another table | `edit(entity_type="metric", id=..., secondary_tables=["OTHER_TABLE"])` - appears under the target table as a read-only pointer (marked with `*`). Metrics/dimensions require identical columns; rules require only target existence. |
+| Remove a table reference | `edit(entity_type="metric", id=..., secondary_tables=[...without removed])` |
+| Mark a synonym cross-cutting to extra domains | `edit(entity_type="synonym", id=..., extra_domain_ids=["FINANCE"])` - adds badges + filter match, does NOT move it in the tree |
+| Remove cross-cutting domains from synonym | `edit(entity_type="synonym", id=..., extra_domain_ids=[])` |
+
+A table-backed asset's (metric, dimension, rule) domain is derived from its dependency tables plus any `secondary_tables`. A synonym can also carry `extra_domain_ids` for cross-cutting relevance. To re-home a whole table of assets, change `domain_id` on the table once - do not edit assets individually.
+
+## Navigation and Discovery
+
+| UI Action | Agent Tool Path |
+|-----------|----------------|
+| Search KB | `search(query="...", types=[...])` |
+| Filter by topic | `search(query="...", topics=["REVENUE"])` |
+| Filter by domain | `search(query="...", domain="MARKETING")` - matches assets whose dependency or secondary tables are in the MARKETING domain. Synonyms also match via `extra_domain_ids`. |
+| List all domains | `list(entity_type="domain")` - returns every domain with name, description, color, and asset_count; includes an "Uncategorized" entry when tables with no domain exist. Report every domain it returns; do not drop ones with asset_count=0, and do not use `search` or `kb_explore` |
+| List all tables | `list(entity_type="table")` - returns every table with name, domain_id (null if uncategorized), and verified status. Use to see which tables are assigned to which domain, or to find uncategorized tables |
+| Browse by table | `search(query="...", types=["metric", "dimension"])` then filter results by table |
+| What depends on X? | `kb_explore(entity_type="table", entity_name="X", edge_types=["depends_on"])` |
+| What joins with table? | `kb_explore(entity_type="table", entity_name="X", edge_types=["joins"])` |
+| What's in topic X? | `kb_explore(entity_type="topic", entity_name="X", edge_types=["tagged_with"])` |
+| What's in domain X? | `kb_explore(entity_type="domain", entity_name="X")` |
+
+## View Controls (UI-Only, No Agent Parity Needed)
+
+These actions are purely UI navigation state and have no agent equivalent:
+- Switch view mode (Tree / By Topic / By Table / Flat)
+- Filter dropdowns (domain, table, topic, type, verified-only)
+- Expand/collapse tree nodes
+- Drag-drop asset onto topic (maps to "Add topic to asset" above)

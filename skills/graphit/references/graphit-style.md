@@ -1,6 +1,6 @@
 # Graphit Visual Style
 
-Consult when building the HTML dashboard. Covers design principles, the Graphit aesthetic, typography, color system, layout patterns, and all inline chart implementations.
+Consult when authoring the dashboard HTML. This is the design system: principles, the Graphit aesthetic, typography, the color-token system, and layout CSS. Data wiring (resolve, entity wrapping, the first-paint loading overlay) lives in `runtime.md`; per-chart implementations live in `chart-patterns.md`.
 
 ## Design Principles
 
@@ -84,18 +84,14 @@ Use the system font stack everywhere: `-apple-system, BlinkMacSystemFont, 'Segoe
           box-shadow:0 1px 3px rgba(0,0,0,0.08); }
   .card h3 { font-size:12px; font-weight:600; color:var(--graphit-fg-subtle); text-transform:uppercase;
              letter-spacing:0.05em; margin-bottom:16px; }
-  @keyframes gh-spin{to{transform:rotate(360deg)}}
-  .gh-loading { position:relative; min-height:120px; }
-  .gh-loading-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-                        z-index:9998; backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
-                        background:color-mix(in srgb,var(--graphit-surface-raised,#fff) 50%,transparent); border-radius:inherit; }
-  .gh-loading-spin { animation:gh-spin .7s linear infinite; }
   @media(max-width:900px) {
     .kpi-grid { grid-template-columns:repeat(2,1fr); }
     .charts-grid { grid-template-columns:1fr; }
   }
 </style>
 ```
+
+Also add the first-paint loading-overlay CSS (the `gh-loading` family) to the page `<style>` and wrap every resolve target with it. That overlay is the SDK contract - the canonical CSS and rules are in `runtime.md`.
 
 ### Dashboard Composition (top to bottom)
 1. **Title row** - dashboard name, optional subtitle with date range
@@ -129,16 +125,8 @@ Use the system font stack everywhere: `-apple-system, BlinkMacSystemFont, 'Segoe
 </style>
 ```
 
-### Loading State
+### Loading state
 
-Bake this overlay inside every element passed as `target:` to `graphit.resolve()` - and only those (static text/title cards would spin forever). It shows from the first paint, before the SDK connects; the SDK removes it when the resolve settles. Class names are the SDK contract - keep them exactly:
+The first-paint loading overlay (the `gh-loading` overlay baked into every resolve target) is part of the data-wiring contract with the SDK. Its canonical CSS, the markup, and the rule about which elements get it live in `runtime.md`.
 
-```html
-<div id="spend-chart" class="gh-loading">
-  <div class="gh-loading-overlay"><svg class="gh-loading-spin" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="var(--graphit-border,#e5e5e5)" stroke-width="2.5"/><path d="M12 2a10 10 0 0 1 10 10" stroke="var(--graphit-accent,#4DB6AC)" stroke-width="2.5" stroke-linecap="round"/></svg></div>
-</div>
-```
-
-Never write "Loading..." text placeholders - they don't animate and make slow loads look stuck.
-
-For inline chart implementations (bar, line, donut, heatmap, funnel, sparkline, gauge, stacked bar, multi-series), see `chart-patterns.md`.
+For per-chart implementations (bar, line, donut, heatmap, funnel, sparkline, gauge, stacked bar, multi-series), see `chart-patterns.md`.

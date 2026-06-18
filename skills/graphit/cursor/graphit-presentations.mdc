@@ -1,0 +1,60 @@
+---
+alwaysApply: false
+description: "Graphit: Build full-screen slide deck presentations inside canvas dashboards using graphit.presentation(). Builder pattern with layouts, backgrounds, and keyboard navigation."
+globs: []
+---
+
+# Presentations
+
+Build slide deck presentations inside Graphit canvas dashboards using `graphit.presentation()`.
+
+## API
+
+```js
+var deck = graphit.presentation('#my-deck');
+deck.slide({ bg: 'dark', layout: 'center', html: '<h1>Title</h1>' });
+deck.slide({ bg: 'white', layout: 'split', html: '<div>Left</div><div>Right</div>' });
+deck.slide({ bg: 'paper', layout: 'full', html: '<div id="charts">...</div>' });
+var ctrl = deck.start();
+```
+
+## Slide Config
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `layout` | `'center'` / `'split'` / `'full'` | `'center'` | Content arrangement |
+| `bg` | `'paper'` / `'white'` / `'dark'` / `'teal'` / hex | `'paper'` | Fixed background |
+| `html` | `string` | `''` | Raw HTML content |
+
+## Layouts
+
+- **center**: Centered horizontally/vertically. Title slides, CTAs.
+- **split**: First two child elements become left/right panels. Text + image.
+- **full**: Top-to-bottom flow. Tables, grids, live data.
+
+## Backgrounds (fixed, not theme-aware)
+
+| Name | Background | Text |
+|------|-----------|------|
+| `paper` | `#F7F6F2` | `#222224` |
+| `white` | `#FFFFFF` | `#222224` |
+| `dark` | `#222224` | `#F7F6F2` |
+| `teal` | `#4DB6AC` | `#FFFFFF` |
+
+## Navigation
+
+Arrow keys, spacebar, Home/End. Prev/Next buttons bottom-right with slide counter.
+
+## Live data works inside slides
+
+`graphit.resolve()` + `graphit.chart/table/kpi` work inside slides. Entity wrapping (`data-graphit-*`) works normally.
+
+## PDF Export
+
+Presentations export as multi-page PDF (one slide per page) automatically via `graphit dashboard export <id> --format pdf`. The SDK adds `data-graphit-page` attributes to each slide. For custom multi-page layouts without `graphit.presentation()`, add `data-graphit-page="N"` (0-indexed) to each section manually.
+
+## Anti-Patterns
+
+- Don't use external fonts/images (CSP blocks). Embed as base64 or use system fonts.
+- Don't put scrollable content on slides. Split into multiple slides.
+- One `graphit.presentation()` per dashboard.

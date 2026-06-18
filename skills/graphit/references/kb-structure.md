@@ -1,6 +1,8 @@
-# KB Structure
+# KB Structure (Plan)
 
-How the Knowledge Base is organized, and how to answer structural questions about it. The KB is a labeled property graph: assets carry tags that place them in a tree, but the underlying structure is a graph with typed edges. Answer structural questions in business-friendly language, grounded in actual KB state (verify with `graphit kb get` / `graphit kb explore` when the question names a specific asset).
+This is the plan side of KB work: how the Knowledge Base is organized, so you can explain it and design what to build. The execute side - the actual `graphit kb` create / update / delete commands - lives in `kb-actions.md`. On a from-scratch KB build the two pair up: design the graph here, then run the commands there. On a normal build that reuses existing assets, you mostly read this to answer a structural question.
+
+The KB is a labeled property graph: assets carry tags that place them in a tree, but the underlying structure is a graph with typed edges. Answer structural questions in business-friendly language, grounded in actual KB state (verify with `graphit kb get` / `graphit kb explore` when the question names a specific asset).
 
 ## Node Types
 
@@ -30,13 +32,13 @@ How the Knowledge Base is organized, and how to answer structural questions abou
 
 Two different axes organize the KB - keep them separate:
 
-- **Vertical: the home (domain -> data source -> assets).** This is containment, and it cascades. An asset has ONE home domain, inherited from its primary table (the data source its SQL reads). You set the domain on the **table** - `graphit kb update table NAME --domain MARKETING` - and every asset on that table inherits it; the asset carries no domain tag of its own. To move an asset's home, change its table's domain. Domain-first discovery walks this axis downward.
-- **Horizontal: the concept (topics).** Topics cut ACROSS domains. The same topic (e.g., RETENTION) can tag assets that live in different domains, grouping them by business meaning regardless of where they sit in the vertical hierarchy. An asset can carry several topics at once - `graphit kb update metric NAME --topics "REVENUE,RETENTION"` - and a topic never moves an asset's home. When a concept spans domains, the horizontal (by-topic) view is how you find everything about it.
+- **Vertical: the home (domain -> data source -> assets).** Containment that cascades. An asset has ONE home domain, inherited from its primary table (the data source its SQL reads). Set the domain on the **table** (`graphit kb update table NAME --domain MARKETING`) and every asset on it inherits it; the asset carries no domain tag of its own. To move an asset's home, change its table's domain. Domain-first discovery walks this axis downward.
+- **Horizontal: the concept (topics).** Topics cut ACROSS domains. The same topic (e.g. RETENTION) can tag assets in different domains, grouping them by business meaning regardless of where they sit. An asset can carry several topics at once (`graphit kb update metric NAME --topics "REVENUE,RETENTION"`), and a topic never moves an asset's home. When a concept spans domains, the by-topic view is how you find everything about it.
 
 Other placements layered on top:
-- **Multiple tables**: a metric or dimension can depend on several tables (e.g., a JOIN across ORDERS and CUSTOMERS) and appears under each. Table dependency is structural - derived from the SQL, never tagged manually.
-- **Referencing (`secondary_tables`)**: an asset can be referenced onto additional tables; it shows under the target with a `*` suffix and links back to the original, and stays editable only from its home table. Table-backed assets derive domain membership from all their tables (primary + `secondary_tables`).
-- **Cross-cutting domains**: synonyms can carry extra domains in `extra_domain_ids` for relevance beyond their home - badges that match domain filters without moving the asset in the tree.
+- **Multiple tables**: a metric or dimension can depend on several tables (a JOIN across ORDERS and CUSTOMERS) and appears under each. Table dependency is structural, derived from the SQL, never tagged manually.
+- **Referencing (`secondary_tables`)**: an asset can be referenced onto extra tables; it shows under the target with a `*` suffix, links back to the original, and stays editable only from its home table. Table-backed assets derive domain membership from all their tables (primary plus `secondary_tables`).
+- **Cross-cutting domains**: synonyms can carry extra domains in `extra_domain_ids` for relevance beyond their home, without moving the asset in the tree.
 
 Domains are coarse and few (broad business areas); topics are finer and more numerous. A single domain like MARKETING typically spans topics such as ACQUISITION, ATTRIBUTION, and CAMPAIGN_PERFORMANCE.
 
@@ -61,4 +63,4 @@ Verify against actual KB state when the question names a specific asset (`graphi
 
 ## Semantic Questions (Tier 2 - Different Handling)
 
-Questions about what a business concept MEANS at this org ("what does revenue mean for us?", "how do we define an active user?") are semantic, not structural. For these: search the KB for the relevant metric or rule, read its description and calculation, and present what the KB says - do not interpret or extend it from general knowledge. The KB is the source of truth for this org's definitions.
+Questions about what a concept MEANS at this org ("what does revenue mean for us?", "how do we define an active user?") are semantic, not structural. Search the KB for the relevant metric or rule, read its description and calculation, and present what the KB says - do not interpret or extend it from general knowledge. The KB is the source of truth for this org's definitions.

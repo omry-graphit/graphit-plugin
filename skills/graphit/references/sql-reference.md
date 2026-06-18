@@ -111,34 +111,13 @@ SELECT UNNEST(generate_series(
 
 The outer SELECT can ONLY reference columns the subquery exposes (its aliases). Base-table columns aggregated away in the subquery do NOT exist at the outer level.
 
-## Cache-Friendly SQL (Canvas Resolve)
+## Cache-friendly resolve SQL
 
-Canvas `graphit.resolve()` queries that follow these shapes serve from a semantic cache in ~10ms on filter changes instead of a full DuckDB recompute (5-37s on wide data sources). Write resolve SQL in this style by default.
+When the query feeds a canvas `graphit.resolve()` call, write it in the cache-friendly shape so filter changes stay instant. The shape rules and the shapes that skip the cache live in `runtime.md`.
 
-**Shape rules:**
-- Single table (no JOIN/UNION)
-- WHERE as flat AND of `column = literal`, `column IN (...)`, `column BETWEEN ... AND ...` conjuncts
-- Bare aggregates only: `SUM(col)`, `COUNT(*)`, `MIN(col)`, `MAX(col)` - no wrapping functions (`ROUND(SUM(x))`), no aggregate arithmetic (`SUM(a)/NULLIF(SUM(b),0)`), no `AVG` (v2)
-- Literal dates (`>= '2026-01-01'`), never `CURRENT_DATE` expressions
-- GROUP BY column names or ordinals; ORDER BY / LIMIT allowed (outer only)
-- CTEs are fine when the CTE body follows the same rules
-- Top-N rank queries: project the sort metric in SELECT (`SELECT dim, SUM(metric) AS rv ... ORDER BY rv DESC LIMIT N`), not only in ORDER BY
+## Data source routing
 
-**Shapes that skip the cache** (fall back to normal execution, still correct):
-- `COUNT(DISTINCT x)`, window functions, HAVING, QUALIFY
-- OR / NOT in WHERE
-- Ratio metrics (`SUM(a)/NULLIF(SUM(b),0)`) - compute client-side or use two resolves
-- `CURRENT_DATE`-relative predicates
-- Top-N with aggregate only in ORDER BY (`SELECT dim FROM t GROUP BY dim ORDER BY SUM(metric) DESC LIMIT N` - no decomposable aggregate in SELECT)
-
-## Data Source Routing
-
-| Situation | Command | Speed |
-|---|---|---|
-| Table has a cached data source | `graphit query "SQL" --ds <id>` | ~100ms, DuckDB |
-| No data source | `graphit query "SQL" --warehouse --connection <id>` | ~10s, Snowflake |
-
-Always prefer cached data sources. Check with `graphit ds list`. If no data source covers the table, suggest creating one for future speed.
+Always prefer a cached data source (`graphit query "SQL" --ds <id>`, roughly 100ms via DuckDB) over a live warehouse query (`graphit query "SQL" --warehouse --connection <id>`, roughly 10s via Snowflake). The full routing table, the `ds list` output template, and the source-shape guidance live in `data-sources.md`.
 
 ## Presenting Query Results
 
@@ -210,20 +189,4 @@ For ad-hoc queries, suggest the KB reference equivalent when one exists. This nu
 
 Zero rows: explain what you checked and hypothesize why (wrong date range, filter too strict, table empty).
 
-## Presenting Data Source Results
-
-After `graphit ds list`:
-
-~~~
-**3 data sources:**
-
-| Name | ID | Rows | Status | Governed |
-|---|---|---:|---|---|
-| **MARKETING_UA_DS** | ds_abc123 | 1,247,832 | active | yes |
-| **PLAYER_QUALITY** | ds_def456 | 892,104 | active | no |
-| **REVENUE_EVENTS** | ds_ghi789 | 3,412,006 | stale | yes |
-
-Using **MARKETING_UA_DS** (ds_abc123) which covers spend, installs, and ROAS columns.
-~~~
-
-End with a recommendation of which DS to use, or note if none covers the needed table.
+The `graphit ds list` output template lives in `data-sources.md`.

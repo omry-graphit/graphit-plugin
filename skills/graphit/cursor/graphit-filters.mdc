@@ -1,0 +1,88 @@
+---
+description: Headless filters, parameters, and saved views for Graphit custom dashboards
+globs:
+alwaysApply: false
+---
+
+# Headless Filters and Parameters
+
+`graphit.filter()` and `graphit.param()` create NO DOM. You build the control markup. They manage state for saved views and reload survival.
+
+**Logic vs style.** `filter`, `param`, `bind`, `dateRange`, `cascade` are headless logic (zero imposed styling - you own the markup); `chart`, `table`, `kpi`, `presentation`, `dropdown` render a fixed house style. A control saves to views ONLY if registered with `filter`/`param`/`dateRange`; `chart` cannot be deeply restyled - hand-draw with SVG/CSS for custom looks. Explain these trade-offs to the user when relevant.
+
+## Registration
+
+```js
+const country = graphit.filter('country', { label: 'Country', field: 'COUNTRY', default: 'US' });
+const topN = graphit.param('top_n', { label: 'Top N', default: 10 });
+```
+
+Handle: `get()`, `set(value)`, `subscribe(cb)` (returns unsubscribe fn).
+
+## Wiring
+
+```html
+<select id="picker">...</select>
+<script>
+  const f = graphit.filter('country', { label: 'Country', default: 'US' });
+  const el = document.getElementById('picker');
+  el.value = f.get();
+  el.onchange = () => f.set(el.value);
+  f.subscribe(v => { el.value = v; }); // restores on view apply/reload
+</script>
+```
+
+## Reactive Binding
+
+`graphit.bind()` auto re-resolves when deps change:
+
+```js
+graphit.bind(document.getElementById('chart'), {
+  sql: 'SELECT date, SUM(rev) AS rev FROM orders WHERE country = :country GROUP BY 1',
+  dataSourceId: 'ds_abc',
+  params: () => ({ country: graphit.state.get('country') }),
+  deps: ['country'],
+  render: (result, el) => graphit.chart(el, { type: 'line', data: result.data, x: 'date', y: 'rev' })
+});
+```
+
+## Date Range
+
+`graphit.dateRange(id, { label?, default? })` - headless date filter with presets built in (you render the buttons). `default` is a preset id or `{start,end}`.
+
+```js
+const dr = graphit.dateRange('date_range', { label: 'Date Range', default: 'last_30_days' });
+// dr.get() -> {preset,start,end}; dr.set('this_month'); dr.setRange(s,e); dr.start/.end/.deps; dr.subscribe(cb)
+// bind with two scalars: WHERE day BETWEEN :start_date AND :end_date, params:()=>({start_date:dr.start,end_date:dr.end}), deps:dr.deps
+```
+
+Relative presets recompute on reload. Ids: today, yesterday, last_7_days, last_30_days, this_month, last_month, this_quarter, last_quarter, ytd, last_90_days, last_12_months (`graphit.datePresets` / `graphit.datePreset(id)`).
+
+## Cascading Values (Only Relevant Values)
+
+`graphit.cascade(el, { column, source, dataSourceId, filters, deps, selection?, render })` - dependent dropdowns: distinct `column` values constrained by upstream filters, refetched on change. You build the markup in `render`.
+
+```js
+graphit.cascade('#user-list', {
+  column: 'USER_NAME', source: 'users', dataSourceId: 'ds_abc',
+  filters: () => ({ ORG: org.get() }), // scalar -> = :p ; array -> IN :p ; empty (null/''/[]) skipped
+  deps: ['org'], selection: userFilter, // optional: prune selection to surviving values
+  render: (values, el, ctx) => { /* ctx={loading,empty,error,hasUpstream}; build your own list */ }
+});
+```
+
+Returns `{ destroy() }`. Keep a small `LIMIT` (default 1001); parameterized queries skip the result cache.
+
+For low-cardinality cascades add `preload: true`: loads the distinct cross-product once (cacheable, no params) and filters in-memory on every change - instant. Auto-falls-back to per-change server queries if the cross-product exceeds `limit` (default 1001).
+
+## Safe Params
+
+Use `:name` placeholders (never string concat):
+- Scalar: `WHERE x = :x` with `{x: 'val'}`
+- Multi-select: `WHERE x IN :xs` with `{xs: ['a','b']}` (expands to `IN ($0,$1)`)
+- Range: `WHERE d BETWEEN :start_date AND :end_date` with `{start_date: '...', end_date: '...'}`
+- Param names can't be SQL keywords (`from`, `to`, `select`, ...) - template is parsed before binding, so `:from` -> "SQL validation failed". Use `:start_date`/`:end_date`.
+
+## Saved Views
+
+Platform snapshots all registered filter/param values. Subscribe callbacks restore control appearance on apply. Default view auto-applies on open.

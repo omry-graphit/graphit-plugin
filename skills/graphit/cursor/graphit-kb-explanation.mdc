@@ -1,0 +1,56 @@
+---
+alwaysApply: false
+description: "Graphit: Tier 1 structural questions about KB concepts. Answer these using the patterns below, grounded in actual KB data when possible. Use business-friendly "
+globs: []
+---
+
+# KB Explanation - Structural Q&A Patterns
+
+Tier 1 structural questions about KB concepts. Answer these using the patterns below, grounded in actual KB data when possible. Use business-friendly language - no implementation details.
+
+## Tier 1: Structural (In Scope)
+
+Answer directly using these patterns. Always verify against actual KB state when the question involves specific entities.
+
+### What is a topic?
+A topic is a business concept tag you apply to metrics, dimensions, rules, and synonyms. Examples: REVENUE, ACQUISITION, RETENTION. Any asset can have multiple topics. Topics help organize the KB by business meaning rather than physical table location.
+
+### What is a domain?
+A domain is a high-level business area like MARKETING, SALES, or PRODUCT. Domains are broader than topics - think of them as departments or business units. A domain is set on a table, and every metric, dimension, and rule built on that table belongs to that domain automatically. An org typically has 3-10 domains and 10-30+ topics.
+
+### How do domains and topics differ?
+The difference is granularity and how they attach:
+- A **domain** is coarse (5-10 per org: MARKETING, FINANCE, PRODUCT) and is set on the table. Each asset has one home domain, inherited from the table its data comes from. An asset can also be marked relevant to a few extra domains when it genuinely spans areas.
+- A **topic** is fine (10-30+ per org: REVENUE, ACQUISITION, RETENTION) and is tagged directly on assets. An asset can carry several topics at once.
+
+A single domain like MARKETING might contain topics like ACQUISITION, ATTRIBUTION, and CAMPAIGN_PERFORMANCE.
+
+### What is a table in the KB?
+A table represents a physical data location in the warehouse. Metrics and dimensions depend on tables because their SQL formulas reference table columns. Tables are structural, not tags - the dependency is derived from the SQL, not manually assigned.
+
+### What is a relationship?
+A relationship documents a JOIN between two tables. It specifies which columns connect them and what kind of join to use. When the agent writes SQL across multiple tables, it uses relationships to build correct JOINs.
+
+### Why is [metric] under [table]?
+A metric appears under a table because the metric's SQL formula depends on columns in that table. Check the metric's dependencies to see exactly which columns it uses. A metric can depend on multiple tables - it appears under each one, with the first listed as primary. An asset can also appear under a table via **referencing** (`secondary_tables`) - this shows as a `*` marker in the tree and means the asset was made available on that table as a read-only pointer. The original lives on its home table.
+
+### Why is [asset] in [topic]?
+An asset appears under a topic because someone (user, agent, or scanner) tagged it with that topic. Topics are manually assigned tags, not automatically derived. Check the asset's topics list to see all its topic assignments.
+
+### Why is [asset] in [domain]?
+An asset's domain comes from the table its data lives in: whoever set the table's domain, every asset on that table inherits it. So a metric is in MARKETING because its primary table is a MARKETING table, not because the metric itself was tagged. If an asset genuinely spans areas, it can also be marked relevant to extra domains, which show as badges and match domain filters without moving it in the tree. To change a metric's home domain, change the domain on its table.
+
+### How do tables and topics differ?
+Tables are physical (where the data lives in the warehouse). Topics are conceptual (what the data is about). One table can have assets tagged with many different topics, and one topic can span assets across multiple tables.
+
+### What is memory?
+Memory stores org-level context notes - background information about the organization, its goals, terminology, or conventions. Memory is global (not scoped to any table, domain, or topic) and appears at the root of the KB tree.
+
+## Tier 2: Semantic (Out of Scope for This Skill)
+
+Questions about what a specific business concept means at this organization (e.g., "what does revenue mean for us?", "how do we define an active user?") are semantic questions, not structural ones. For these:
+1. Search the KB for the relevant metric or rule
+2. Read its description and calculation
+3. Present what the KB says - do not interpret or extend it
+
+Do not attempt to answer semantic questions from general knowledge. The KB is the source of truth for this org's definitions.

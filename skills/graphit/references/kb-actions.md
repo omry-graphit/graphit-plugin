@@ -1,84 +1,76 @@
-# KB Actions (CLI)
+# KB Actions (Execute)
 
-Every KB asset has full create / update / delete through the `graphit kb` commands - this is the authoring reference. SKILL.md's command table is the quick glance; this file adds the create flags and the task recipes that take more than one command. All names are UPPER_SNAKE_CASE.
+The execute side of KB work: run approved create / update / delete through the `graphit kb` commands. The plan side - what a domain or topic is, why an asset sits where it does - lives in `kb-structure.md`. On a from-scratch build the two pair up (plan there, execute here); a normal build that reuses existing assets needs only this file.
+
+Create only after the user approves the gap plan below. Names are stored UPPER_SNAKE_CASE. Run `graphit kb create <type> --help` for the exact flag spelling - this file teaches the recipes and policy, the CLI owns the syntax.
+
+## Gap Plan (present before creating anything)
+
+When the KB-readiness gate finds the dashboard needs assets that do not exist, present a compact plan and get one approval before any write. Show, per missing asset: name, type, formula or expression, the table and topics it lands on, and any rule that applies. Then ask once.
+
+~~~
+**KB gap - 3 assets missing for this Marketing dashboard:**
+
+| Asset | Type | Definition | Table | Topics |
+|---|---|---|---|---|
+| **ROAS_D7** | metric | `SUM(revenue_d7) / NULLIF(SUM(cost), 0)` | MARKETING_UA | ATTRIBUTION |
+| **CPI** | metric | `SUM(cost) / NULLIF(SUM(installs), 0)` | MARKETING_UA | ACQUISITION |
+| **MEDIA_SOURCE** | dimension | `media_source` | MARKETING_UA | ACQUISITION |
+
+Rule to apply: **EXCLUDE_ORGANIC** already exists and will filter these.
+Create these so the dashboard runs on governed references? (Approve / adjust.)
+~~~
+
+Present the plan, then stop. Do not create until the user approves.
 
 ## Create
 
-| Asset | Command |
+| Asset | Command shape |
 |---|---|
-| Metric | `graphit kb create metric --name X --sql "<expr>" --table T` (optional `--topics "A,B"`, `--default-dimensions "D1,D2"`, `--skip-validate`) |
-| Dimension | `graphit kb create dimension --name X --expr "<expr>" --table T` (type auto-inferred; override with `--type` / `--output-type`, `--skip-validate`) |
-| Rule | `graphit kb create rule --name X --sql "<text>" --table T` (optional `--apply-on table:USERS metric:ARPU`, `--skip-validate`) |
+| Metric | `graphit kb create metric --name X --sql "<expr>" --table T` (optional `--topics "A,B"`, `--default-dimensions "D1,D2"`, `--parameters`/`--parameters-file` for templates, `--skip-validate`) |
+| Dimension | `graphit kb create dimension --name X --expr "<expr>" --table T` (type auto-inferred; override with `--type` / `--output-type`; `--skip-validate`) |
+| Rule | `graphit kb create rule --name X --sql "<text>" --table T` (optional `--constraint`, `--override-policy`, `--apply-on`, `--topics`, `--skip-validate`) |
 | Synonym | `graphit kb create synonym --term X --canonical Y --type metric` |
 | Domain | `graphit kb create domain --name X` (optional `--color "#4DB6AC"`) |
 | Topic | `graphit kb create topic --name X` |
 | Relationship | `graphit kb create relationship --name X --primary-table T --primary-column C --related-table T2 --related-column C2` |
 
+## Enforceable Rule Flags
+
+A plain rule is documentation. To make it enforced server-side at query time, pass typed constraints on `graphit kb create rule` / `graphit kb update rule`:
+
+- `--constraint <spec...>` - one or more typed constraints, each written `type:value`. Types: `required_where:"<predicate>"`, `forbidden_column:<col>`, `required_filter:<col>`, `required_aggregation:<col>`, `value_restriction:<col>:<in|not_in>:<v1,v2>`. On update the supplied list REPLACES the rule's existing constraints.
+- `--override-policy <policy>` - who may bypass the rule with `--override-rules`: `anyone`, `analyst_only`, `admin_only`, or `never`. Create defaults to `anyone`.
+
+What each constraint type does at query time, plus the override flow, lives in `governance.md`. Example: a rule that always scopes verified purchases -
+
+```bash
+graphit kb create rule --name FILTER_VERIFIED_PURCHASES --sql "Only count verified purchases" --table ORDERS --constraint required_where:"is_verified = true" --override-policy analyst_only
+```
+
 ## Pre-Creation Validation
 
-Metric, dimension, and rule creates validate the formula against real data before writing to Firestore. On success, the response includes sample results. On failure, creation is blocked with a 422 error showing the failing query.
-
-- **Metric**: runs `SELECT {formula} FROM {table} GROUP BY {default_dims} LIMIT 5`
-- **Dimension**: runs `SELECT {expr} AS val, COUNT(*) AS cnt FROM {table} GROUP BY 1 ORDER BY cnt DESC LIMIT 10` (reports cardinality, NULL rate)
-- **Rule**: runs `SELECT COUNT(*) FROM {table} WHERE {rule}` (warns if zero rows match)
-
-Skip conditions (validation returns "skipped", asset still created):
-- Template metrics with `${PARAM:X}` placeholders
-- Constraint-based rules (non-empty `--constraint`)
-- Table has no data source and no Snowflake connections
-- Data source mid-refresh or unverified
-
-Use `--skip-validate` on any create command to bypass validation entirely (useful for batch creation where speed matters more than per-asset checks).
-
-### Presenting validation results to the user
-
-The JSON response from every metric/dimension/rule create includes a `validation` object. You MUST present it to the user after each create:
-
-```
-validation: {
-  status: "pass" | "fail" | "skipped",
-  sample_query: "SELECT ...",        // the SQL that ran
-  sample_data: [{...}, ...],         // rows from real data
-  sample_columns: ["col1", "col2"],  // column names
-  warnings: ["..."],                 // quality warnings
-  skip_reason: "...",                // why validation was skipped
-}
-```
-
-How to present each status:
-- **pass**: render `sample_data` as a markdown table using `sample_columns` as headers. For metrics, this shows computed values. For dimensions, this shows top values with row counts. For rules, this shows the matching row count. Surface any `warnings` below the table.
-- **skipped**: tell the user validation was skipped and quote the `skip_reason`.
-- **fail** (HTTP 422, create was blocked): show the error message and `sample_query`. The asset was NOT created. Fix the formula and retry.
-
-Never silently swallow validation results. The user needs to see that their formula actually works against real data.
+Metric, dimension, and rule creates validate the formula against real data before writing; the response carries a `validation` object (status `pass` / `skipped` / `fail`). Surface it to the user - per-type result templates are in `kb-traversal.md`. A `fail` returns HTTP 422 and the asset is NOT created: show the error and failing SQL, fix the formula, retry. Validation is skipped (asset still created) for `${PARAM:X}` templates, constraint-based rules, and tables with no ready data source. Pass `--skip-validate` to bypass it on bulk creates.
 
 ## Update and Delete
 
 - Update a field: `graphit kb update <type> NAME --<field> value` (e.g. `--sql`, `--expr`, `--description`, `--table`).
-- Delete: `graphit kb delete <type> NAME --yes`.
+- Delete: `graphit kb delete <type> NAME --yes`. Deleting a parameterized parent cascades to all its children - confirm the blast radius first (see `parameterized-metrics.md`).
 
-## Topic and Reference Recipes (lists REPLACE, so don't clobber)
+## Lists REPLACE - read before you write
 
-`--topics`, `--secondary-tables`, and `--default-dimensions` replace the existing list, they do not append. To change one value without losing the others, read the current list first, then write the full intended list:
+`--topics`, `--secondary-tables`, `--default-dimensions`, and `--constraint` REPLACE the existing list, they do not append. To change one value, read the current list first (`graphit kb get metric NAME`), then write the full intended list: add a topic with `--topics "EXISTING1,EXISTING2,NEW"`; remove one by writing the list minus that value.
 
-- **Add a topic**: `graphit kb get metric NAME` to read current topics, then `graphit kb update metric NAME --topics "EXISTING1,EXISTING2,NEW"`.
-- **Remove a topic**: update with the list minus the one removed.
-- **Reference an asset onto another table**: `graphit kb update metric NAME --secondary-tables "OTHER_TABLE"` (works on dimension and rule too). Read-only pointer marked `*`; metrics and dimensions need every referenced column to exist on the target, rules need only the table to exist.
+Reference an asset onto another table with `graphit kb update metric NAME --secondary-tables "OTHER_TABLE"` (also dimension, rule). This is a read-only pointer marked `*` in the tree; metrics and dimensions need every referenced column to exist on the target, rules need only the table. Topics are horizontal - one topic can tag assets across many domains (see `kb-structure.md`).
 
-Topics are horizontal - one topic can tag assets across many domains (see `kb-structure.md`).
+## Domain home (set on the table, cascades)
 
-## Domain Recipes (the home is on the table and cascades)
-
-Domain is set on the TABLE, never per asset, and cascades to every asset on it (see `kb-structure.md` for the model):
-
-- **Re-home a whole table**: `graphit kb update table NAME --domain MARKETING` - moves every asset on that table at once. Change it once on the table, never asset by asset.
+Domain is set on the TABLE, never per asset, and cascades to every asset on it (model in `kb-structure.md`). To re-home a whole table at once: `graphit kb update table NAME --domain MARKETING`. Change it once on the table, never asset by asset.
 
 ## Navigation
 
-To find what exists and how it connects (what depends on a table, what joins, what is in a domain or topic), use the traversal recipes in `kb-traversal.md`. Note: `graphit kb list domains` reports every domain including empty ones - report them all, do not drop ones with a zero asset count.
+To find what exists and how it connects, use the read recipes in `kb-traversal.md`.
 
 ## UI-Only (no CLI command)
 
-These are platform-UI state or platform-only, not KB data the CLI changes:
-- View mode (Tree / By Topic / By Table / Flat), filter dropdowns, expand / collapse, drag-drop onto a topic.
-- Cross-cutting synonym domains (extra relevance beyond the home domain) are set in the platform UI - there is no CLI flag for them yet.
+Platform-UI state, not KB data the CLI changes: view mode (Tree / By Topic / By Table / Flat), filter dropdowns, expand / collapse, drag-drop onto a topic, and a synonym's cross-cutting domains (extra relevance beyond its home domain has no CLI flag yet).

@@ -98,3 +98,9 @@ Before generating the HTML:
 - [ ] 3+ chart types for 4+ graphs
 - [ ] Every KPI has definition + baseline + direction
 - [ ] No anti-patterns present
+
+## Presenting Dashboard & Connector Results
+
+**dashboard list**: table with **bold Name**, ID, Permission, Visibility, Teams, URL. Supports `--view mine|shared|all` and `--team <id>` filters.
+**team list**: table with **bold Name**, ID, Role, Member count.
+**connector list**: table with **bold Name**, Account, Auth.

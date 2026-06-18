@@ -1,0 +1,71 @@
+---
+alwaysApply: false
+description: "Graphit: Common graph queries and which tool to use for each. Agent tool names map to CLI commands: `search` = `graphit kb search`, `read` = `graphit kb get`, "
+globs: []
+---
+
+# KB Traversal - Worked Examples
+
+Common graph queries and which tool to use for each. Agent tool names map to CLI commands: `search` = `graphit kb search`, `read` = `graphit kb get`, `list` = `graphit kb list`, `kb_explore` = `graphit kb explore`.
+
+## Tool Selection Guide
+
+| Question Shape | Best Tool | Why |
+|----------------|-----------|-----|
+| Semantic ("find things like X") | `search` | Embedding-based discovery across all asset types |
+| Pointed retrieval ("get metric Y") | `read` | Direct fetch by exact name, returns full details |
+| Topic/domain filter ("metrics in REVENUE") | `search` with topics/domain params | Filtered discovery, intersects with query |
+| Connectivity ("what depends on X") | `kb_explore` | Graph walk from a starting entity, returns typed edges |
+| Joins specifically | `kb_explore` with edge_types=["joins"] | Targeted relationship traversal |
+| Multi-hop ("what's 2 hops from X") | `kb_explore` with max_depth=2 | Recursive walk, capped at 3 hops |
+
+## Common Queries
+
+### "Find all revenue metrics"
+Use `search` with a topic filter to get metrics tagged with the REVENUE topic. If the user means revenue conceptually (not a specific topic), use a semantic search query instead.
+
+### "What depends on ORDERS table?"
+Use `kb_explore` starting from the table, filtering to depends_on edges. Returns all metrics and dimensions whose SQL references ORDERS columns.
+
+### "What joins with MARKETING_UA_DS?"
+Use `kb_explore` starting from the table, filtering to joins edges. Returns relationship entities that document JOINs involving that table.
+
+### "What domains do we have?"
+Use `list` with the domain entity type (`list(entity_type="domain")`). It returns every domain with its description and asset_count, plus an "Uncategorized" entry when tables with no domain exist. Report all of them, including ones with asset_count=0. Do NOT use `search` (domain is not a searchable type) or `kb_explore` (it traverses from one named domain - a wildcard like "*" returns nothing).
+
+### "What's left in uncategorized?"
+Two paths: (1) `list(entity_type="table")` and filter for `domain_id=null` to find unassigned tables, then `kb_explore(entity_type="domain", entity_name="Uncategorized")` to get all tables and assets in the pseudo-domain; or (2) just use `kb_explore(entity_type="domain", entity_name="Uncategorized")` directly to get everything.
+
+### "Show me everything in the MARKETING domain"
+Use `kb_explore` starting from the domain. Returns tables (via in_domain edge) and all assets within those tables (via depends_on edges at depth 2).
+
+### "What topics does ARPU_D1 belong to?"
+Use `kb_explore` starting from the metric, filtering to tagged_with edges. Returns all topic nodes the metric is tagged with.
+
+### "Find metrics in same table as ARPU_D1 but different topic"
+Two-step query:
+1. Use `kb_explore` on ARPU_D1 to find its table(s) and topic(s)
+2. Use `search` filtered to that table's metrics, then compare topics in the results
+
+### "What domains have retention metrics?"
+Use `search` with topics=["RETENTION"] and types=["metric"]. A metric's domain is derived from its dependency tables and secondary_tables - there is no domain field directly on the metric. Group the results by that effective domain. To get the home domain for one metric, `kb_explore` from the metric with edge_types=["in_domain"] returns it.
+
+### "Show me the full graph around table X"
+Use `kb_explore` with max_depth=2 and no edge_type filter. Returns the table's domain, all dependent assets, all topics those assets carry, and all relationships the table participates in.
+
+## Depth Guidelines
+
+| Depth | Use When |
+|-------|----------|
+| 1 (default) | Direct neighbors only. Best for most questions. |
+| 2 | When you need one extra hop (e.g., table's assets AND their topics) |
+| 3 (max) | Full neighborhood. Use sparingly - can return many results for connected tables. |
+
+Start at depth 1. Only increase if the user's question requires it or the initial results are insufficient.
+
+## Presenting KB Results
+
+**kb list**: `**12 metrics** across 3 tables:` then table with **bold name**, table, calculation. Adapt columns per type.
+**kb get**: `### **CPI** (metric, verified)` + *description* + key-value table (Table, Calculation, Parameters, Topics, Dims).
+**kb search**: `**5 results** for "query":` then table with Type, **bold Name**, Description.
+**kb explore**: tree with bold names indented by level: Asset > Tables > Dimensions > Rules > Domain.

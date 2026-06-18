@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Graphit CLI plugin wrapper (Project #246): run the current @graphit/cli via npx
+# with no global install and no npm-prefix dependency. plugin-status.mjs resolves
+# the npm "latest" dist-tag to a concrete version once per session and caches it;
+# this wrapper reads that cache, validates it (the file is user-writable, so it is
+# untrusted), and falls back to the stamped floor version when the cache is absent
+# or invalid. The floor keeps first-run and offline working.
+
+# graphit:floor (stamped by scripts/sync-plugin-version.mjs from cli/package.json)
+FLOOR_VERSION="0.1.106"
+
+PACKAGE_NAME="@graphit/cli"
+# Strict semver: anything else is rejected so a tampered cache cannot inject.
+SEMVER_RE='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+
+# Fixed, graphit-owned cache dir shared with the resolver. CLAUDE_PLUGIN_DATA is
+# deliberately NOT used: it is set per-plugin/per-context by Claude Code and is
+# not guaranteed identical between the SessionStart hook and the agent Bash tool,
+# which would break cache sharing. GRAPHIT_PLUGIN_DATA overrides for tests/enterprise.
+cache_dir="${GRAPHIT_PLUGIN_DATA:-${HOME:-}/.graphit}"
+cache_file="${cache_dir}/plugin-status.json"
+version="$FLOOR_VERSION"
+
+if [ -r "$cache_file" ]; then
+  contents="$(cat "$cache_file" 2>/dev/null)"
+  # SEC-6: require the expected schema version + package name, then a strict-semver
+  # concrete version. Any mismatch falls back to the floor (fail-closed).
+  if printf '%s' "$contents" | grep -Eq '"schemaVersion"[[:space:]]*:[[:space:]]*1[,}[:space:]]' \
+     && printf '%s' "$contents" | grep -Fq "\"packageName\":\"${PACKAGE_NAME}\""; then
+    candidate="$(printf '%s' "$contents" | sed -n 's/.*"latestVersion"[[:space:]]*:[[:space:]]*"\([^"][^"]*\)".*/\1/p' | head -n1)"
+    if [[ "$candidate" =~ $SEMVER_RE ]]; then
+      version="$candidate"
+    fi
+  fi
+fi
+
+if ! command -v npx >/dev/null 2>&1; then
+  echo "graphit: npx (Node.js >=18) is required but was not found on PATH." >&2
+  exit 127
+fi
+
+# Safe argv: the version is strict-semver-validated and passed as one quoted token,
+# and user arguments are forwarded verbatim via "$@", so a malformed or tampered
+# cache value can neither break execution nor widen command construction.
+exec npx -y "${PACKAGE_NAME}@${version}" "$@"

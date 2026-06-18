@@ -1,0 +1,61 @@
+---
+alwaysApply: false
+description: "Graphit: The Knowledge Base is a labeled property graph. Assets carry tags that place them in a tree, but the underlying structure is a graph with typed edges."
+globs: []
+---
+
+# KB Graph Structure
+
+The Knowledge Base is a labeled property graph. Assets carry tags that place them in a tree, but the underlying structure is a graph with typed edges.
+
+## Node Types
+
+| Type | Count Range | Description |
+|------|-------------|-------------|
+| metric | 10-200+ | Aggregation formula (SUM, COUNT, AVG) that computes a business KPI |
+| dimension | 20-500+ | Row-level SQL expression on one table, used for grouping or filtering |
+| rule | 5-100+ | Free-text business constraint, optionally scoped to one or more tables |
+| synonym | 10-100+ | Maps a business term to a canonical metric, dimension, or column |
+| table | 2-50+ | Physical data location in the warehouse, with typed columns |
+| topic | 5-30+ | Business-concept tag applied to assets (e.g., REVENUE, ACQUISITION) |
+| domain | 3-10 | High-level business area (e.g., MARKETING, SALES, PRODUCT) |
+| relationship | 2-30+ | Documented JOIN pattern between two tables |
+| memory | 1-5 | Org-level context notes, always global scope |
+
+## Edge Types
+
+| Edge | From | To | Meaning |
+|------|------|----|---------|
+| depends_on | metric, dimension | table | Asset's SQL references columns in this table |
+| tagged_with | metric, dimension, rule, synonym | topic | Asset carries this business-concept tag |
+| in_domain | table, metric, dimension, rule, synonym | domain | A table has one home domain; assets inherit that home from their primary table, plus any cross-cutting extras |
+| joins | relationship | table, table | Two tables have a documented JOIN on specific columns |
+| references | rule, synonym | table, column | Rule or synonym references a specific table or column name |
+
+## Multi-Membership Semantics
+
+Tables and topics are multi-valued; domain works differently - a single **home** that cascades:
+
+- A metric can depend on **multiple tables** (e.g., JOIN across ORDERS and CUSTOMERS), and appears under each.
+- An asset has **one home domain**, inherited from its primary table (the first table its SQL depends on). The asset does not carry its own domain tag - set the domain on the table and every asset on that table inherits it.
+- An asset can carry **multiple topics** (e.g., ARPU tagged with both REVENUE and MONETIZATION).
+- An asset can be **referenced** onto additional tables via `secondary_tables`. Referenced placements appear in the tree under the target table with a `*` suffix and link back to the original. The asset is editable only from its home table.
+- Synonyms can carry **cross-cutting domains** in `extra_domain_ids` for relevance beyond the home domain. Table-backed assets (metrics, dimensions, rules) derive domain membership entirely from their tables.
+
+For multiple tables, the tree shows the asset under each table with a link icon. For domain, the tree places each table (and its assets) under its one home domain only - cross-cutting extras are badges, not duplicate placements.
+
+## Tags vs Structure
+
+| Concept | Type | Cardinality | Notes |
+|---------|------|-------------|-------|
+| Domain | Home (on table) + secondary_tables | One home per asset (from its table); domain derived from all tables | Coarser grouping (~5-10 per org). Home cascades from the primary table; `secondary_tables` extends reach; synonyms use `extra_domain_ids` |
+| Topic | Pure tag | Any (typically 1-3) | Finer grouping (~10-30+ per org) |
+| Table | Structural dependency | Any (typically 1-2) | Based on SQL dependencies, not manual tagging |
+| Relationship | First-class edge | Exactly 2 tables | Explicit JOIN documentation |
+| Memory | Global | N/A | Not scoped to any table, domain, or topic |
+
+**Key insight for traversal:** Topics are multi-valued tags on assets (agent adds/removes via `edit`). Domain is a single home set on the **table** (`edit(entity_type="table", domain_id=...)`), which cascades to every asset on that table. Table-backed assets derive domain membership from all their tables (primary + `secondary_tables`). Synonyms use `extra_domain_ids` for cross-cutting domain relevance. Table dependencies are structural (derived from SQL). Relationships are explicit edges between tables.
+
+## Tree Rendering Order
+
+The default tree renders as: Domain > Table > Topic > Asset, where each table sits under its one home domain. This is a visualization choice; the data model also supports other groupings (Topic > Table, flat list). When the user asks "where is X?", an asset lives under its primary table's home domain - report that, plus any domains from its `secondary_tables` placements and its topics.

@@ -117,6 +117,26 @@ SELECT UNNEST(generate_series(
 
 The outer SELECT can ONLY reference columns the subquery exposes (its aliases). Base-table columns aggregated away in the subquery do NOT exist at the outer level.
 
+## Cache-Friendly SQL (Canvas Resolve)
+
+Canvas `graphit.resolve()` queries that follow these shapes serve from a semantic cache in ~10ms on filter changes instead of a full DuckDB recompute (5-37s on wide data sources). Write resolve SQL in this style by default.
+
+**Shape rules:**
+- Single table (no JOIN/UNION)
+- WHERE as flat AND of `column = literal`, `column IN (...)`, `column BETWEEN ... AND ...` conjuncts
+- Bare aggregates only: `SUM(col)`, `COUNT(*)`, `MIN(col)`, `MAX(col)` - no wrapping functions (`ROUND(SUM(x))`), no aggregate arithmetic (`SUM(a)/NULLIF(SUM(b),0)`), no `AVG` (v2)
+- Literal dates (`>= '2026-01-01'`), never `CURRENT_DATE` expressions
+- GROUP BY column names or ordinals; ORDER BY / LIMIT allowed (outer only)
+- CTEs are fine when the CTE body follows the same rules
+- Top-N rank queries: project the sort metric in SELECT (`SELECT dim, SUM(metric) AS rv ... ORDER BY rv DESC LIMIT N`), not only in ORDER BY
+
+**Shapes that skip the cache** (fall back to normal execution, still correct):
+- `COUNT(DISTINCT x)`, window functions, HAVING, QUALIFY
+- OR / NOT in WHERE
+- Ratio metrics (`SUM(a)/NULLIF(SUM(b),0)`) - compute client-side or use two resolves. To display as a percent, multiply by 100 (`* 100.0 ... AS x_pct`): the `"percent"` format only appends `%`, it does not scale (a 0-1 ratio would show as `0.42%`, not `42%`).
+- `CURRENT_DATE`-relative predicates
+- Top-N with aggregate only in ORDER BY (`SELECT dim FROM t GROUP BY dim ORDER BY SUM(metric) DESC LIMIT N` - no decomposable aggregate in SELECT)
+
 ## Data Source Routing
 
 | Situation | Command | Speed |
@@ -125,3 +145,20 @@ The outer SELECT can ONLY reference columns the subquery exposes (its aliases). 
 | No data source | `graphit query "SQL" --warehouse --connection <id>` | ~10s, Snowflake |
 
 Always prefer cached data sources. Check with `graphit ds list`. If no data source covers the table, suggest creating one for future speed.
+
+## Presenting Query Results
+
+Ground every query in the KB. When using `{{metric:X}}`/`{{dim:X}}` references, show five sections:
+1. **KB Assets:** list all referenced metrics, dimensions, tables as bold names
+2. **Query:** original SQL with `{{metric:X}}` references in ```sql block
+3. **Resolved SQL:** expanded SQL (always use `--verbose`) in ```sql block
+4. **Results:** markdown table with right-aligned numbers, row count, DS ID
+5. **Governance:** tier, KB refs count, rules enforced (**bold names**), max rows
+
+For inline SQL (no KB refs): show query + results + governance, and suggest the KB reference equivalent to nudge toward governed tier.
+
+On a governed DS, an ad-hoc **measure** query (aggregate / `GROUP BY` without `{{metric:X}}`) is gated: warn mode rejects it (rewrite with `{{metric:X}}`, or ask the user and re-run with `--approve-adhoc`); strict hard-blocks all ad-hoc. Exploration (`SELECT *`, `COUNT(*)`, `DISTINCT`) runs free.
+
+## Presenting Data Source Results
+
+After `graphit ds list`: table with **bold Name**, ID, Rows (right-aligned), Status, Governed. End with DS recommendation for current task.
