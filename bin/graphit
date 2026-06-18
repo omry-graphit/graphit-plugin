@@ -7,7 +7,7 @@
 # or invalid. The floor keeps first-run and offline working.
 
 # graphit:floor (stamped by scripts/sync-plugin-version.mjs from cli/package.json)
-FLOOR_VERSION="0.1.106"
+FLOOR_VERSION="0.1.107"
 
 PACKAGE_NAME="@graphit/cli"
 # Strict semver: anything else is rejected so a tampered cache cannot inject.

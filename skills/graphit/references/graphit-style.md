@@ -127,6 +127,6 @@ Also add the first-paint loading-overlay CSS (the `gh-loading` family) to the pa
 
 ### Loading state
 
-The first-paint loading overlay (the `gh-loading` overlay baked into every resolve target) is part of the data-wiring contract with the SDK. Its canonical CSS, the markup, and the rule about which elements get it live in `runtime.md`.
+The first-paint loading overlay is part of the data-wiring contract with the SDK: wrap each resolve target in `class="gh-loading"` and bake in the overlay (`gh-loading-overlay` with a `gh-loading-spin` spinner driven by `@keyframes gh-spin`). The canonical CSS, the markup, and the rule about which elements get it live in `runtime.md`.
 
 For per-chart implementations (bar, line, donut, heatmap, funnel, sparkline, gauge, stacked bar, multi-series), see `chart-patterns.md`.

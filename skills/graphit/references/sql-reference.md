@@ -119,6 +119,10 @@ When the query feeds a canvas `graphit.resolve()` call, write it in the cache-fr
 
 Always prefer a cached data source (`graphit query "SQL" --ds <id>`, roughly 100ms via DuckDB) over a live warehouse query (`graphit query "SQL" --warehouse --connection <id>`, roughly 10s via Snowflake). The full routing table, the `ds list` output template, and the source-shape guidance live in `data-sources.md`.
 
+## Percent scaling
+
+The canvas `percent` format only appends `%` (it does not multiply by 100), so multiply 0-1 ratios by 100 in SQL: `AVG(retained) * 100.0 AS retention_pct`.
+
 ## Presenting Query Results
 
 After every `graphit query`, present results grounded in the KB. Always show which KB assets were used - this is what makes governed queries valuable.

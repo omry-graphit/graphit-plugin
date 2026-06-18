@@ -3,7 +3,7 @@
 # untrusted) and falls back to the stamped floor version when absent/invalid.
 
 # graphit:floor (stamped by scripts/sync-plugin-version.mjs from cli/package.json)
-$FloorVersion = "0.1.106"
+$FloorVersion = "0.1.107"
 
 $PackageName = "@graphit/cli"
 # Strict semver: anything else is rejected so a tampered cache cannot inject.
