@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.0"
+skill_version: "0.2.18"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 24,576. This router carries the always-loaded collaboration and pace-control spine (brainstorm, the ask-user tool, present-result, plan-next), the hard constraints including the scope gate, the investigation loop, and the auto-generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed on every turn, so by the co-load test they cannot be deferred to a reference. Command knowledge co-loads in particular: scoping, the readiness gate, querying, and delivery each need it. The marker sits after the YAML frontmatter (not before) so the skill loader and sync-plugin-version.mjs still parse the frontmatter. Reviewed 2026-06-18. -->
@@ -87,6 +87,7 @@ Soft narration is what "just build it" drops. These hard stops hold even then: c
 ### Handoffs, failure, truthful reporting
 
 - Name the handoffs. Some actions live on the platform, not the CLI: entering Edit mode on a shared dashboard, visiting a data source's verification link, deleting a source from the Sources Hub. Say when a step hands control back to the user, and move between building the dashboard and building the knowledge base through the gate.
+- Keep local files ephemeral. Any file you create - scratch HTML, an export, throwaway SQL - goes in one `./.graphit/` working dir, never scattered in the repo; the platform dashboard is the source of truth and re-exports on demand. When a piece of work is done, offer to remove `.graphit/` (nothing of value is lost). Mechanics: operations.md.
 - On failure: retry once if it looks transient (timeout, rate limit); on a real error (missing column, permission, validation) stop, say what failed and the next step, never a bare "something went wrong".
 - Report truthfully: what worked, what did not, what you are unsure of. If only part succeeded, say which part and why the rest did not. Done means the answer is delivered and every dashboard element resolves on real data with no entity_sql_warnings.
 
@@ -136,11 +137,11 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 | designing and rendering the dashboard | dashboard-planning.md, chart-selection.md, chart-patterns.md, graphit-style.md, runtime.md |
 | adding interactivity (filters, parameters, saved views) | filters.md, filters-advanced.md |
 | building a slide deck | presentations.md |
-| the CLI or plugin itself (health, install, permission errors) | operations.md |
+| the CLI or plugin itself (health, install, permission errors, local working artifacts) | operations.md |
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.0 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.18 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -177,7 +178,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `kb delete <type> <name>` - Delete a KB entity (requires --yes flag) - `--yes`
 
 **query** - Run SQL against a cached data source or live Snowflake
-- `query <sql>` - Run SQL against a cached data source or live Snowflake - `--ds --warehouse --connection --limit --override-rules --verbose --approve-adhoc`
+- `query <sql>` - Run SQL against a cached data source or live Snowflake - `--ds --warehouse --connection --limit --override-rules --verbose --approve-adhoc --timeout`
 
 **metadata** - Snowflake metadata
 - `metadata schemas` - List Snowflake schemas - `--connection`
@@ -185,8 +186,8 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 
 **ds** - Data source management
 - `ds list` - List data sources - `--limit`
-- `ds create` - Create a data source from a SQL query - `--sql --name --connection --schema --skip-scan`
-- `ds refresh [ids...]` - Refresh data sources (use --all for all, or pass one or more IDs) - `--all --no-wait --skip-empty`
+- `ds create` - Create a data source from a SQL query (--sql) or a local Excel/CSV file (--file) - `--sql --name --connection --schema --skip-scan --file --domain --sheet`
+- `ds refresh [ids...]` - Refresh data sources (use --all for all, or pass one or more IDs). On a breaking schema change a refresh is paused (status 'schema_changed') and the old data keeps serving; re-run with --force to accept the new schema. - `--all --no-wait --skip-empty --force`
 - `ds verify <id>` - Scan schema and show verification link for an unverified data source - `--force`
 - `ds update <id>` - Update data source governance settings - `--governed-mode --max-rows`
 

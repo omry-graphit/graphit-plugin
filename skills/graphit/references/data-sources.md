@@ -60,6 +60,8 @@ graphit ds create --name "MY_DS" --sql "SELECT ..." --connection <id>
 graphit ds create --name "MY_DS" --sql "SELECT ..." --skip-scan
 ```
 
+**From a local file (Excel/CSV):** `graphit ds create --file <path>` uploads the file and creates one data source. Optional: `--name` (defaults to the file name), `--sheet <name>` (only when an Excel workbook has multiple sheets), and `--domain <NAME>` to attach the new table to an existing KB domain (create it first with `graphit kb create domain --name <NAME>` if it doesn't exist). `--file` and `--sql` are mutually exclusive; same auto-scan + verification-link flow as above.
+
 For existing unverified data sources, use `graphit ds verify <id>` to trigger the scan and get the verification link.
 
 ## Refreshing data sources

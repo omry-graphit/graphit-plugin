@@ -24,7 +24,10 @@ Which `graphit kb` read command answers each question, and how to present the re
 `graphit kb explore topic REVENUE` returns the assets tagged with that concept across every domain. Fall back to `graphit kb search "revenue" --type metric` only when no topic captures the concept.
 
 ### "What depends on the ORDERS table?"
-`graphit kb explore table ORDERS` - lists every metric and dimension whose SQL references ORDERS columns, plus the relationships it joins through.
+`graphit kb explore table ORDERS` - returns the table's column schema (names, types, descriptions) plus every metric and dimension whose SQL references ORDERS columns and the relationships it joins through.
+
+### "What columns does this table or data source have?" (read the schema)
+`graphit kb explore table <NAME>` (or `graphit kb get table <NAME>`) returns the column schema - names, types, descriptions - straight from the knowledge base. This is how you read a table's schema; never `DESCRIBE` it (only read-only SELECT runs through `graphit query`, so DESCRIBE/SHOW/DDL are rejected). If a data source was just created and not yet scanned, the KB has no columns for it yet - read its shape with `graphit query "SELECT * FROM <NAME> LIMIT 0" --ds <id>`, or run `graphit ds verify <id>` to scan it into the KB.
 
 ### "What joins with MARKETING_UA_DS?"
 `graphit kb explore table MARKETING_UA_DS`, then read the relationships in the response (the documented JOINs involving that table).
@@ -101,4 +104,4 @@ Adapt fields per type. Rules: content, constraints, apply-on, override policy. D
 - **Domain:** MARKETING
 ~~~
 
-For domain exploration, show Domain > Table > Asset hierarchy as a tree.
+For domain exploration, show Domain > Table > Asset hierarchy as a tree. For table exploration, list the table's columns first (`NAME - type - description`), then the metrics, dimensions, and rules defined on it.

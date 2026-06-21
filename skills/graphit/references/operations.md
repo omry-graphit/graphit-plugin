@@ -10,6 +10,7 @@ Load this when the concern is the Graphit CLI or plugin itself, not the analysis
 - [Legacy copied-file setup](#legacy-copied-file-setup)
 - [Permission errors](#permission-errors)
 - [Output contract](#output-contract)
+- [Working artifacts](#working-artifacts)
 - [Reporting failures and partial results](#reporting-failures-and-partial-results)
 
 Governance is enforced server-side by the query gateway. There is no client-side query guard, so never claim to block a query locally; a query is rejected by the platform, not the CLI.
@@ -77,6 +78,12 @@ Commands write only the result payload to stdout; all decoration (progress, tabl
 - `--output json` (default): stdout is exactly one valid JSON document - parse it directly, never strip a trailing line. Provenance and warnings live inside the JSON.
 - Use json for anything you read back, especially nested output (`kb explore`, query rows, `kb get`). `--output table` is a quick flat human view; nested cells render as compact JSON, not `[object Object]`.
 - `--output styled` is the interactive view - never parse it.
+
+## Working artifacts
+
+Keep every local file you create in one place: a `./.graphit/` directory in the working dir (distinct from the `~/.graphit/` credential store). Scratch HTML written before `graphit dashboard update-html <id> --file`, output redirected from `graphit dashboard get-html`, exported PNG/PDF, throwaway SQL - all under `.graphit/`, never scattered across the user's repo. `graphit dashboard export` already defaults its output there (no `--output` needed) and drops a self-ignoring `.gitignore`, so the dir is never committed.
+
+These are ephemeral. The platform dashboard is the source of truth and the durable artifact; anything local re-materializes on demand (`graphit dashboard get-html <id>` for the HTML, `graphit dashboard export <id> --format png|pdf` for a rendered image). When you finish a piece of work, offer to remove `.graphit/` - nothing of value is lost. Keep it a soft suggestion, not a forced step.
 
 ## Reporting failures and partial results
 

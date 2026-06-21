@@ -1,6 +1,6 @@
 # SQL Reference
 
-Consult when writing queries. Data source queries (`graphit query --ds`) run DuckDB. Warehouse queries (`graphit query --warehouse`) run Snowflake. You MUST use the correct dialect.
+Consult when writing queries. Data source queries (`graphit query --ds`) run DuckDB. Warehouse queries (`graphit query --warehouse`) run Snowflake. You MUST use the correct dialect. To read a table's columns, use `graphit kb explore table <NAME>` - never `DESCRIBE`/DDL (`graphit query` runs SELECT only).
 
 ## DuckDB vs Snowflake Translation
 
@@ -192,5 +192,3 @@ For ad-hoc queries, suggest the KB reference equivalent when one exists. This nu
 **Always use `--verbose`** to get the resolved SQL. If the user didn't pass it, re-run with `--verbose` so you can show both the reference query and the expanded SQL.
 
 Zero rows: explain what you checked and hypothesize why (wrong date range, filter too strict, table empty).
-
-The `graphit ds list` output template lives in `data-sources.md`.
