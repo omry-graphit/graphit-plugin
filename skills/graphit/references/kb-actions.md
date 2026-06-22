@@ -48,6 +48,17 @@ What each constraint type does at query time, plus the override flow, lives in `
 graphit kb create rule --name FILTER_VERIFIED_PURCHASES --sql "Only count verified purchases" --table ORDERS --constraint required_where:"is_verified = true" --override-policy analyst_only
 ```
 
+## Rule Targeting - what a rule governs
+
+Every rule must apply to at least one asset; a targetless rule is rejected. `--table` is required, and without `--apply-on` the rule governs that **whole table** - which cascades to every metric and dimension on it (it fires on any query touching the table). To narrow instead, pass `--apply-on metric:NAME` / `--apply-on dimension:NAME` so the rule applies only when that asset is used. The two are mutually exclusive: never mix a table target with metric/dimension targets on one rule. To govern several tables, list each: `--apply-on table:A table:B`.
+
+```bash
+# Whole table - cascades to every metric/dimension on ORDERS
+graphit kb create rule --name ORDERS_ACTIVE_ONLY --sql "Exclude cancelled orders" --table ORDERS
+# Narrowed - applies only when the ARPU metric is used
+graphit kb create rule --name ARPU_TRIM --sql "Cap ARPU outliers" --table USERS --apply-on metric:ARPU
+```
+
 ## Pre-Creation Validation
 
 Metric, dimension, and rule creates validate the formula against real data before writing; the response carries a `validation` object (status `pass` / `skipped` / `fail`). Surface it to the user - per-type result templates are in `kb-traversal.md`. A `fail` returns HTTP 422 and the asset is NOT created: show the error and failing SQL, fix the formula, retry. Validation is skipped (asset still created) for `${PARAM:X}` templates, constraint-based rules, and tables with no ready data source. Pass `--skip-validate` to bypass it on bulk creates.
@@ -61,7 +72,7 @@ Metric, dimension, and rule creates validate the formula against real data befor
 
 `--topics`, `--secondary-tables`, `--default-dimensions`, and `--constraint` REPLACE the existing list, they do not append. To change one value, read the current list first (`graphit kb get metric NAME`), then write the full intended list: add a topic with `--topics "EXISTING1,EXISTING2,NEW"`; remove one by writing the list minus that value.
 
-Reference an asset onto another table with `graphit kb update metric NAME --secondary-tables "OTHER_TABLE"` (also dimension, rule). This is a read-only pointer marked `*` in the tree; metrics and dimensions need every referenced column to exist on the target, rules need only the table. Topics are horizontal - one topic can tag assets across many domains (see `kb-structure.md`).
+Reference a **metric or dimension** onto another table with `graphit kb update metric NAME --secondary-tables "OTHER_TABLE"` (also dimension). This is a read-only pointer marked `*` in the tree; every referenced column must exist on the target. For **rules**, govern several tables by listing them in `--apply-on` (`--apply-on table:A table:B`), not `--secondary-tables`. Topics are horizontal - one topic can tag assets across many domains (see `kb-structure.md`).
 
 ## Domain home (set on the table, cascades)
 

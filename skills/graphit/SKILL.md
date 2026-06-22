@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.40"
+skill_version: "0.2.42"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 24,576. This router carries the always-loaded collaboration and pace-control spine (brainstorm, the ask-user tool, present-result, plan-next), the hard constraints including the scope gate, the investigation loop, and the auto-generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed on every turn, so by the co-load test they cannot be deferred to a reference. Command knowledge co-loads in particular: scoping, the readiness gate, querying, and delivery each need it. The marker sits after the YAML frontmatter (not before) so the skill loader and sync-plugin-version.mjs still parse the frontmatter. Reviewed 2026-06-18. -->
@@ -141,7 +141,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.40 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.42 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -161,7 +161,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `kb unverify <type> <name>` - Unverify a KB asset (mark as draft); cascades to metric variants
 - `kb create metric` - Create a new metric - `--name --sql --table --description --topics --default-dimensions --parameters --parameters-file --skip-validate --unverified`
 - `kb create dimension` - Create a new dimension - `--name --expr --table --type --output-type --description --topics --skip-validate --unverified`
-- `kb create rule` - Create a new rule - `--name --sql --table --description --topics --constraint --apply-on --override-policy --skip-validate --unverified`
+- `kb create rule` - Create a new rule. Without --apply-on the rule governs the whole --table, which cascades to every metric and dimension on it. Use --apply-on metric:NAME / dimension:NAME to govern only specific assets instead. A rule must apply to at least one asset (targetless rules are rejected). - `--name --sql --table --description --topics --constraint --apply-on --override-policy --skip-validate --unverified`
 - `kb create table` - Tables are created via data sources. Use `graphit ds create`.
 - `kb create domain` - Create a new domain - `--name --description --color`
 - `kb create synonym` - Create a new synonym - `--term --canonical --type --description --unverified`
@@ -170,7 +170,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `kb create template` - Create a reusable chart template - `--name --render-code --file --description --chart-types`
 - `kb update metric <name>` - Update a metric - `--sql --table --description --topics --default-dimensions --secondary-tables --parameters --parameters-file`
 - `kb update dimension <name>` - Update a dimension - `--expr --table --description --topics --secondary-tables`
-- `kb update rule <name>` - Update a rule - `--sql --description --topics --secondary-tables --constraint --apply-on --override-policy`
+- `kb update rule <name>` - Update a rule. Broadening a verified rule's targeting requires org admin. - `--sql --description --topics --secondary-tables --constraint --apply-on --override-policy`
 - `kb update template <name>` - Update a template - `--render-code --file --description`
 - `kb update table <name>` - Update a table's description or domain - `--description --domain`
 - `kb update domain <name>` - Update a domain - `--description --color`

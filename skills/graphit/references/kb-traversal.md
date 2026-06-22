@@ -79,7 +79,7 @@ Adapt columns per type: dimensions include semantic type, rules include constrai
 | **Default dims** | MEDIA_SOURCE, CAMPAIGN_NAME |
 ~~~
 
-Adapt fields per type. Rules: content, constraints, apply-on, override policy. Dimensions: expression, semantic type, output type.
+Adapt fields per type. Rules: content, constraints, apply-on, override policy, plus `enforced` (Enforced = has constraints / applied to every query; Suggested = body-only / guides the AI) and `governs` (the tables it covers whole + any narrowed metric/dimension targets). Metrics and dimensions carry `governed_by` - the rules governing that asset, each tagged `enforced` and a `scope_tag` (`whole table` vs `this metric`/`this dimension`) - so reading a metric also shows what rules apply to it. Dimensions also: expression, semantic type, output type.
 
 **After `graphit kb search`** - result count + table with type column:
 
