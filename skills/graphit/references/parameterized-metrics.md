@@ -31,7 +31,7 @@ Paired with a calculation such as `SUM(${PARAM:REVENUE}) / SUM(cost) * 100 ${PAR
 |------|--------|
 | Token match | Every `${PARAM:NAME}` token in the calculation needs a matching parameter by name |
 | Empty values | Valid as no-ops (e.g. D0 adds no filter) |
-| Variant cap | Max 100 (the Cartesian product of all parameter values) |
+| Variant cap | Max 1000 (the Cartesian product of all parameter values) |
 | Child naming | Auto-generated as `{PARENT}_{VALUE1}_{VALUE2}` (e.g. ROAS_ALL_BOOKINGS_D7) |
 | Validation | Template create skips per-formula validation (children validate on generation) |
 
@@ -52,7 +52,7 @@ If the user targets a child for edit or delete, redirect to the parent: "ROAS_AL
 
 You never substitute tokens by hand. The server resolves a variant when you reference it with the parameter syntax in SQL.
 
-1. Find the template. `graphit kb list metric` shows a `params` column listing each metric's required parameter names (e.g. `REVENUE, DN`); an empty `params` cell means the metric is flat and needs no parameters.
+1. Find the template. `graphit kb list metric` shows the collapsed inventory - templates and flat metrics only, never child variants - with a `params` column (the required parameter names, e.g. `REVENUE, DN`) and a `variant_count`; an empty `params` cell means the metric is flat. To enumerate a template's concrete variants, `graphit kb explore metric NAME`; reach for `graphit kb list metric --include-variants` only when you truly need every child row flat.
 2. Map the user's words to parameter values: "D7 ROAS for new users" maps to `REVENUE=NEW_BOOKINGS` and `DN=D7`.
 3. Reference it with `{{metric:NAME(K=V)}}` in the query SQL, e.g. `{{metric:ROAS(REVENUE=NEW_BOOKINGS, DN=D7)}}`. The server expands it to the pre-validated child calculation at query time.
 
@@ -62,7 +62,7 @@ graphit query "SELECT {{dim:INSTALL_MONTH}}, {{metric:ROAS(REVENUE=NEW_BOOKINGS,
 
 Defaults and errors:
 - Omitting a parameter on a required metric returns a clear error naming the parameter and the valid values. Retry with a value or ask the user which one they meant.
-- A pre-baked variant (ROAS_D7, ARPU_D30) has its value hardcoded in the name, so reference it plainly as `{{metric:ROAS_D7}}` with no parameter clause.
+- A pre-baked variant (ROAS_D7, ARPU_D30) has its value hardcoded in the name, so reference it plainly as `{{metric:ROAS_D7}}` with no parameter clause. Find its exact name via `graphit kb explore metric ROAS` (lists the variants) or `graphit kb list metric --include-variants` - the collapsed `kb list` does not show child variant names.
 
 ## Contrast: Wrong vs Right
 

@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.18"
+skill_version: "0.2.40"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 24,576. This router carries the always-loaded collaboration and pace-control spine (brainstorm, the ask-user tool, present-result, plan-next), the hard constraints including the scope gate, the investigation loop, and the auto-generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed on every turn, so by the co-load test they cannot be deferred to a reference. Command knowledge co-loads in particular: scoping, the readiness gate, querying, and delivery each need it. The marker sits after the YAML frontmatter (not before) so the skill loader and sync-plugin-version.mjs still parse the frontmatter. Reviewed 2026-06-18. -->
@@ -141,7 +141,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.18 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.40 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -153,16 +153,18 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `auth logout` - Log out and clear stored credentials
 
 **kb** - Knowledge Base operations
-- `kb list <type>` - List KB entities (metric, dimension, table, rule, domain, synonym) - `--limit --verified --unverified`
+- `kb list <type>` - List KB entities (metric, dimension, table, rule, domain, synonym) - the inventory verb. Parameterized metrics are collapsed: each template shows a variant_count, child variants are hidden. Use --include-variants for the full flat set, kb explore metric <name> to enumerate one template's variants, kb get for the full definition. The response carries total/truncated, so fewer rows than total means raise --limit. - `--limit --verified --unverified --include-variants`
 - `kb get <type> <name>` - Get a KB entity by name
 - `kb search <query>` - Semantic + substring search across KB assets, ranked by relevance - `--type --limit`
-- `kb explore <type> <name>` - Traverse KB graph (metric -> tables -> dimensions)
-- `kb create metric` - Create a new metric - `--name --sql --table --description --topics --default-dimensions --parameters --parameters-file --skip-validate`
-- `kb create dimension` - Create a new dimension - `--name --expr --table --type --output-type --description --topics --skip-validate`
-- `kb create rule` - Create a new rule - `--name --sql --table --description --topics --constraint --apply-on --override-policy --skip-validate`
+- `kb explore <type> <name>` - Traverse the KB graph - the relationships verb. metric: tables, dimensions, parameters + its concrete variants; table/domain/topic: every bound metric (collapsed, with variant_count), dimension and rule plus counts. Use this for what's bound to a table X or show me this template's variants.
+- `kb verify <type> <name>` - Verify a KB asset by name; metric templates cascade to all variants
+- `kb unverify <type> <name>` - Unverify a KB asset (mark as draft); cascades to metric variants
+- `kb create metric` - Create a new metric - `--name --sql --table --description --topics --default-dimensions --parameters --parameters-file --skip-validate --unverified`
+- `kb create dimension` - Create a new dimension - `--name --expr --table --type --output-type --description --topics --skip-validate --unverified`
+- `kb create rule` - Create a new rule - `--name --sql --table --description --topics --constraint --apply-on --override-policy --skip-validate --unverified`
 - `kb create table` - Tables are created via data sources. Use `graphit ds create`.
 - `kb create domain` - Create a new domain - `--name --description --color`
-- `kb create synonym` - Create a new synonym - `--term --canonical --type --description`
+- `kb create synonym` - Create a new synonym - `--term --canonical --type --description --unverified`
 - `kb create relationship` - Create a new relationship (JOIN between tables) - `--name --primary-table --primary-column --related-table --related-column --description`
 - `kb create topic` - Create a new topic (business-concept tag) - `--name --description`
 - `kb create template` - Create a reusable chart template - `--name --render-code --file --description --chart-types`
@@ -188,7 +190,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `ds list` - List data sources - `--limit`
 - `ds create` - Create a data source from a SQL query (--sql) or a local Excel/CSV file (--file) - `--sql --name --connection --schema --skip-scan --file --domain --sheet`
 - `ds refresh [ids...]` - Refresh data sources (use --all for all, or pass one or more IDs). On a breaking schema change a refresh is paused (status 'schema_changed') and the old data keeps serving; re-run with --force to accept the new schema. - `--all --no-wait --skip-empty --force`
-- `ds verify <id>` - Scan schema and show verification link for an unverified data source - `--force`
+- `ds verify <id>` - Scan an unverified data source's schema and review it. Warehouse/SQL sources print a verification link; add --accept-schema to accept the AI schema and activate from the CLI. File uploads activate automatically. - `--force --accept-schema`
 - `ds update <id>` - Update data source governance settings - `--governed-mode --max-rows`
 
 **dashboard** - Custom dashboard management

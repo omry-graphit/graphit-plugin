@@ -50,7 +50,7 @@ A wide or raw source is sometimes the right call - row-level drill-down/export, 
 
 ## Creating data sources
 
-`graphit ds create` auto-chains: create -> poll until ready -> scan schema -> print verification link. The user must visit the verification link on the platform to review AI-generated column descriptions and activate the DS for KB use.
+`graphit ds create` auto-chains: create -> poll until ready -> scan schema -> print verification link. To activate for KB use, either the user reviews and activates via the link on the platform, or - after you show them the scanned schema and they accept it - run `graphit ds verify <id> --accept-schema` to activate from the CLI.
 
 ```bash
 # Create with auto-scan (recommended)
@@ -62,11 +62,11 @@ graphit ds create --name "MY_DS" --sql "SELECT ..." --skip-scan
 
 **From a local file (Excel/CSV):** `graphit ds create --file <path>` uploads the file and creates one data source. Optional: `--name` (defaults to the file name), `--sheet <name>` (only when an Excel workbook has multiple sheets), and `--domain <NAME>` to attach the new table to an existing KB domain (create it first with `graphit kb create domain --name <NAME>` if it doesn't exist). `--file` and `--sql` are mutually exclusive; same auto-scan + verification-link flow as above.
 
-For existing unverified data sources, use `graphit ds verify <id>` to trigger the scan and get the verification link.
+For existing unverified sources, `graphit ds verify <id>` scans and shows the schema; add `--accept-schema` to accept the AI schema and activate a warehouse/SQL source from the CLI (file uploads activate automatically).
 
 ## Refreshing data sources
 
-Data sources cache a snapshot of the Snowflake query result. Refresh when you need current data.
+Data sources cache a snapshot of the Snowflake query result. Refresh when you need current data. **File-upload sources can't be refreshed (no query to re-run) - update them by re-uploading with `graphit ds create --file <path>`.**
 
 ```bash
 # Refresh all data sources and wait for completion (live status table)

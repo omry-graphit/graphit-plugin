@@ -2,14 +2,16 @@
 
 Contents: Which Command (the read-command picker) - Common Queries (worked examples) - Reading the Results - Presenting KB Results (the per-command output templates).
 
-Which `graphit kb` read command answers each question, and how to present the result. Explore is the primary call: `graphit kb explore <type> NAME` walks the graph around one entity and returns its whole neighborhood at once. `graphit kb get <type> NAME` returns one asset's full details, and `graphit kb search "<query>"` is the fallback for semantic discovery when you cannot name the entity.
+Which `graphit kb` read command answers each question, and how to present the result. Each verb owns one role: `graphit kb list <type>` is the **inventory** (how many, and which, assets of a type exist), `graphit kb get <type> NAME` is one asset's **full definition**, and `graphit kb explore <type> NAME` is the **relationships** call - it walks the graph around one entity and returns its whole neighborhood (and, for a template, its concrete variants) in one call. `graphit kb search "<query>"` is the fallback for semantic discovery when you cannot name the entity. Explore is the primary discovery call.
 
 ## Which Command
 
 | Question | Command |
 |---|---|
+| How many / which assets of a type exist (inventory) | `graphit kb list <type>` (metrics collapse to templates; `--include-variants` for the flat set) |
 | What is inside a domain or topic (the build entry point) | `graphit kb explore domain NAME` / `graphit kb explore topic NAME` |
 | What connects to X (dependencies, joins, topics, domain) | `graphit kb explore <type> NAME` |
+| A template's concrete variants | `graphit kb explore metric NAME` |
 | Get one asset's full details | `graphit kb get metric NAME` |
 | Find things like X when you cannot name it (semantic) | `graphit kb search "X"` (add `--type metric` to narrow) |
 
@@ -24,7 +26,7 @@ Which `graphit kb` read command answers each question, and how to present the re
 `graphit kb explore topic REVENUE` returns the assets tagged with that concept across every domain. Fall back to `graphit kb search "revenue" --type metric` only when no topic captures the concept.
 
 ### "What depends on the ORDERS table?"
-`graphit kb explore table ORDERS` - returns the table's column schema (names, types, descriptions) plus every metric and dimension whose SQL references ORDERS columns and the relationships it joins through.
+`graphit kb explore table ORDERS` - returns the table's column schema (names, types, descriptions) plus `metric_count`/`dimension_count`/`rule_count` and every bound metric (collapsed to templates, each with a `variant_count`), dimension, and rule whose SQL references ORDERS. The counts include child variants; the lists stay collapsed.
 
 ### "What columns does this table or data source have?" (read the schema)
 `graphit kb explore table <NAME>` (or `graphit kb get table <NAME>`) returns the column schema - names, types, descriptions - straight from the knowledge base. This is how you read a table's schema; never `DESCRIBE` it (only read-only SELECT runs through `graphit query`, so DESCRIBE/SHOW/DDL are rejected). If a data source was just created and not yet scanned, the KB has no columns for it yet - read its shape with `graphit query "SELECT * FROM <NAME> LIMIT 0" --ds <id>`, or run `graphit ds verify <id>` to scan it into the KB.
@@ -45,18 +47,18 @@ Which `graphit kb` read command answers each question, and how to present the re
 
 A single `graphit kb explore` call returns one entity's full neighborhood, so it usually answers the question on its own - scan the response and run a second command only if the first does not contain what you need. The user cannot see raw CLI output; render every result with these per-command templates.
 
-**After `graphit kb list <type>`** - count summary + table with bold names:
+**After `graphit kb list <type>`** - count summary + table with bold names. The list is the **inventory**, and the response carries `total`/`truncated`: if the rows shown are fewer than `total`, the list was capped - raise `--limit` (a missing asset may be truncated, not absent). For metrics the list is **collapsed** - each row is a template or a flat metric, never a child variant; a template's `variant_count` says how many concrete variants it owns. Use `--include-variants` for the full flat set, or `graphit kb explore metric NAME` to enumerate one template's variants.
 
 ~~~
-**12 metrics** across 3 tables:
+**12 metrics** (10 flat + 2 templates, 38 variants) across 3 tables:
 
-| Metric | Table | Calculation | Params |
-|---|---|---|---|
-| **CPI** | **MARKETING_UA** | `SUM(spend)/SUM(installs)` | - |
-| **ARPU** | **MARKETING_UA** | `SUM(revenue)/COUNT(...)` | DAY |
-| **RETENTION** | **PLAYER_QUALITY** | `COUNT(CASE WHEN ...)` | DAY |
+| Metric | Table | Calculation | Params | Variants |
+|---|---|---|---|---|
+| **CPI** | **MARKETING_UA** | `SUM(spend)/SUM(installs)` | - | - |
+| **ARPU** | **MARKETING_UA** | `SUM(revenue)/COUNT(...)` | DAY | 18 |
+| **RETENTION** | **PLAYER_QUALITY** | `COUNT(CASE WHEN ...)` | DAY | 20 |
 
-4 parameterized (need `(DAY=N)` syntax), 8 pre-baked.
+To use a variant, reference `{{metric:ARPU(DAY=7)}}`; to list them, explore the template.
 ~~~
 
 Adapt columns per type: dimensions include semantic type, rules include constraint count, domains include asset count.
