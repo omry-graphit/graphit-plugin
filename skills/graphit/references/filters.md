@@ -50,7 +50,7 @@ Connects a data entity to filter dependencies so it re-resolves automatically on
 ```js
 graphit.bind(document.getElementById('revenue-chart'), {
   sql: 'SELECT date, SUM(revenue) AS revenue FROM orders WHERE country = :country GROUP BY 1',
-  dataSourceId: 'ds_abc123',
+  dataSourceId: 'ORDERS',
   params: () => ({ country: graphit.state.get('country') }),
   deps: ['country'],      // state keys that trigger re-resolve (inferred from params if omitted)
   render: (result, el) => {
@@ -106,7 +106,7 @@ One control, wired to one reactive chart. The `<select>` is your own markup; `bi
 
   graphit.bind(document.getElementById('revenue-by-region'), {
     sql: 'SELECT month, SUM(revenue) AS revenue FROM sales WHERE (:region = \'ALL\' OR region = :region) GROUP BY 1 ORDER BY 1',
-    dataSourceId: 'ds_sales',
+    dataSourceId: 'SALES',
     params: () => ({ region: region.get() }),
     deps: ['region'],
     render: (result, el) => {

@@ -1,9 +1,9 @@
 <!--
 SIZE EXEMPTION (reference file)
 Hard limit: 7,168 chars | Exempted ceiling: 14,336 chars
-Current: 12,478 chars (content) - intentionally over the base reference limit.
+Current: ~12,990 chars (content) - intentionally over the base reference limit.
 Rationale: runtime.md is the consolidated build-time data + entity contract. Its core - the live-data API, the data-graphit-* entity contract, the first-paint loading state, the helper index, and the canonical example - is a single co-load unit: building one live element needs all of it together, so by the co-load test (split a reference only where the agent needs one part without the other) it cannot be split without creating refs that always load together, which the test forbids. The one use-case-clean seam (cache-friendly resolve SQL + the rate-limit budget, needed only for interactive or large dashboards) was deliberately kept inline to preserve the single authoritative contract. This ref loads only on HTML-deliverable turns (just-in-time, not every turn), so the cache cost is bounded.
-Reviewed: 2026-06-17
+Reviewed: 2026-06-23
 Next review: 2026-09-17
 -->
 # Canvas Runtime: Live Data and the Entity Contract
@@ -27,14 +27,14 @@ The iframe provides `graphit.resolve()` to fetch live data from cached data sour
 ```js
 const result = await graphit.resolve({
   sql: "SELECT region, SUM(revenue) AS rev FROM ORDERS_DS GROUP BY region",
-  dataSourceId: "ds_abc123",
+  dataSourceId: "ORDERS_DS",
   target: "#chart-container",
   maxRows: 10000
 });
 // Returns: { columns: string[], data: object[], rowCount: number, truncated: boolean }
 ```
 
-- `dataSourceId` is the ID from `graphit ds list`.
+- `dataSourceId` is the data source name (the same table you SELECT FROM); its id or a unique id-prefix also works.
 - `target` (optional, a CSS selector or element) shows a blur and spinner overlay while loading and removes it on completion.
 - `maxRows` (optional) defaults to **10,000 rows** and may be raised up to a cap of **50,000 rows**. A dashboard query should aggregate to a chartable grain well under the default; reach for a higher value only for a genuine row-level export, and never above the cap.
 - `result.data` is an array of row objects you render however you want.
@@ -51,7 +51,7 @@ Every visible element - chart, KPI card, table, text section - must be wrapped s
 <div data-graphit-id="revenue-trend"
      data-graphit-label="Revenue Trend"
      data-graphit-sql="SELECT {{dim:REGION}} AS region, {{metric:REVENUE}} AS revenue FROM ORDERS_DS GROUP BY region"
-     data-graphit-ds="ds_abc123">
+     data-graphit-ds="ORDERS_DS">
   <!-- chart, KPI, or table content here -->
 </div>
 ```
@@ -61,7 +61,7 @@ Every visible element - chart, KPI card, table, text section - must be wrapped s
 | `data-graphit-id` | Unique kebab-case | `"spend-by-source"` |
 | `data-graphit-label` | Human-readable name | `"Ad Spend by Source"` |
 | `data-graphit-sql` | Executable SQL (HTML-encode the characters `<`, `>`, `&`, `"`) | `"SELECT ..."` |
-| `data-graphit-ds` | Data source ID from `graphit ds list` | `"ds_abc123"` |
+| `data-graphit-ds` | Data source name (same as the FROM table) or id | `"ORDERS_DS"` |
 
 KB asset references are derived automatically from `{{metric:X}}` / `{{dim:X}}` templates in the SQL; the governance compiler resolves these and shows KB asset chips in the entity details panel. Missing any one attribute breaks the entity; missing the wrapper entirely makes the element invisible to the platform.
 
@@ -71,6 +71,8 @@ KB asset references are derived automatically from `{{metric:X}}` / `{{dim:X}}` 
 - **Right:** `data-graphit-sql="SELECT INSTALL_TIME, SUM(CASE WHEN SENIORITY=0 THEN TOTAL_IAP END)/NULLIF(SUM(COST),0) AS ROIAP_D0 FROM UA_DS GROUP BY 1"` - the same derivation the chart runs.
 
 **Label equals the visible title.** The `data-graphit-label` MUST match the card's visible heading exactly. Users find their chart by that label in @ mention dropdowns and entity panels - a mismatch means they cannot find it.
+
+**Editing one existing entity.** Edit a single element surgically rather than rewriting the page: `graphit dashboard list-entities <id>` lists every entity (id, label, KB refs, data source) to find the right `data-graphit-id`; `graphit dashboard get-entity <id> <entityId>` returns just that entity's inner HTML - the exact fragment `graphit dashboard update-entity <id> <entityId>` accepts - which you change and write back. Reach for full-page `get-html` / `update-html` only when restructuring the whole layout.
 
 ## First-paint loading state
 
@@ -151,7 +153,7 @@ You have full creative freedom: build charts with inline SVG, CSS, and HTML tabl
 <div data-graphit-id="spend-by-source"
      data-graphit-label="Ad Spend by Source"
      data-graphit-sql="SELECT {{dim:MEDIA_SOURCE_DIMENSION}} AS source, {{metric:TOTAL_AD_SPEND}} AS spend FROM MARKETING_UA_DS GROUP BY source ORDER BY spend DESC"
-     data-graphit-ds="ds_abc123">
+     data-graphit-ds="MARKETING_UA_DS">
   <div id="spend-chart" class="gh-loading">
     <!-- gh-loading-overlay spinner from the First-paint section -->
   </div>
@@ -160,7 +162,7 @@ You have full creative freedom: build charts with inline SVG, CSS, and HTML tabl
 (async function() {
   var r = await graphit.resolve({
     sql: "SELECT MEDIA_SOURCE, SUM(APPSFLYER_COST) AS spend FROM MARKETING_UA_DS GROUP BY MEDIA_SOURCE ORDER BY spend DESC",
-    dataSourceId: "ds_abc123",
+    dataSourceId: "MARKETING_UA_DS",
     target: "#spend-chart"
   });
   graphit.chart("#spend-chart", {

@@ -16,7 +16,7 @@ Write governed queries with KB references, not inline formulas. The server compi
 | `{{dim:NAME}}` | Dimension expression | `{{dim:INSTALL_MONTH}}` |
 
 ```bash
-graphit query "SELECT {{dim:INSTALL_MONTH}}, {{metric:CPI}} AS cpi FROM MARKETING_UA_DS GROUP BY 1" --ds ds_abc123 --verbose
+graphit query "SELECT {{dim:INSTALL_MONTH}}, {{metric:CPI}} AS cpi FROM MARKETING_UA_DS GROUP BY 1" --ds MARKETING_UA_DS --verbose
 ```
 
 `--verbose` prints the expanded SQL and trust tier, so you can confirm the reference resolved before presenting the result.
@@ -64,7 +64,7 @@ Rules with typed constraints are enforced automatically, rewriting the SQL befor
 User-context variables (`${user.team_id}`, `${user.email}`) resolve server-side for row-level security. Override a rule only when the user explicitly asks and the rule's `override_policy` (anyone / analyst_only / admin_only / never) and the user's role allow it; a `never` policy can never be overridden, and every override is logged. Pass several names to override more than one.
 
 ```bash
-graphit query "SELECT * FROM events" --ds ds_123 --override-rules EXCLUDE_RETARGETING
+graphit query "SELECT * FROM EVENTS" --ds EVENTS --override-rules EXCLUDE_RETARGETING
 ```
 
 ## Per-DS settings and governance mode

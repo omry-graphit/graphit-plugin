@@ -74,4 +74,6 @@ When several graphs share a concept, propose ONE KB asset instead of repeating t
 
 For the same concept on a sibling table with identical columns, **reference** it rather than duplicating: `graphit kb update metric TOTAL_REVENUE --secondary-tables "ORDERS_12M"`. This is a pointer, not a copy - edits propagate to all placements, and referenced placements show a `*` in the KB tree. Metrics and dimensions require every referenced column to exist on the target table (checked on save); rules only require the table to exist. Suggest it when the user has sibling sources (e.g. 6M and 12M windows) or asks to make a metric available on another table.
 
+**Where is a known asset already shown?** `graphit kb usage metric REVENUE` lists every chart presenting a known metric (or dimension) across custom dashboards - reuse it, don't rebuild. (`search`/`explore` say it *exists*; `usage` says *where*.) `--metric X --dimension Y` finds co-occurrence (not a proven `GROUP BY`); only governed `{{metric:}}`/`{{dim:}}` usage is indexed. `graphit kb usage rule X` lists every chart a rule is enforced on (impact analysis).
+
 For the graph model and structural questions (vertical home vs horizontal topics), see `kb-structure.md`; for read commands and result templates, see `kb-traversal.md`.

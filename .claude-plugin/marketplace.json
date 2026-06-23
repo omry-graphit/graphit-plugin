@@ -12,7 +12,7 @@
       "name": "graphit",
       "description": "Build custom HTML dashboards from real data. KB-aware queries, entity wrapping, cached data sources.",
       "source": "./",
-      "version": "0.2.42",
+      "version": "0.2.47",
       "category": "data-visualization",
       "tags": [
         "bi",

@@ -57,7 +57,7 @@ You never substitute tokens by hand. The server resolves a variant when you refe
 3. Reference it with `{{metric:NAME(K=V)}}` in the query SQL, e.g. `{{metric:ROAS(REVENUE=NEW_BOOKINGS, DN=D7)}}`. The server expands it to the pre-validated child calculation at query time.
 
 ```bash
-graphit query "SELECT {{dim:INSTALL_MONTH}}, {{metric:ROAS(REVENUE=NEW_BOOKINGS, DN=D7)}} AS roas FROM MARKETING_UA_DS GROUP BY 1" --ds ds_abc123 --verbose
+graphit query "SELECT {{dim:INSTALL_MONTH}}, {{metric:ROAS(REVENUE=NEW_BOOKINGS, DN=D7)}} AS roas FROM MARKETING_UA_DS GROUP BY 1" --ds MARKETING_UA_DS --verbose
 ```
 
 Defaults and errors:

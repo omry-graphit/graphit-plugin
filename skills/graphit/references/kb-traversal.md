@@ -29,7 +29,7 @@ Which `graphit kb` read command answers each question, and how to present the re
 `graphit kb explore table ORDERS` - returns the table's column schema (names, types, descriptions) plus `metric_count`/`dimension_count`/`rule_count` and every bound metric (collapsed to templates, each with a `variant_count`), dimension, and rule whose SQL references ORDERS. The counts include child variants; the lists stay collapsed.
 
 ### "What columns does this table or data source have?" (read the schema)
-`graphit kb explore table <NAME>` (or `graphit kb get table <NAME>`) returns the column schema - names, types, descriptions - straight from the knowledge base. This is how you read a table's schema; never `DESCRIBE` it (only read-only SELECT runs through `graphit query`, so DESCRIBE/SHOW/DDL are rejected). If a data source was just created and not yet scanned, the KB has no columns for it yet - read its shape with `graphit query "SELECT * FROM <NAME> LIMIT 0" --ds <id>`, or run `graphit ds verify <id>` to scan it into the KB.
+`graphit kb explore table <NAME>` (or `graphit kb get table <NAME>`) returns the column schema - names, types, descriptions - straight from the knowledge base. This is how you read a table's schema; never `DESCRIBE` it (only read-only SELECT runs through `graphit query`, so DESCRIBE/SHOW/DDL are rejected). If a data source was just created and not yet scanned, the KB has no columns for it yet - read its shape with `graphit query "SELECT * FROM <NAME> LIMIT 0" --ds <NAME>`, or run `graphit ds verify <id>` to scan it into the KB.
 
 ### "What joins with MARKETING_UA_DS?"
 `graphit kb explore table MARKETING_UA_DS`, then read the relationships in the response (the documented JOINs involving that table).

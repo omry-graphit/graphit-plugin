@@ -13,7 +13,7 @@ const user = graphit.filter('user', { label: 'User', default: [] }) // multi-sel
 graphit.cascade('#user-list', {
   column: 'USER_NAME',                  // distinct values of this column
   source: 'users_table',               // table name (or a subquery)
-  dataSourceId: 'ds_abc',
+  dataSourceId: 'USERS_TABLE',
   filters: () => ({ ORG: org.get() }),  // upstream constraints; empty values skipped
   deps: ['org'],                        // refetch when org changes
   selection: user,                      // optional: prune selected users no longer in this org
@@ -51,7 +51,7 @@ Bind a chart to the range with two scalar params and a `BETWEEN`:
 ```js
 graphit.bind('#rev', {
   sql: 'SELECT day, SUM(rev) AS rev FROM orders WHERE day BETWEEN :start_date AND :end_date GROUP BY 1',
-  dataSourceId: 'ds_abc',
+  dataSourceId: 'ORDERS',
   params: () => ({ start_date: dr.start, end_date: dr.end }),
   deps: dr.deps,
   render: (r, el) => graphit.chart(el, { type: 'area', data: r.data, x: 'day', y: 'rev' }),

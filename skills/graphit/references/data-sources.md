@@ -8,8 +8,10 @@ Always prefer a cached data source over the live warehouse. Check what exists wi
 
 | Situation | Command | Speed |
 |---|---|---|
-| The table has a cached data source | `graphit query "SQL" --ds <id>` | roughly 100ms, DuckDB |
+| The table has a cached data source | `graphit query "SQL" --ds <NAME>` | roughly 100ms, DuckDB |
 | No data source covers the table | `graphit query "SQL" --warehouse --connection <id>` | roughly 10s, Snowflake |
+
+`--ds` takes the data source **name** (the same name you SELECT FROM, e.g. `... FROM MARKETING_UA_DS ... --ds MARKETING_UA_DS`); a full id or unique id-prefix also resolves.
 
 If no data source covers the table the user needs, propose creating one for future speed rather than defaulting to repeated warehouse queries. Dialect differs by route (DuckDB for `--ds`, Snowflake for `--warehouse`); see `sql-reference.md`.
 

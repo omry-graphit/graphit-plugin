@@ -117,7 +117,7 @@ When the query feeds a canvas `graphit.resolve()` call, write it in the cache-fr
 
 ## Data source routing
 
-Always prefer a cached data source (`graphit query "SQL" --ds <id>`, roughly 100ms via DuckDB) over a live warehouse query (`graphit query "SQL" --warehouse --connection <id>`, roughly 10s via Snowflake). The full routing table, the `ds list` output template, and the source-shape guidance live in `data-sources.md`.
+Always prefer a cached data source (`graphit query "SQL" --ds <NAME>`, roughly 100ms via DuckDB) over a live warehouse query (`graphit query "SQL" --warehouse --connection <id>`, roughly 10s via Snowflake). Pass the data source name to `--ds` - the same name you SELECT FROM (a full id or unique id-prefix also works). The full routing table, the `ds list` output template, and the source-shape guidance live in `data-sources.md`.
 
 ## Percent scaling
 
