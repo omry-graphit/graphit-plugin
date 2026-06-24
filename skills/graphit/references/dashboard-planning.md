@@ -84,7 +84,7 @@ Purpose before data. The first response should mirror the user's intent and ask 
 
 ## Performance
 
-Live data goes through `graphit.resolve()`, which is rate-limited per user per dashboard. Budget your queries per interaction - batch them, reuse trend data for KPIs, split targeted refreshes, and never poll. The full rate-limit budget and the efficient-refresh patterns live in `runtime.md`.
+Live data goes through `graphit.resolve()`, which is rate-limited per user per dashboard. Budget your queries per interaction - batch them, reuse trend data for KPIs, split targeted refreshes, and never poll. When one query feeds several graphs, anchor every graph it feeds with `targetEntityIds` so each entity's details panel reflects the live filtered query. The full rate-limit budget and the efficient-refresh patterns live in `runtime.md`.
 
 ## Pre-Build Checklist
 

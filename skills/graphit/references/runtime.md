@@ -36,6 +36,8 @@ const result = await graphit.resolve({
 
 - `dataSourceId` is the data source name (the same table you SELECT FROM); its id or a unique id-prefix also works.
 - `target` (optional, a CSS selector or element) shows a blur and spinner overlay while loading and removes it on completion.
+- `targetEntityIds` (optional, `string[]`) - the `data-graphit-id`s of OTHER graphs this one result also renders into; the platform records the live filtered query for each so their details panels reflect filters, not just the `target` graph.
+- `sourceEntityId` (optional) - the `data-graphit-id` of the graph that owns this query, for a `target`-less resolve that feeds several graphs (pair with `targetEntityIds`).
 - `maxRows` (optional) defaults to **10,000 rows** and may be raised up to a cap of **50,000 rows**. A dashboard query should aggregate to a chartable grain well under the default; reach for a higher value only for a genuine row-level export, and never above the cap.
 - `result.data` is an array of row objects you render however you want.
 
@@ -125,7 +127,7 @@ A resolve query that follows these shapes serves from a semantic cache in roughl
 
 - **Single refresh function.** Put all queries in ONE `Promise.all` inside one `refresh()` function so they share the same time window. NEVER scatter `graphit.resolve()` across independent event handlers or timeouts - that turns one user action into several bursts.
 - **Count queries per interaction.** 6 charts is 6 requests per filter change, about 20 changes per minute of budget; 12 charts is about 10 changes per minute. With 10 or more charts and 3 or more filters, debounce filter changes (300ms) so rapid clicks do not each trigger a full refresh.
-- **Reuse trend data for KPIs.** If you already fetch a weekly time series, derive the KPI total and its sparkline from that result in JS instead of running a separate aggregate query - one query serves both.
+- **Reuse trend data for KPIs.** If you already fetch a weekly time series, derive the KPI total and its sparkline from that result in JS instead of running a separate aggregate query - one query serves both. When one result serves several graphs like this, anchor every graph it feeds with `targetEntityIds` (keep `target` on the primary) so each graph's details panel shows the live filtered query, not stale base SQL.
 - **Avoid redundant refreshes.** If a filter affects only some charts, split into targeted refresh functions (`refreshKPIs()`, `refreshCharts()`) so unchanged sections do not re-query.
 - **No polling.** NEVER use `setInterval(refresh, ...)`. Data sources update on their own schedule; a polling dashboard burns the entire budget.
 
