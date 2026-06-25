@@ -47,7 +47,7 @@ Error handling: `graphit.resolve()` rejects on timeout (120s), bad SQL, or an in
 
 ## The entity contract
 
-Every visible element - chart, KPI card, table, text section - must be wrapped so the platform can see it. Without `data-graphit-*` attributes the element is invisible to the platform: no click info, no @ mentions, no KB provenance. Each wrapped element needs ALL FOUR attributes:
+Every visible element - chart, KPI card, table, text section - must be wrapped so the platform can see it. Without `data-graphit-*` attributes the element is invisible to the platform: no click info, no @ mentions, no KB provenance. Wrapping is also what gives the element its 3-dot menu (hover, top-right) and its details panel - data source, governed SQL, KB lineage, and live results: a hand-rolled chart and a `graphit.chart()` chart are equally first-class once wrapped, with the same 3-dot menu and inspection a graph built in the Graphit UI has. Never rebuild a custom dashboard as native graphs to gain the menu or the data sources; just add the wrapper. Each wrapped element needs ALL FOUR attributes:
 
 ```html
 <div data-graphit-id="revenue-trend"

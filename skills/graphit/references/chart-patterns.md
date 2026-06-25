@@ -1,6 +1,6 @@
 # Chart Patterns
 
-The chart types documented below are the native `graphit.chart()` types. Anything not listed here (treemap, sankey, maps, box) is hand-rolled SVG - see `chart-selection.md` for the native-vs-hand-rolled split. All data comes from `graphit.resolve()` - never embed static data.
+The chart types documented below are the native `graphit.chart()` types. Anything not listed here (treemap, sankey, maps, box) is hand-rolled SVG - see `chart-selection.md` for the native-vs-hand-rolled split. "Native" here means only that `graphit.chart()` draws it; a hand-rolled SVG chart is equally first-class - same 3-dot menu, data source, and provenance - once wrapped in `data-graphit-*`. All data comes from `graphit.resolve()` - never embed static data.
 
 **NEVER use `<canvas>`.** Canvas produces blurry charts inside the sandboxed iframe due to DPI scaling issues.
 

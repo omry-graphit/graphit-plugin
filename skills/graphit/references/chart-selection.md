@@ -17,7 +17,7 @@ When ambiguous, propose 2-3 options and ask the user. Do not guess.
 
 ## Full Chart Type Table
 
-`graphit.chart()` renders only the **native** types below and throws `Unsupported graphit.chart type` on anything else. The iframe still lets you draw anything with inline SVG/CSS, so the **hand-rolled** shapes are fully buildable - just not through `graphit.chart()` (see `chart-patterns.md`). Never pass a hand-rolled type name to `graphit.chart()`.
+`graphit.chart()` renders only the **native** types below and throws `Unsupported graphit.chart type` on anything else. The iframe still lets you draw anything with inline SVG/CSS, so the **hand-rolled** shapes are fully buildable - just not through `graphit.chart()` (see `chart-patterns.md`). Never pass a hand-rolled type name to `graphit.chart()`. "Native" and "hand-rolled" describe only which draw function you call, not platform status: both become equally first-class - same 3-dot menu, data source, and provenance - once wrapped in `data-graphit-*`, so a hand-rolled chart is never a lesser citizen.
 
 | Data shape | Chart type | Render with | Columns |
 |---|---|---|---|
