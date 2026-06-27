@@ -1,6 +1,6 @@
 {
   "name": "graphit",
-  "version": "0.2.52",
+  "version": "0.2.68",
   "description": "Build custom HTML dashboards from real data using the Graphit CLI. KB-aware queries, entity wrapping, cached data sources.",
   "author": {
     "name": "Graphit",

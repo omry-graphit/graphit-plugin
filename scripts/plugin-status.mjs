@@ -13,7 +13,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 // Project #246: GRAPHIT_REGISTRY_URL lets tests point at a local server and
 // supports private/enterprise registries; defaults to the public npm registry.
@@ -513,16 +513,39 @@ function tryParseJson(value) {
   }
 }
 
+// Feature #675: read session liveness locally (zero network) so the single
+// startup check covers version AND auth. logged_in = a credentials file holding
+// a refresh_token is present; email powers the greeting. The real token refresh
+// stays lazy (first API call), so this is a liveness + identity signal, not a
+// guarantee the token still validates. Pure (takes parsed creds) for testing;
+// the file read (homedir/.graphit/credentials.json) mirrors auth/credentials.ts.
+export function readAuthState(creds) {
+  if (
+    !creds ||
+    typeof creds !== "object" ||
+    typeof creds.refresh_token !== "string" ||
+    creds.refresh_token.length === 0
+  ) {
+    return { logged_in: false, email: null };
+  }
+  return {
+    logged_in: true,
+    email: typeof creds.email === "string" && creds.email ? creds.email : null,
+  };
+}
+
 async function collectStatus() {
   const bundleInfo = readBundleInfo(pluginRoot);
   const packageName = bundleInfo.packageName;
   const currentVersion = bundleInfo.currentVersion;
+  const auth = readAuthState(tryReadJson(join(homedir(), ".graphit", "credentials.json")));
   if (!currentVersion) {
     return {
       packageName,
       sourceOfTruth: "plugin-bundle",
       currentVersion: null,
       latestVersion: null,
+      auth,
       metadata: [],
       findings: [
         {
@@ -623,6 +646,7 @@ async function collectStatus() {
     sourceOfTruth: "plugin-bundle",
     currentVersion,
     latestVersion,
+    auth,
     metadata,
     findings,
   };
@@ -689,27 +713,41 @@ function buildHookNudges(status) {
   };
 }
 
-if (hookEvent && !shouldRunForPrompt()) {
-  process.exit(0);
-}
-
-const status = await collectStatus();
-
-if (args.has("--json")) {
-  console.log(JSON.stringify(status, null, 2));
-} else if (hookEvent) {
-  const nudge = buildHookNudges(status);
-  if (nudge) {
-    console.log(JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: hookEvent,
-        additionalContext: nudge.context,
-      },
-    }));
-    nudge.persist();
+// Feature #675: run the CLI/hook flow only when executed directly (the `plugin
+// status` command and the hooks both invoke `node plugin-status.mjs ...`), not
+// when a test imports this module for the exported pure helpers - otherwise the
+// top-level process.exit would kill the test runner.
+function isMainModule() {
+  try {
+    return import.meta.url === pathToFileURL(process.argv[1]).href;
+  } catch {
+    return true;
   }
-} else if (!args.has("--quiet") || status.findings.length > 0) {
-  console.log(formatPlain(status));
 }
 
-process.exit(status.findings.length > 0 && args.has("--fail-on-findings") ? 1 : 0);
+if (isMainModule()) {
+  if (hookEvent && !shouldRunForPrompt()) {
+    process.exit(0);
+  }
+
+  const status = await collectStatus();
+
+  if (args.has("--json")) {
+    console.log(JSON.stringify(status, null, 2));
+  } else if (hookEvent) {
+    const nudge = buildHookNudges(status);
+    if (nudge) {
+      console.log(JSON.stringify({
+        hookSpecificOutput: {
+          hookEventName: hookEvent,
+          additionalContext: nudge.context,
+        },
+      }));
+      nudge.persist();
+    }
+  } else if (!args.has("--quiet") || status.findings.length > 0) {
+    console.log(formatPlain(status));
+  }
+
+  process.exit(status.findings.length > 0 && args.has("--fail-on-findings") ? 1 : 0);
+}

@@ -2,10 +2,10 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.52"
+skill_version: "0.2.68"
 ---
 
-<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 24,576. This router carries the always-loaded collaboration and pace-control spine (brainstorm, the ask-user tool, present-result, plan-next), the hard constraints including the scope gate, the investigation loop, and the auto-generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed on every turn, so by the co-load test they cannot be deferred to a reference. Command knowledge co-loads in particular: scoping, the readiness gate, querying, and delivery each need it. The marker sits after the YAML frontmatter (not before) so the skill loader and sync-plugin-version.mjs still parse the frontmatter. Reviewed 2026-06-18. -->
+<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 25,600. This router always-loads the collaboration/pace spine (brainstorm, ask-user, present-result, plan-next), the hard constraints + scope gate, the investigation loop, and the generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed every turn, so they cannot defer to a reference. The marker sits after the YAML frontmatter so the loader and sync-plugin-version.mjs still parse it. Reviewed 2026-06-25. -->
 
 # Graphit CLI
 
@@ -123,7 +123,7 @@ Ad-hoc, wrong vs right:
 
 ## Health
 
-Run graphit plugin status at session start, and any time the CLI behaves unexpectedly; follow its remediation. Full failure catalog and permission errors (403 / 404 / 423): references/operations.md.
+At session start run `graphit plugin status --json` and read references/operations.md, then greet and act on the 2x2 there - the call returns version state plus an `auth` block. Never report ready off the version check alone. Re-run plugin status on unexpected CLI behavior; follow its remediation. Failures and permission errors (403 / 404 / 423): references/operations.md.
 
 ## References
 
@@ -141,7 +141,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.52 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.68 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -163,7 +163,6 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `kb create metric` - Create a new metric - `--name --sql --table --description --topics --default-dimensions --parameters --parameters-file --skip-validate --unverified`
 - `kb create dimension` - Create a new dimension - `--name --expr --table --type --output-type --description --topics --skip-validate --unverified`
 - `kb create rule` - Create a new rule. Without --apply-on the rule governs the whole --table, which cascades to every metric and dimension on it. Use --apply-on metric:NAME / dimension:NAME to govern only specific assets instead. A rule must apply to at least one asset (targetless rules are rejected). - `--name --sql --table --description --topics --constraint --apply-on --override-policy --skip-validate --unverified`
-- `kb create table` - Tables are created via data sources. Use `graphit ds create`.
 - `kb create domain` - Create a new domain - `--name --description --color`
 - `kb create synonym` - Create a new synonym - `--term --canonical --type --description --unverified`
 - `kb create relationship` - Create a new relationship (JOIN between tables) - `--name --primary-table --primary-column --related-table --related-column --description`
@@ -206,11 +205,9 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `dashboard export <id>` - Export dashboard as PNG or PDF - `--format --output`
 - `dashboard delete <id>` - Delete a custom dashboard (requires --yes) - `--yes`
 
-**connector** - Connection management
+**connector** - Connection management. OAuth and GitHub connections are set up in the Graphit web app.
 - `connector list` - List active connections
 - `connector add snowflake-keypair` - Add Snowflake via keypair auth - `--account --user --key --warehouse --role --database`
-- `connector add snowflake-oauth` - Add Snowflake via OAuth (opens browser)
-- `connector add github` - Add GitHub connection (opens browser)
 - `connector test <id>` - Test a connection
 - `connector remove <id>` - Remove a connection (requires --yes) - `--yes`
 

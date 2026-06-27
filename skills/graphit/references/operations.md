@@ -17,16 +17,14 @@ Governance is enforced server-side by the query gateway. There is no client-side
 
 ## Session start banner
 
-Before anything else, run `graphit plugin status` and show a version banner:
+Before anything else, run `graphit plugin status --json`: one call returns the version state and an `auth` block (`logged_in`, `email`). That is the whole startup check - do not chain more calls. Read whether an update is available and whether the session is live, then greet and act on the 2x2:
 
-```
-Graphit
-  Skill:  {skill_version from the router frontmatter}
-  CLI:    {output of graphit --version}
-  Status: {OK, or the action the plugin status reports}
-```
+- Current + signed in: "Hi {auth.email}, what can we do today?" - proceed.
+- Current + signed out: "Let's get you signed in," then run `graphit auth login` for them, once. It opens a browser and blocks on a localhost callback (~2 min) and cannot complete in a non-interactive, headless, or sandboxed context - if it fails or cannot run, fall back to telling the user to run it themselves; never loop. Re-check, then proceed.
+- Update available + signed in: "Hi {auth.email} - a new version is out. Update first?" Any gap counts (major, minor, or patch). On yes, update, then proceed.
+- Update available + signed out: "You're not signed in and there's a new version. Update first, then sign in?" Update, then sign in, then proceed.
 
-If the status reports action needed, show the exact remediation it prints before proceeding. If it fails with "command not found" or "unknown command", the CLI is too old: show `CLI: {version} (outdated)` and tell the user to update with `npm install -g @graphit/cli@latest`. Do not proceed with an outdated CLI, because commands and flags in this skill may not exist in old versions.
+Updates are always a one-tap ask, never silent; auto sign-in only when the version is current. Never report ready off the version check alone - readiness means a live session. Update mechanics (which command, custom prefixes, plugin vs binary) live in "Install and update" below. If `plugin status` errors with "command not found" / "unknown command", the CLI is too old - show `CLI: {version} (outdated)` and update with `npm install -g @graphit/cli@latest` first.
 
 ## Health gate
 
@@ -50,14 +48,7 @@ For the exact flags, run the command with `--help` (for example `graphit setup -
 
 ## Legacy copied-file setup
 
-After an intentional legacy copied-file setup completes, offer to add a Graphit section to the project instructions so future sessions know Graphit is available. Do not suggest legacy setup for Claude Code or Codex when the plugin is available. Suggested snippet:
-
-```
-## Graphit
-Use the Graphit skill to build custom HTML dashboards from real data.
-Run `graphit ds list` to see cached data sources before querying.
-Run `graphit kb list metric` to explore available metrics and dimensions.
-```
+After an intentional legacy copied-file setup completes, offer to add a short Graphit section to the project instructions so future sessions know Graphit is available - what the skill does, plus `graphit ds list` and `graphit kb list metric` to explore. Do not suggest legacy setup for Claude Code or Codex when the plugin is available.
 
 ## Permission errors
 
