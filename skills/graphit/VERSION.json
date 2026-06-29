@@ -1,5 +1,5 @@
 {
   "package": "@graphit/cli",
-  "version": "0.2.68",
+  "version": "0.2.73",
   "source": "cli/package.json"
 }

@@ -54,14 +54,14 @@ graphit.bind(document.getElementById('revenue-chart'), {
   params: () => ({ country: graphit.state.get('country') }),
   deps: ['country'],      // state keys that trigger re-resolve (inferred from params if omitted)
   render: (result, el) => {
-    graphit.chart(el, { type: 'line', data: result.data, x: 'date', y: 'revenue' });
+    graphit.graph(el, { type: 'line', data: result.data, x: 'date', y: 'revenue' });
   }
 });
 ```
 
 - Runs once immediately, then re-runs on any dep change
 - Multi-key changes (e.g. a saved view applying 3 filters) debounce into one re-resolve per element
-- `render` is your code - call `graphit.chart`, `graphit.table`, or hand-roll SVG/CSS
+- `render` is your code - call `graphit.graph`, `graphit.table`, or hand-roll SVG/CSS
 
 ## Safe Parameter Binding (`:name` syntax)
 
@@ -110,7 +110,7 @@ One control, wired to one reactive chart. The `<select>` is your own markup; `bi
     params: () => ({ region: region.get() }),
     deps: ['region'],
     render: (result, el) => {
-      graphit.chart(el, { type: 'area', data: result.data, x: 'month', y: 'revenue', valueFormat: 'currency' });
+      graphit.graph(el, { type: 'area', data: result.data, x: 'month', y: 'revenue', valueFormat: 'currency' });
     }
   });
 </script>

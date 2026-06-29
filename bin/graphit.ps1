@@ -7,7 +7,7 @@ if (-not $env:GRAPHIT_PLUGIN_ROOT) {
 }
 
 # graphit:floor (stamped by scripts/sync-plugin-version.mjs from cli/package.json)
-$FloorVersion = "0.2.68"
+$FloorVersion = "0.2.73"
 
 $PackageName = "@graphit/cli"
 # Strict semver: anything else is rejected so a tampered cache cannot inject.
@@ -35,6 +35,13 @@ if (Test-Path -LiteralPath $cacheFile) {
 if (-not (Get-Command npx -ErrorAction SilentlyContinue)) {
   Write-Error "graphit: npx (Node.js >=18) is required but was not found on PATH."
   exit 127
+}
+
+# Feature #679: see the bash wrapper. Drop NODE_USE_SYSTEM_CA unless the user opted
+# in, so Node uses its bundled CA (reading the system trust store crashes under the
+# Claude Code sandbox on macOS; bundled CA already verifies Graphit's API).
+if (-not $env:GRAPHIT_USE_SYSTEM_CA) {
+  Remove-Item Env:\NODE_USE_SYSTEM_CA -ErrorAction SilentlyContinue
 }
 
 # Safe argv: $version is strict-semver-validated; user args forwarded verbatim.

@@ -61,6 +61,8 @@ graphit auth logout     # Clear stored credentials
 
 The CLI talks to `https://api.graphit-app.com` by default. Set `GRAPHIT_API_URL` to point at a different backend.
 
+TLS connections are verified against Node's bundled CA certificates, which already cover the public Graphit API. If you are behind a corporate TLS-inspecting proxy whose root certificate lives only in your operating system's trust store, set `GRAPHIT_USE_SYSTEM_CA=1` to also trust the system store. It is off by default because reading the system store is unnecessary for normal use and can crash under sandboxed agent runtimes (e.g. an editor's command sandbox on macOS, where keychain access is blocked).
+
 ## Commands
 
 | Group | What it does |

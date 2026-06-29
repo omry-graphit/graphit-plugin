@@ -67,7 +67,7 @@ The slide deck includes built-in navigation:
 
 ## Live Data Inside Slides
 
-`graphit.resolve()` and `graphit.chart/table/kpi` work inside slides. All resolve calls fire on page load (cached queries are fast). Charts render into their target elements regardless of which slide is visible.
+`graphit.resolve()` and `graphit.graph/table/kpi` work inside slides. All resolve calls fire on page load (cached queries are fast). Charts render into their target elements regardless of which slide is visible.
 
 ```js
 // Slide with live entities
@@ -94,7 +94,7 @@ graphit.resolve({
   dataSourceId: "MARKETING_UA_DS",
   target: "#chart1"
 }).then(function(r) {
-  graphit.chart("#chart1", { type: "bar", data: r.data, x: "MEDIA_SOURCE", y: "spend", valueFormat: "currency" });
+  graphit.graph("#chart1", { type: "bar", data: r.data, x: "MEDIA_SOURCE", y: "spend", valueFormat: "currency" });
 });
 ```
 

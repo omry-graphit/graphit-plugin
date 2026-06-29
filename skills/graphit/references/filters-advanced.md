@@ -54,7 +54,7 @@ graphit.bind('#rev', {
   dataSourceId: 'ORDERS',
   params: () => ({ start_date: dr.start, end_date: dr.end }),
   deps: dr.deps,
-  render: (r, el) => graphit.chart(el, { type: 'area', data: r.data, x: 'day', y: 'rev' }),
+  render: (r, el) => graphit.graph(el, { type: 'area', data: r.data, x: 'day', y: 'rev' }),
 })
 ```
 

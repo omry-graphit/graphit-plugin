@@ -14,7 +14,7 @@ if [ -z "${GRAPHIT_PLUGIN_ROOT:-}" ]; then
 fi
 
 # graphit:floor (stamped by scripts/sync-plugin-version.mjs from cli/package.json)
-FLOOR_VERSION="0.2.68"
+FLOOR_VERSION="0.2.73"
 
 PACKAGE_NAME="@graphit/cli"
 # Strict semver: anything else is rejected so a tampered cache cannot inject.
@@ -44,6 +44,15 @@ fi
 if ! command -v npx >/dev/null 2>&1; then
   echo "graphit: npx (Node.js >=18) is required but was not found on PATH." >&2
   exit 127
+fi
+
+# Feature #679: Node reads the macOS keychain for TLS CA verification when
+# NODE_USE_SYSTEM_CA=1 (injected by some agent runtimes); the Claude Code sandbox
+# blocks keychain access -> a native crash on the first networked command. Drop it so
+# Node uses its bundled CA, which already verifies Graphit's API. Opt back into the
+# system trust store with GRAPHIT_USE_SYSTEM_CA=1 (corporate TLS-inspecting proxy).
+if [ -z "${GRAPHIT_USE_SYSTEM_CA:-}" ]; then
+  unset NODE_USE_SYSTEM_CA
 fi
 
 # Safe argv: the version is strict-semver-validated and passed as one quoted token,

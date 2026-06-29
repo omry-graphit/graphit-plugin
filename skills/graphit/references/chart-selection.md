@@ -17,22 +17,22 @@ When ambiguous, propose 2-3 options and ask the user. Do not guess.
 
 ## Full Chart Type Table
 
-`graphit.chart()` renders only the **native** types below and throws `Unsupported graphit.chart type` on anything else. The iframe still lets you draw anything with inline SVG/CSS, so the **hand-rolled** shapes are fully buildable - just not through `graphit.chart()` (see `chart-patterns.md`). Never pass a hand-rolled type name to `graphit.chart()`. "Native" and "hand-rolled" describe only which draw function you call, not platform status: both become equally first-class - same 3-dot menu, data source, and provenance - once wrapped in `data-graphit-*`, so a hand-rolled chart is never a lesser citizen.
+`graphit.graph()` renders the **standard** types below and throws an `unknown type` error on anything that is not a standard type, a saved template, or `'custom'`. The iframe still lets you draw anything: pass `type:'custom'` with a `draw(ctx)` function (responsive + themed, see `chart-patterns.md`) or hand-roll inline SVG/CSS. The **hand-rolled** shapes below are drawn that way, never passed as a standard type name. "Standard" and "hand-rolled" describe only which draw path you use, not platform status: both become equally first-class - same 3-dot menu, data source, and provenance - once wrapped in `data-graphit-*`, so a graph you draw is never a lesser citizen.
 
 | Data shape | Chart type | Render with | Columns |
 |---|---|---|---|
-| Time series | line / area | `graphit.chart` (native) | 1 temporal + 1 numeric |
-| Categories | bar | `graphit.chart` (native) | 1 categorical + 1 numeric |
-| Long category labels | horizontal-bar | `graphit.chart` (native) | 1 categorical + 1 numeric |
-| Part-whole (max 5 slices) | donut / pie | `graphit.chart` (native) | 1 categorical + 1 numeric |
-| Single metric | KPI card | `graphit.kpi` (native) | 1 numeric |
-| Stages | funnel | `graphit.chart` (native) | 1 categorical + 1 numeric |
-| Target / progress | gauge | `graphit.chart` (native) | 1 numeric |
-| Matrix (unpivoted) | heatmap | `graphit.chart` (native) | 2 categorical + 1 numeric |
-| Correlation | scatter | `graphit.chart` (native) | 2 numeric |
-| 3 variables | bubble | `graphit.chart` (native) | 3 numeric |
-| Inline trend | sparkline | `graphit.chart` (native) | 1 numeric series |
-| Detail / raw data | table | `graphit.table` (native) | any columns |
+| Time series | line / area | `graphit.graph` (standard) | 1 temporal + 1 numeric |
+| Categories | bar | `graphit.graph` (standard) | 1 categorical + 1 numeric |
+| Long category labels | horizontal-bar | `graphit.graph` (standard) | 1 categorical + 1 numeric |
+| Part-whole (max 5 slices) | donut / pie | `graphit.graph` (standard) | 1 categorical + 1 numeric |
+| Single metric | KPI card | `graphit.kpi` (standard) | 1 numeric |
+| Stages | funnel | `graphit.graph` (standard) | 1 categorical + 1 numeric |
+| Target / progress | gauge | `graphit.graph` (standard) | 1 numeric |
+| Matrix (unpivoted) | heatmap | `graphit.graph` (standard) | 2 categorical + 1 numeric |
+| Correlation | scatter | `graphit.graph` (standard) | 2 numeric |
+| 3 variables | bubble | `graphit.graph` (standard) | 3 numeric |
+| Inline trend | sparkline | `graphit.graph` (standard) | 1 numeric series |
+| Detail / raw data | table | `graphit.table` (standard) | any columns |
 | Hierarchy | treemap | hand-rolled SVG | 1 categorical + 1 numeric |
 | Flows | sankey | hand-rolled SVG | 2 categorical + 1 numeric |
 | Geographic | map | hand-rolled SVG | region or lat/lng + 1 numeric |
@@ -56,7 +56,7 @@ Position > length > angle > area > color.
 | KPI vs target | big-number + sparkline | gauge (unbounded) |
 | 2D matrix / cohort | heatmap | bar with 100+ |
 
-The native `graphit.chart` first choices here are line, bar, stacked-bar, scatter, bubble, funnel, heatmap, gauge, and sparkline. Treemap, histogram, and box are hand-rolled SVG (see the table above) - draw them, don't pass them to `graphit.chart()`.
+The standard `graphit.graph` first choices here are line, bar, stacked-bar, scatter, bubble, funnel, heatmap, gauge, and sparkline. Treemap, histogram, and box are hand-rolled SVG (see the table above) - draw them via `type:'custom'` or inline SVG, never pass them as a standard type name.
 
 ## Cardinality Guards
 

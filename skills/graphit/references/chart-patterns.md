@@ -1,6 +1,6 @@
 # Chart Patterns
 
-The chart types documented below are the native `graphit.chart()` types. Anything not listed here (treemap, sankey, maps, box) is hand-rolled SVG - see `chart-selection.md` for the native-vs-hand-rolled split. "Native" here means only that `graphit.chart()` draws it; a hand-rolled SVG chart is equally first-class - same 3-dot menu, data source, and provenance - once wrapped in `data-graphit-*`. All data comes from `graphit.resolve()` - never embed static data.
+The chart types documented below are the standard `graphit.graph()` types (set via `config.type`). Anything not listed here (treemap, sankey, maps, box) you draw yourself - as a `type:'custom'` graph (responsive + themed, see below) or raw hand-rolled SVG; see `chart-selection.md` for the split. A graph you draw is equally first-class - same 3-dot menu, data source, and provenance - once wrapped in `data-graphit-*`. All data comes from `graphit.resolve()` - never embed static data.
 
 **NEVER use `<canvas>`.** Canvas produces blurry charts inside the sandboxed iframe due to DPI scaling issues.
 
@@ -47,11 +47,28 @@ Config: `y`, `width` (default 120), `height` (default 32), `label`, `showValue` 
 ## Value formatting
 `valueFormat` (charts), `format` (`kpi`/`gauge`), and `columnFormats` (`graphit.table`, mapping column name -> format) all take `"currency"`, `"percent"`, or `"number"`. **`"percent"` only appends `%` - it does NOT multiply by 100.** A 0-1 ratio renders as `0.42%`, not `42%`; multiply ratios/rates by 100 in SQL (`* 100.0 ... AS x_pct`) so the value is already 0-100. Table columns without a `columnFormats` entry render raw.
 
+## Bespoke responsive SVG (`type: 'custom'`)
+
+For a custom look, draw your own SVG through the same entry: `graphit.graph(el, { type: 'custom', draw: (ctx) => marks })`. Return the INNER marks only (`<rect>`/`<path>`/`<text>`/`<g>`) as a string; the runtime wraps them in `<svg viewBox="0 0 W H">` sized to the container, so 1 unit = 1 CSS pixel and text stays one size at any width. Unlike raw hand-rolled `<svg>`, a custom graph is responsive and re-themes on dark for free.
+
+`ctx` provides: `ctx.width`/`ctx.height` (px; height from `config.height`, default 280; width = measured container); token colors (dark-free via cascade, prefer these) `ctx.accent`, `ctx.fg`, `ctx.fgMuted`, `ctx.fgSubtle`, `ctx.border`, `ctx.surface`, `ctx.surfaceSunken`, `ctx.palette`, `ctx.color(i)` (cycles palette, honors `config.colors`); `ctx.resolved.*` (same names + `ctx.resolved.color(i)` as hex - use ONLY to compute/mix colors); helpers `ctx.fmt(v, kind)`, `ctx.esc(v)`, `ctx.num(v)`, `ctx.clamp(n, min, max)`, `ctx.safeColor(value, fallback)`.
+
+Escaping is yours: data-derived text through `ctx.esc()`, author colors through `ctx.safeColor()` - the runtime does not auto-escape your marks. Opt out per concern with `responsive: false` (render once) or `themed: false` (no dark re-draw).
+
+```js
+const r = await graphit.resolve({ sql, dataSourceId: "ORDERS_DS", target: "#chart" });
+graphit.graph("#chart", { type: "custom", draw: (ctx) => r.data.map(function (row, i) {
+  var h = ctx.num(row.value) / 100 * ctx.height, x = (ctx.width / r.data.length) * i;
+  return '<rect x="' + x + '" y="' + (ctx.height - h) + '" width="22" height="' + h +
+    '" fill="' + ctx.color(i) + '"><title>' + ctx.esc(row.label) + '</title></rect>';
+}).join("") });
+```
+
 ## Saved templates
 
 Templates are reusable chart components saved to the org's KB. At dashboard load, the SDK fetches the org's template bundle and registers them alongside built-in types.
 
-**Usage:** `graphit.TEMPLATE_NAME(el, {data, value: 'revenue', label: 'Revenue'})` or via `graphit.chart(el, {type: 'TEMPLATE_NAME', ...})`.
+**Usage:** `graphit.TEMPLATE_NAME(el, {data, value: 'revenue', label: 'Revenue'})` or via `graphit.graph(el, {type: 'TEMPLATE_NAME', ...})`.
 
 Templates are org-specific - they exist only when users have saved them. The agent's context provider lists available templates each turn. Use `list_templates()` to discover them and `get_template(name)` to read the render code.
 
@@ -59,28 +76,14 @@ Templates are org-specific - they exist only when users have saved them. The age
 
 Use theme CSS variables for all structural colors so charts adapt to light and dark mode. The full token table and usage rules live in `graphit-style.md` - that is the single source; do not re-list tokens here. Chart series colors come from the runtime palette automatically.
 
-## Tooltip pattern (for hand-rolled charts)
+## Tooltips (hand-rolled and custom SVG)
 
-Runtime charts use `<title>` elements for native browser tooltips. For hand-rolled charts, add ONE shared tooltip div and always escape user data with a manual HTML escape function before passing to `showTooltip()`:
-
-```html
-<div id="tooltip" style="position:fixed;pointer-events:none;z-index:100;
-  background:var(--graphit-surface-raised);color:var(--graphit-fg);
-  border:1px solid var(--graphit-border);border-radius:8px;
-  padding:10px 14px;font-size:13px;line-height:1.5;
-  box-shadow:0 4px 12px rgba(0,0,0,0.15);opacity:0;transition:opacity 0.15s;
-  max-width:240px"></div>
-```
+Standard types and `type:'custom'` graphs get native browser tooltips from `<title>` children (escape the text with `ctx.esc()`). For a styled tooltip on hand-rolled SVG, add ONE shared tooltip div (`position:fixed; pointer-events:none; opacity:0`, themed with `var(--graphit-*)` tokens) and ALWAYS HTML-escape user data first:
 
 ```js
-var tooltip = document.getElementById('tooltip');
-function showTooltip(e, html) {
-  tooltip.innerHTML = html;
-  tooltip.style.opacity = '1';
-  var tx = Math.min(e.clientX + 12, window.innerWidth - 260);
-  var ty = e.clientY - tooltip.offsetHeight - 8;
-  tooltip.style.left = tx + 'px';
-  tooltip.style.top = (ty < 4 ? e.clientY + 16 : ty) + 'px';
-}
-function hideTooltip() { tooltip.style.opacity = '0'; }
+var tip = document.getElementById('tooltip');
+function showTooltip(e, html) { tip.innerHTML = html; tip.style.opacity = '1';
+  tip.style.left = Math.min(e.clientX + 12, window.innerWidth - 260) + 'px';
+  tip.style.top = (e.clientY - tip.offsetHeight - 8) + 'px'; }
+function hideTooltip() { tip.style.opacity = '0'; }
 ```
