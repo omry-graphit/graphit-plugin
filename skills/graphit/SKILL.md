@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.73"
+skill_version: "0.2.82"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 25,600. This router always-loads the collaboration/pace spine (brainstorm, ask-user, present-result, plan-next), the hard constraints + scope gate, the investigation loop, and the generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed every turn, so they cannot defer to a reference. The marker sits after the YAML frontmatter so the loader and sync-plugin-version.mjs still parse it. Reviewed 2026-06-25. -->
@@ -141,7 +141,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.73 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.82 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -180,7 +180,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `kb delete <type> <name>` - Delete a KB entity (requires --yes flag) - `--yes`
 
 **query** - Run SQL against a cached data source or live Snowflake
-- `query <sql>` - Run SQL against a cached data source or live Snowflake - `--ds --warehouse --connection --limit --override-rules --verbose --approve-adhoc --timeout`
+- `query <sql>` - Run SQL against a cached data source or live Snowflake - `--ds --warehouse --connection --limit --override-rules --verbose --adhoc-reason --timeout`
 
 **metadata** - Snowflake metadata
 - `metadata schemas` - List Snowflake schemas - `--connection`
@@ -192,6 +192,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `ds refresh [ids...]` - Refresh data sources (use --all for all, or pass one or more IDs). On a breaking schema change a refresh is paused (status 'schema_changed') and the old data keeps serving; re-run with --force to accept the new schema. - `--all --no-wait --skip-empty --force`
 - `ds verify <id>` - Scan an unverified data source's schema and review it. Warehouse/SQL sources print a verification link; add --accept-schema to accept the AI schema and activate from the CLI. File uploads activate automatically. - `--force --accept-schema`
 - `ds update <id>` - Update data source governance settings - `--governed-mode --max-rows`
+- `ds refresh-config <id>` - Configure a data source's refresh mode (full or incremental/watermark) and settings. - `--mode --watermark-column --watermark-type --merge-key --lookback --reconciliation`
 
 **dashboard** - Custom dashboard management
 - `dashboard list` - List custom dashboards - `--view --team`

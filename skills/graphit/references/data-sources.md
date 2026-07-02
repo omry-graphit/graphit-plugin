@@ -15,27 +15,16 @@ Always prefer a cached data source over the live warehouse. Check what exists wi
 
 If no data source covers the table the user needs, propose creating one for future speed rather than defaulting to repeated warehouse queries. Dialect differs by route (DuckDB for `--ds`, Snowflake for `--warehouse`); see `sql-reference.md`.
 
-## Why source shape decides dashboard speed
-
-When you change a dashboard filter (e.g. switch country), Graphit answers from a cached, pre-aggregated result instead of re-scanning the whole source - but only when the source is small and already aggregated to the grain you query. Build the source as one row per the grain you'll chart (e.g. month x country x channel) with only the columns you use, and filter changes return in milliseconds. Pull in raw ungrouped rows, hundreds of columns, or thousands-of-values dimensions and the result is too big to cache - every filter change re-scans the entire source and is slow.
-
 ## Build it right (in the source SQL)
 
-1. **Pre-aggregate to your query grain.** Use `GROUP BY` so the source has one row per the grain you'll chart (month x country x channel), not one row per raw event. The single biggest speed lever.
-2. **Select only the columns you'll use.** Every column is downloaded and cached on each query; hundreds of columns slow every dashboard, even ones that touch a few.
-3. **Keep high-cardinality dimensions out of the base.** Individual ad / campaign / adset names (thousands of values) explode aggregation cost and block filter-caching. If you need them, build a separate filtered drill-down source.
-4. **Aim small.** A source whose typical query aggregates a few thousand rows is fast and cacheable; a 50M-row, 400-column raw source is slow no matter how the dashboard is written. The size guardrails (>100M rows / >5GB) are the ceiling, not the target.
-
-## Quick check
+Filter changes answer from a cached, pre-aggregated result only when the source is small and aggregated to the grain you query; pull in raw rows, hundreds of columns, or thousands-of-values dimensions and it is too big to cache, so every filter change re-scans the whole source and is slow. Set the shape at creation on these four levers:
 
 | Lever | Build it right | Anti-pattern |
 |---|---|---|
-| Grain | `GROUP BY` to the grain you chart | One row per raw event |
-| Columns | Only the columns dashboards use | 400+ columns "just in case" |
+| Grain | `GROUP BY` to the grain you chart (the single biggest lever) | One row per raw event |
+| Columns | Only the columns dashboards use (each is downloaded + cached per query) | 400+ columns "just in case" |
 | Cardinality | Low-card dimensions in the base; ad/campaign names in a separate drill-down | Thousands-of-values dimensions in the base grain |
 | Size | A few-thousand-row typical aggregation | Sitting at the 100M-row / 5GB ceiling |
-
-Build the source small and pre-aggregated, and dashboards on it stay fast and filterable.
 
 ## Slow-shape signals to watch for
 
@@ -85,6 +74,26 @@ graphit ds refresh <id1> <id2>
 ```
 
 The CLI fires all refreshes in parallel and polls until every source is ready. Large sources (millions of rows) may take 30-60s; the CLI handles this gracefully without timeout errors. Use `--no-wait` when you only need to trigger the refresh and will check status later via `graphit ds list`.
+
+## Incremental refresh and early-filtering (advanced)
+
+Incremental mode fetches only rows past a watermark column and upserts by a merge key, instead of re-running the whole query. Configure it on a scanned source (creator only):
+
+```bash
+graphit ds refresh-config <id> --mode incremental \
+  --watermark-column UPDATED_AT --watermark-type timestamp --merge-key ID
+```
+
+If the source aggregates over a wide window internally (e.g. a multi-year rollup), incremental refresh can be nearly as slow as a full one - the watermark wraps the query from the outside and can't prune the inner scan. You can early-filter *inside* the SQL with the `:graphit_watermark` bind (Graphit substitutes the last watermark on the delta, and full history on reconciliation) to prune the scan to days.
+
+Get the contract right first - a naive early-filter silently corrupts older periods when the delta merges:
+- Re-scan a window at least as wide as the largest aggregation grain in the query.
+- Output-filter to only the current, fully-covered period.
+- Set `--merge-key` (a trailing window without one double-counts overlapping rows).
+- Keep reconciliation on (the drift backstop) - don't set `--reconciliation off`.
+- For rolling-window metrics (WAU / MAU / stickiness), prefer a layered base daily source, not the bind - it can't compute a rolling window from recent rows alone.
+
+Only early-filter when an incremental source is slow for this reason and a merge key is set; the default refresh is correct and simpler otherwise.
 
 ## Deleting data sources
 
