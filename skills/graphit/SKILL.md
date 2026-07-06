@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.82"
+skill_version: "0.2.88"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 25,600. This router always-loads the collaboration/pace spine (brainstorm, ask-user, present-result, plan-next), the hard constraints + scope gate, the investigation loop, and the generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed every turn, so they cannot defer to a reference. The marker sits after the YAML frontmatter so the loader and sync-plugin-version.mjs still parse it. Reviewed 2026-06-25. -->
@@ -141,7 +141,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.82 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.88 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -168,12 +168,12 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `kb create relationship` - Create a new relationship (JOIN between tables) - `--name --primary-table --primary-column --related-table --related-column --description`
 - `kb create topic` - Create a new topic (business-concept tag) - `--name --description`
 - `kb create template` - Create a reusable chart template - `--name --render-code --file --description --chart-types`
-- `kb update metric <name>` - Update a metric - `--sql --table --description --topics --default-dimensions --secondary-tables --parameters --parameters-file`
-- `kb update dimension <name>` - Update a dimension - `--expr --table --description --topics --secondary-tables`
-- `kb update rule <name>` - Update a rule. Broadening a verified rule's targeting requires org admin. - `--sql --description --topics --constraint --apply-on --override-policy`
+- `kb update metric <name>` - Update a metric. --owner sets the accountable owner (email or user id); pass "" to clear. - `--sql --table --description --topics --default-dimensions --secondary-tables --parameters --parameters-file --owner`
+- `kb update dimension <name>` - Update a dimension. --owner sets the accountable owner (email or user id); pass "" to clear. - `--expr --table --description --topics --secondary-tables --owner`
+- `kb update rule <name>` - Update a rule. Broadening a verified rule's targeting requires org admin. --owner sets the accountable owner (email or user id); pass "" to clear. - `--sql --description --topics --constraint --apply-on --override-policy --owner`
 - `kb update template <name>` - Update a template - `--render-code --file --description`
 - `kb update table <name>` - Update a table's description or domain - `--description --domain`
-- `kb update domain <name>` - Update a domain - `--description --color`
+- `kb update domain <name>` - Update a domain. --owner sets the governance owner (the person accountable for the domain and the fallback owner for its assets); pass an empty string to clear it. - `--description --color --owner`
 - `kb update synonym <term>` - Update a synonym - `--canonical --type --description`
 - `kb update relationship <name>` - Update a relationship - `--description --primary-table --primary-column --related-table --related-column`
 - `kb update topic <name>` - Update a topic - `--description`
@@ -192,7 +192,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `ds refresh [ids...]` - Refresh data sources (use --all for all, or pass one or more IDs). On a breaking schema change a refresh is paused (status 'schema_changed') and the old data keeps serving; re-run with --force to accept the new schema. - `--all --no-wait --skip-empty --force`
 - `ds verify <id>` - Scan an unverified data source's schema and review it. Warehouse/SQL sources print a verification link; add --accept-schema to accept the AI schema and activate from the CLI. File uploads activate automatically. - `--force --accept-schema`
 - `ds update <id>` - Update data source governance settings - `--governed-mode --max-rows`
-- `ds refresh-config <id>` - Configure a data source's refresh mode (full or incremental/watermark) and settings. - `--mode --watermark-column --watermark-type --merge-key --lookback --reconciliation`
+- `ds refresh-config <id>` - Configure a data source's refresh mode (full or incremental/watermark) and settings. Sets the complete incremental config each call - omitted flags reset to server defaults (e.g. omitting --table-lookback clears existing lookback windows). - `--mode --watermark-column --watermark-type --merge-key --merge-window --table-lookback --reconciliation`
 
 **dashboard** - Custom dashboard management
 - `dashboard list` - List custom dashboards - `--view --team`

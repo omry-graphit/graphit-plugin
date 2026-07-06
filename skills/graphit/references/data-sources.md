@@ -51,7 +51,7 @@ graphit ds create --name "MY_DS" --sql "SELECT ..." --connection <id>
 graphit ds create --name "MY_DS" --sql "SELECT ..." --skip-scan
 ```
 
-**From a local file (Excel/CSV):** `graphit ds create --file <path>` uploads the file and creates one data source. Optional: `--name` (defaults to the file name), `--sheet <name>` (only when an Excel workbook has multiple sheets), and `--domain <NAME>` to attach the new table to an existing KB domain (create it first with `graphit kb create domain --name <NAME>` if it doesn't exist). `--file` and `--sql` are mutually exclusive; same auto-scan + verification-link flow as above.
+**From a local file (Excel/CSV):** `graphit ds create --file <path>` uploads the file and creates one data source. Optional: `--name` (defaults to the file name), `--sheet <name>` (multi-sheet workbooks), `--domain <NAME>` (attach to an existing KB domain - create it first if needed). `--file` and `--sql` are mutually exclusive; same auto-scan + verification flow as above.
 
 For existing unverified sources, `graphit ds verify <id>` scans and shows the schema; add `--accept-schema` to accept the AI schema and activate a warehouse/SQL source from the CLI (file uploads activate automatically).
 
@@ -63,9 +63,6 @@ Data sources cache a snapshot of the Snowflake query result. Refresh when you ne
 # Refresh all data sources and wait for completion (live status table)
 graphit ds refresh --all
 
-# Refresh only non-empty sources (skip 0-row DSes)
-graphit ds refresh --all --skip-empty
-
 # Fire-and-forget (trigger refreshes, don't wait)
 graphit ds refresh --all --no-wait
 
@@ -73,31 +70,37 @@ graphit ds refresh --all --no-wait
 graphit ds refresh <id1> <id2>
 ```
 
-The CLI fires all refreshes in parallel and polls until every source is ready. Large sources (millions of rows) may take 30-60s; the CLI handles this gracefully without timeout errors. Use `--no-wait` when you only need to trigger the refresh and will check status later via `graphit ds list`.
+Refreshes fire in parallel and the CLI polls to completion (large sources may take 30-60s). With `--no-wait`, check status later via `graphit ds list`.
 
 ## Incremental refresh and early-filtering (advanced)
 
-Incremental mode fetches only rows past a watermark column and upserts by a merge key, instead of re-running the whole query. Configure it on a scanned source (creator only):
+Incremental mode fetches only rows past a watermark and merges them in. Three windows govern it: the **watermark column** (which output rows are new), the **merge window** (`--merge-window` - how far back each run re-fetches and upserts, healing late data; API responses call it `lookback_periods`), and per-table **lookback windows** (`--table-lookback` - how far back each source table is *read*). Set on a scanned source (creator only); each call sets the COMPLETE config - omitted flags reset to defaults (no `--table-lookback` = windows cleared).
+
+When a source aggregates over a wide internal window (e.g. a multi-year rollup), incremental refresh is nearly as slow as full: the outer watermark filter can't prune the inner scan. Early-filtering fixes that - get the contract right first, or older periods silently corrupt on merge:
+
+- Size each lookback to cover the merge window plus the longest rolling calculation in the query.
+- Set `--merge-key` (upsert) - overlapping rows double-count without one.
+- Rolling-window metrics (WAU / MAU / stickiness): prefer a layered base daily source instead - recent rows alone can't compute a rolling window.
+- `--reconciliation` is the periodic full-refresh drift backstop (default off; keep it on with the bind or in append mode).
+
+Then pick ONE early-filter mode (mutually exclusive, validated):
+
+**Per-table lookback windows - preferred; no SQL edit.** Declare how far back each table is read; the engine prunes delta scans and the SQL stays exactly as written. Day-based (date/timestamp watermark required).
 
 ```bash
 graphit ds refresh-config <id> --mode incremental \
-  --watermark-column UPDATED_AT --watermark-type timestamp --merge-key ID
+  --watermark-column EVENT_DATE --watermark-type date --merge-key ID \
+  --merge-window 3 --table-lookback ANALYTICS.EVENTS:EVENT_DATE:30 \
+  --table-lookback USERS:CREATED_AT:90
 ```
 
-If the source aggregates over a wide window internally (e.g. a multi-year rollup), incremental refresh can be nearly as slow as a full one - the watermark wraps the query from the outside and can't prune the inner scan. You can early-filter *inside* the SQL with the `:graphit_watermark` bind (Graphit substitutes the last watermark on the delta, and full history on reconciliation) to prune the scan to days.
+**`:graphit_watermark` bind - for SQL owners.** Place the token where the filter belongs; Graphit substitutes the last watermark on deltas, full history on reconciliation. Output-filter to the current fully-covered period.
 
-Get the contract right first - a naive early-filter silently corrupts older periods when the delta merges:
-- Re-scan a window at least as wide as the largest aggregation grain in the query.
-- Output-filter to only the current, fully-covered period.
-- Set `--merge-key` (a trailing window without one double-counts overlapping rows).
-- Keep reconciliation on (the drift backstop) - don't set `--reconciliation off`.
-- For rolling-window metrics (WAU / MAU / stickiness), prefer a layered base daily source, not the bind - it can't compute a rolling window from recent rows alone.
-
-Only early-filter when an incremental source is slow for this reason and a merge key is set; the default refresh is correct and simpler otherwise.
+Only early-filter when an incremental source is slow for this reason; the default refresh is correct and simpler otherwise.
 
 ## Deleting data sources
 
-There is no `graphit ds delete` command. Deleting a data source cascades to GCS storage and the KB table, which removes all metrics, dimensions, and rules defined on it. Direct the user to delete from the platform UI (Sources Hub) where the confirmation flow shows what will be affected.
+There is no `graphit ds delete` command. Deleting a data source cascades to storage and the KB table, removing all metrics, dimensions, and rules on it. Direct the user to the platform UI (Sources Hub), whose confirmation flow shows what will be affected.
 
 ## Presenting data source results
 
