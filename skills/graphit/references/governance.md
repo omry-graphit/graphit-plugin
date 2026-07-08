@@ -1,6 +1,6 @@
 # Query Governance
 
-Load this when writing or validating a governed query, working trust tiers, or working the ad-hoc frontier (deciding whether a raw measure run is allowed on a governed source).
+Load this when writing or validating a governed query, working trust tiers, or working the ad-hoc frontier (deciding whether an ad-hoc query is allowed, and justifying it when it is).
 
 Governance is enforced server-side in the QueryGateway, the same across every channel. You CANNOT weaken it from the CLI; you can only write queries that pass it or, where the mode allows, run a raw measure with explicit approval.
 
@@ -37,15 +37,14 @@ Every result is stamped with a tier the platform shows the user as a badge on da
 
 Prefer the governed tier. The server may upgrade matching raw SQL to verified, but reach for references first so the result is governed by intent.
 
-## The ad-hoc measure gate
+## The ad-hoc gate
 
 This is the hard frontier, enforced server-side. The rules below are what the QueryGateway does, not a suggestion you can soften.
 
-An **ad-hoc measure** computes a business measure (an aggregate or `GROUP BY` that produces a metric) on a governed data source WITHOUT `{{metric:NAME}}` references, so it lands at the `ad_hoc` tier. Plain exploration is not a measure: `SELECT *`, raw column selects, `COUNT(*)` row-count peeks, `DISTINCT` value lists.
+A query lands at the `ad_hoc` tier when it uses no `{{metric:NAME}}` / `{{dim:NAME}}` reference and its raw expressions match no KB definition. On the CLI (`graphit query`, cached `--ds` or `--warehouse`), **every** ad-hoc query must be justified - business measures (an aggregate or `GROUP BY`) AND plain exploration alike (`SELECT *`, raw column selects, `COUNT(*)` peeks, `DISTINCT` value lists). Governed and verified results are exempt.
 
-- **warn.** The ad-hoc measure is rejected and asks for a justification. First rewrite it with `{{metric:NAME}}` / `{{dim:NAME}}` references - genuinely search the KB for a match first (`graphit kb explore`, `graphit kb list metric`, `graphit kb list dimension`). Only if nothing fits and the user needs the raw run, re-run with `--adhoc-reason "<text>"` that concisely states what you searched in governance, what you found (if anything), and why it does not fit. A trivial or empty reason is rejected server-side, and every justification is recorded in the audit log - so it must be honest, not a rationalization. Plain exploration is **exempt**: it runs free, with only a non-blocking warning.
-- **strict.** CRITICAL: every `ad_hoc`-tier query is a HARD BLOCK, including plain exploration that does not match the KB. Rewrite with references or stop. `--adhoc-reason` NEVER bypasses strict and does not weaken it; do not offer it in strict mode.
-- **observe.** All queries run; tiers are tracked, nothing is gated.
+- **observe / warn.** The ad-hoc query is withheld and asks for a justification. Preferred path first: rewrite with `{{metric:NAME}}` / `{{dim:NAME}}` references - genuinely search the KB (`graphit kb explore`, `graphit kb list metric`, `graphit kb list dimension`), and if the metric or dimension you need does not exist, CREATE it first. A filter's value list belongs in a `{{dim:NAME}}`, not a raw `SELECT DISTINCT` peek. Only if nothing fits and the user needs the raw run, pass `--adhoc-reason "<text>"` stating what you searched, what you found, and why it does not fit. When you already know the query is ad-hoc, pass it on the first call to skip the round-trip. A trivial or empty reason is rejected server-side, and every justification is recorded in the audit log - so it must be honest, not a rationalization.
+- **strict.** CRITICAL: every `ad_hoc`-tier query on a governed DS is a HARD BLOCK. Rewrite with references or stop. `--adhoc-reason` NEVER bypasses strict and does not weaken it; do not offer it in strict mode.
 
 When the gate fires, do not narrate around it or pretend the query ran. Report truthfully: it was blocked or needs approval, name the governed rewrite, and let the user decide.
 
@@ -69,7 +68,7 @@ graphit query "SELECT * FROM EVENTS" --ds EVENTS --override-rules EXCLUDE_RETARG
 
 ## Per-DS settings and governance mode
 
-Governed mode and the row cap are set per data source; enabling governed mode activates the ad-hoc gate for that DS. The governance mode is org-wide and admin-only, set with a `--mode` flag, not a positional argument (values `observe`, `warn`, `strict`). Run `graphit ds update --help` and `graphit governance set --help` for exact flag spelling.
+Governed mode and the row cap are set per data source; enabling governed mode lets `strict` hard-block ad-hoc queries on that DS (the CLI justification floor above applies regardless of this setting). The governance mode is org-wide and admin-only, set with a `--mode` flag, not a positional argument (values `observe`, `warn`, `strict`). Run `graphit ds update --help` and `graphit governance set --help` for exact flag spelling.
 
 ```bash
 graphit governance set --mode warn

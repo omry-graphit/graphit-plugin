@@ -14,6 +14,8 @@ Core Concept | `graphit.filter()` / `graphit.param()` | Wiring a Control | `grap
 
 These four pieces always work together: register a control, register the binding that reads it, wire your markup to the handle, and let saved views snapshot it. A filter with no `bind` does nothing - plan to include all four when you add interactivity.
 
+**Reuse a control you built.** A finished filter control can be saved as a reusable template (`save_template`, or "Save as Template" in the UI) and dropped on other dashboards - its markup, styling, and wiring travel together. Keep the wiring `<script>` inside the control's own element so the capture carries the behavior, not just the markup.
+
 ## graphit.filter(id, options)
 
 Register a named filter. Returns a handle for reading, writing, and subscribing to value changes.

@@ -1,10 +1,10 @@
 <!--
 SIZE EXEMPTION (reference file)
 Hard limit: 7,168 chars | Exempted ceiling: 14,336 chars
-Current: ~14,325 chars - intentionally over the base reference limit.
+Current: ~14,296 chars - intentionally over the base reference limit.
 Rationale: the consolidated build-time data + entity contract (live-data API, data-graphit-* entity contract, first-paint state, helper index, canonical example) - one co-load unit the co-load test forbids splitting. Loads only on HTML-deliverable turns (just-in-time, not every turn), so cache cost is bounded.
-Reviewed: 2026-06-29
-Next review: 2026-09-29
+Reviewed: 2026-07-08
+Next review: 2026-10-08
 -->
 # Canvas Runtime: Live Data and the Entity Contract
 
@@ -26,7 +26,7 @@ const result = await graphit.resolve({
 
 - `dataSourceId` is the data source name (the same table you SELECT FROM); its id or a unique id-prefix also works.
 - `target` (optional, a CSS selector or element) shows a blur and spinner overlay while loading and removes it on completion.
-- `targetEntityIds` (optional, `string[]`) - `data-graphit-id`s of OTHER graphs this result also renders into, so each one's details panel reflects filters (not just `target`).
+- `targetEntityIds` (optional, `string[]`) - `data-graphit-id`s of OTHER graphs this result also renders into, so each one's details panel reflects filters (not just `target`); entity ids, never CSS selectors.
 - `sourceEntityId` (optional) - the graph that owns a `target`-less resolve feeding several graphs (pair with `targetEntityIds`).
 - `maxRows` (optional) defaults to **10,000**, capped at **50,000**. Aggregate to a chartable grain well under the default; raise it only for a genuine row-level export, never above the cap.
 - `result.data` is an array of row objects you render however you want.
@@ -117,7 +117,7 @@ A resolve query that follows these shapes serves from a semantic cache in roughl
 
 - **Single refresh function.** Put all queries in ONE `Promise.all` inside one `refresh()` function so they share the same time window. NEVER scatter `graphit.resolve()` across independent event handlers or timeouts - that turns one user action into several bursts.
 - **Count queries per interaction.** 6 charts is 6 requests per filter change, about 20 changes per minute of budget; 12 charts is about 10 changes per minute. With 10 or more charts and 3 or more filters, debounce filter changes (300ms) so rapid clicks do not each trigger a full refresh.
-- **Reuse trend data for KPIs.** If you already fetch a weekly time series, derive the KPI total and its sparkline from that result in JS instead of running a separate aggregate query - one query serves both. When one result serves several graphs like this, anchor every graph it feeds with `targetEntityIds` (keep `target` on the primary) so each graph's details panel shows the live filtered query, not stale base SQL.
+- **Reuse trend data for KPIs.** If you already fetch a weekly time series, derive the KPI total and its sparkline from that result in JS instead of running a separate aggregate query - one query serves both. When one result serves several graphs like this, anchor every graph it feeds with `targetEntityIds` (keep `target` on the primary) so each graph's details panel shows the live filtered query, not stale base SQL. Canonical KPI-row example: `kpi.md`.
 - **Avoid redundant refreshes.** If a filter affects only some charts, split into targeted refresh functions (`refreshKPIs()`, `refreshCharts()`) so unchanged sections do not re-query.
 - **No polling.** NEVER use `setInterval(refresh, ...)`. Data sources update on their own schedule; a polling dashboard burns the entire budget.
 
@@ -125,20 +125,20 @@ If you hit the limit, the API returns a "Too many requests" error with a retry-a
 
 ## Helper index
 
-You have full creative freedom: draw with `type:'custom'` or inline SVG/CSS/HTML tables for full control. The helpers below are convenience shortcuts for quick standard output, not requirements.
+You have full creative freedom: draw with `type:'custom'` or inline SVG/CSS/HTML tables for full control. The helpers below are shortcuts, not requirements: when a documented type fits, use it; otherwise hand-roll immediately - do not deliberate.
 
 | Helper | What it renders | Depth |
 |---|---|---|
 | `graphit.graph(el, {type, data, x, y, ...})` | A standard chart of the given `type` | `chart-patterns.md` (per-type config) |
 | `graphit.graph(el, {type:'custom', draw})` | Bespoke SVG you draw via `(ctx)=>marks` - responsive + dark-themed for free | `chart-patterns.md` (ctx + escape contract) |
-| `graphit.table(el, {data, columns?, columnFormats?})` | A styled HTML table; `columnFormats` maps a column name to `"currency"` / `"percent"` / `"number"` | `chart-patterns.md` |
-| `graphit.kpi(el, {value, label?, format?})` | A KPI card with an optional delta | `chart-patterns.md` |
+| `graphit.table(el, {data, columns?, columnFormats?})` | A styled HTML table; `columns` = row keys (select + order) | `table.md` |
+| `graphit.kpi(el, {value, compareValue?, sparkline?, ...})` | A KPI card: delta badge, sparkline | `kpi.md` |
 | `graphit.presentation(el)` | A full-screen slide deck builder | `presentations.md` |
 | `graphit.filter / param / dateRange / cascade / bind` | Headless interactivity (zero imposed markup) | `filters.md`, `filters-advanced.md` |
 
-**Standard `graphit.graph` types (set `config.type`):** `"bar"`, `"horizontal-bar"` (alias `"hbar"` - use when category labels are long), `"line"`, `"area"`, `"donut"`, `"pie"` (alias of `donut`), `"scatter"` (alias `"bubble"`), `"stacked-bar"` (alias `"stacked"`), `"heatmap"`, `"funnel"`, `"gauge"`, `"sparkline"`, plus the reserved `"custom"` (bespoke `draw`). The full per-type config (axes, dual axis, `valueFormat`, the non-scaling percent rule, the custom `ctx` contract, and hand-rolled shapes such as treemap and sankey) lives in `chart-patterns.md`. Saved org templates register as types too.
+**Standard `graphit.graph` types (set `config.type`):** `"bar"`, `"horizontal-bar"` (alias `"hbar"`), `"line"`, `"area"`, `"donut"`, `"pie"` (alias of `donut`), `"scatter"` (alias `"bubble"`), `"stacked-bar"` (alias `"stacked"`), `"heatmap"`, `"funnel"`, `"gauge"`, `"sparkline"`, plus `"custom"` (bespoke `draw`). The full per-type config (axes, dual axis, `valueFormat`, the non-scaling percent rule, the custom `ctx` contract, and hand-rolled shapes) lives in `chart-patterns.md`. Saved org templates register as types too.
 
-**Logic versus styling.** `filter`, `param`, `bind`, `dateRange`, `cascade` are headless logic with zero imposed styling - you own the markup. A standard `graphit.graph` type, `table`, `kpi`, `presentation` render a fixed house style. Two trade-offs to surface to the user: a control persists to saved views ONLY when registered with `graphit.filter` / `param` / `dateRange` (a hand-rolled `<select>` will not save), and a standard chart type cannot be deeply restyled - for a custom look use `graphit.graph(el, {type:'custom', draw})` (responsive + themed, see `chart-patterns.md`) or hand-draw SVG/CSS, still fetching data via `graphit.resolve`.
+**Logic versus styling.** `filter`, `param`, `bind`, `dateRange`, `cascade` are headless logic with zero imposed styling - you own the markup. A standard `graphit.graph` type, `table`, `kpi`, `presentation` render a fixed house style. Two trade-offs to surface to the user: a control persists to saved views ONLY when registered with `graphit.filter` / `param` / `dateRange` (a hand-rolled `<select>` will not save), and a standard chart type cannot be deeply restyled - for a custom look use `graphit.graph(el, {type:'custom', draw})` (see `chart-patterns.md`) or hand-draw SVG/CSS, still fetching data via `graphit.resolve`.
 
 ## Canonical entity with live data
 

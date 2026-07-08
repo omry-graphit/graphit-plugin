@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.94"
+skill_version: "0.2.96"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 25,600. This router always-loads the collaboration/pace spine (brainstorm, ask-user, present-result, plan-next), the hard constraints + scope gate, the investigation loop, and the generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed every turn, so they cannot defer to a reference. The marker sits after the YAML frontmatter so the loader and sync-plugin-version.mjs still parse it. Reviewed 2026-06-25. -->
@@ -134,14 +134,14 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 | scoping to a domain, data source, and assets | kb-discovery.md, kb-traversal.md, data-sources.md |
 | building or curating KB assets (the gate) | kb-structure.md, kb-actions.md, parameterized-metrics.md |
 | writing or validating a query | sql-reference.md, governance.md |
-| designing and rendering the dashboard | dashboard-planning.md, chart-selection.md, chart-patterns.md, graphit-style.md, runtime.md |
+| designing and rendering the dashboard | dashboard-planning.md, chart-selection.md, chart-patterns.md, graphit-style.md, runtime.md, kpi.md, table.md |
 | adding interactivity (filters, parameters, saved views) | filters.md, filters-advanced.md |
 | building a slide deck | presentations.md |
 | the CLI or plugin itself (health, install, permission errors, local working artifacts) | operations.md |
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.94 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.96 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -167,7 +167,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `kb create synonym` - Create a new synonym - `--term --canonical --type --description --unverified`
 - `kb create relationship` - Create a new relationship (JOIN between tables) - `--name --primary-table --primary-column --related-table --related-column --description`
 - `kb create topic` - Create a new topic (business-concept tag) - `--name --description`
-- `kb create template` - Create a reusable chart template - `--name --render-code --file --description --chart-types`
+- `kb create template` - Create a reusable template (chart, KPI, or filter control) - `--name --render-code --file --description --chart-types`
 - `kb update metric <name>` - Update a metric. --owner sets the accountable owner (email or user id); pass "" to clear. - `--sql --table --description --topics --default-dimensions --secondary-tables --parameters --parameters-file --owner`
 - `kb update dimension <name>` - Update a dimension. --owner sets the accountable owner (email or user id); pass "" to clear. - `--expr --table --description --topics --secondary-tables --owner`
 - `kb update rule <name>` - Update a rule. Broadening a verified rule's targeting requires org admin. --owner sets the accountable owner (email or user id); pass "" to clear. - `--sql --description --topics --constraint --apply-on --override-policy --owner`

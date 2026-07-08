@@ -169,26 +169,14 @@ ORDER BY installs DESC
 **Governance:** governed - 3 KB refs, 2 rules enforced (**EXCLUDE_ORGANIC**, **MIN_SPEND**). Max rows: 1,000.
 ~~~
 
-**When using inline SQL** (no `{{metric:X}}`), show query + results + governance:
+**When using inline SQL** (no `{{metric:X}}`), present it the same way (query + results + governance), but the footer states the ad-hoc tier and offers the governed rewrite:
 
 ~~~
-**Query:**
-```sql
-SELECT media_source, SUM(spend) AS spend FROM MARKETING_UA_DS GROUP BY 1
-```
-
-**Results** (6 rows via **ds_abc123**):
-
-| Media Source | Spend |
-|---|---:|
-| Facebook | $42,100 |
-| Google UAC | $38,500 |
-
 **Governance:** ad-hoc - 0 KB refs. Consider using `{{metric:TOTAL_SPEND}}` for governed tier.
 ~~~
 
-For ad-hoc queries, suggest the KB reference equivalent when one exists. This nudges users toward governed queries.
+Any ad-hoc query on the CLI is withheld until you justify it (full rules in governance.md): prefer a `{{metric:X}}` / `{{dim:X}}` rewrite, creating the metric or dimension first if it is missing, and pass `--adhoc-reason` only when nothing governed fits.
 
-**Always use `--verbose`** to get the resolved SQL. If the user didn't pass it, re-run with `--verbose` so you can show both the reference query and the expanded SQL.
+**Always use `--verbose`** to get the resolved SQL; if the user didn't pass it, re-run with it.
 
 Zero rows: explain what you checked and hypothesize why (wrong date range, filter too strict, table empty).
