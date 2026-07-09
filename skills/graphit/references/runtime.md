@@ -1,10 +1,10 @@
 <!--
 SIZE EXEMPTION (reference file)
-Hard limit: 7,168 chars | Exempted ceiling: 14,336 chars
-Current: ~14,296 chars - intentionally over the base reference limit.
-Rationale: the consolidated build-time data + entity contract (live-data API, data-graphit-* entity contract, first-paint state, helper index, canonical example) - one co-load unit the co-load test forbids splitting. Loads only on HTML-deliverable turns (just-in-time, not every turn), so cache cost is bounded.
-Reviewed: 2026-07-08
-Next review: 2026-10-08
+Hard limit: 7,168 chars | Exempted ceiling: 14,600 chars
+Current: ~14,584 chars - intentionally over the base reference limit.
+Rationale: the consolidated build-time data + entity contract (live-data API, data-graphit-* entity contract, first-paint state, helper index, canonical example, version-naming discipline) - one co-load unit the co-load test forbids splitting. Loads only on HTML-deliverable turns (just-in-time, not every turn), so cache cost is bounded.
+Reviewed: 2026-07-09
+Next review: 2026-10-09
 -->
 # Canvas Runtime: Live Data and the Entity Contract
 
@@ -65,6 +65,8 @@ KB asset references are derived automatically from `{{metric:X}}` / `{{dim:X}}` 
 **Label equals the visible title.** The `data-graphit-label` MUST match the card's visible heading exactly. Users find their chart by that label in @ mention dropdowns and entity panels - a mismatch means they cannot find it.
 
 **Editing one existing entity.** Edit a single element surgically rather than rewriting the page: `graphit dashboard list-entities <id>` lists every entity (id, label, KB refs, data source) to find the right `data-graphit-id`; `graphit dashboard get-entity <id> <entityId>` returns just that entity's inner HTML - the exact fragment `graphit dashboard update-entity <id> <entityId>` accepts - which you change and write back. Reach for full-page `get-html` / `update-html` only when restructuring the whole layout.
+
+**Name every version.** Always pass `--label "<what changed>"` on every `update-html` / `update-entity` (e.g. `--label "Added revenue KPI row"`) - it names the version in the dashboard's history so edits stay traceable. Keep it short; no secrets or SQL dumps.
 
 ## First-paint loading state
 

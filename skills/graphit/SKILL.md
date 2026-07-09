@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.96"
+skill_version: "0.2.97"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 25,600. This router always-loads the collaboration/pace spine (brainstorm, ask-user, present-result, plan-next), the hard constraints + scope gate, the investigation loop, and the generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed every turn, so they cannot defer to a reference. The marker sits after the YAML frontmatter so the loader and sync-plugin-version.mjs still parse it. Reviewed 2026-06-25. -->
@@ -141,7 +141,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.96 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.97 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -199,8 +199,8 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `dashboard list` - List custom dashboards - `--view --team`
 - `dashboard create` - Create a new custom dashboard - `--name`
 - `dashboard get <id>` - Get dashboard details - `--html`
-- `dashboard update-html <id>` - Replace dashboard HTML content - `--file --stdin`
-- `dashboard update-entity <id> <entityId>` - Update a single entity's inner HTML without replacing the full page - `--file --stdin --title`
+- `dashboard update-html <id>` - Replace dashboard HTML content - `--file --stdin --label`
+- `dashboard update-entity <id> <entityId>` - Update a single entity's inner HTML without replacing the full page - `--file --stdin --title --label`
 - `dashboard get-html <id>` - Get the current HTML content of a dashboard
 - `dashboard list-entities <id>` - List the entities on a dashboard (id, label, KB refs, data source)
 - `dashboard get-entity <id> <entityId>` - Get a single entity's inner HTML (the fragment update-entity accepts)

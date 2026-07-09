@@ -72,6 +72,8 @@ graphit ds refresh <id1> <id2>
 
 Refreshes fire in parallel and the CLI polls to completion (large sources may take 30-60s). With `--no-wait`, check status later via `graphit ds list`.
 
+Refreshes are governed per organization. Manual refreshes have an hourly budget, and a limited number of refreshes run at once (with a slot reserved so a person's manual refresh is never blocked by scheduled ones). If you hit a limit the CLI returns a clear reason - an hourly-limit message with roughly when it resets, or a "wait for running operations to finish" message - as a 429; wait the indicated time and retry rather than looping. These are not errors in the source. Review past runs and failures with `graphit ds refresh-history <id>`.
+
 ## Incremental refresh and early-filtering (advanced)
 
 Incremental mode fetches only rows past a watermark and merges them in. Three windows govern it: the **watermark column** (which output rows are new), the **merge window** (`--merge-window` - how far back each run re-fetches and upserts, healing late data; API responses call it `lookback_periods`), and per-table **lookback windows** (`--table-lookback` - how far back each source table is *read*). Set on a scanned source (creator only); each call sets the COMPLETE config - omitted flags reset to defaults (no `--table-lookback` = windows cleared).
