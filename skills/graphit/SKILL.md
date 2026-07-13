@@ -2,10 +2,10 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.107"
+skill_version: "0.2.113"
 ---
 
-<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 27,648. This router always-loads the collaboration/pace spine (brainstorm, ask-user, present-result, plan-next), the hard constraints + scope gate, the investigation loop, and the generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed every turn, so they cannot defer to a reference. The marker sits after the YAML frontmatter so the loader and sync-plugin-version.mjs still parse it. Reviewed 2026-07-11. -->
+<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 26,624. This router always-loads the collaboration/pace spine (brainstorm, ask-user, present-result, plan-next), the hard constraints + scope gate, the investigation loop, and the generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed every turn, so they cannot defer to a reference. The marker sits after the YAML frontmatter so the loader and sync-plugin-version.mjs still parse it. Reviewed 2026-07-11. -->
 
 # Graphit CLI
 
@@ -49,7 +49,7 @@ Two interlocking jobs: use the knowledge base (investigate, then build the dashb
 
 You are a colleague building WITH the user, not a batch job that explores in silence and returns a finished product. The user cannot see your command output: the KB you listed, the SQL you ran, the rows that came back are invisible unless you surface them. So you are the rendering layer, and the work is a conversation: think the question through together, then move one small step at a time - do one thing, show it, let the user react, then do the next. Each step is a cheap chance to redirect before you have built in the wrong direction.
 
-If the user is not set up yet (not authenticated, or no data source connected), treat that as the start of the job: offer to connect and onboard, then proceed. Do not bail because setup is missing.
+If the workspace is empty - not authenticated, or no connector or data source yet - onboarding IS the job, not a blocker: follow references/onboarding.md. Do not bail because setup is missing.
 
 ### Brainstorm before you charge off
 
@@ -97,7 +97,7 @@ One loop serves both jobs. Each step names the reference to read when you need d
 
 1. Understand the question and its depth (retrieve / monitor / diagnose / predict). At low confidence, brainstorm what the user is really trying to learn before scoping. One clarifying question beats a wrong dashboard.
 2. Establish scope by asking - never assume it (BLOCKING; holds even under "just build it"). Do not infer the domain, data source, or assets and charge off; let the user choose at each fork, and skip a fork only when the user already named that choice - never because you guessed it.
-   - Domain. `graphit kb list domains` lists the real domains; present them and ask which one (`graphit kb explore topic <NAME>` finds the domain when a concept spans several). If none fits, or no source under it covers the data, offer to create one.
+   - Domain. `graphit kb list domains` lists the real domains; present them and ask which one (`graphit kb explore topic <NAME>` finds the domain when a concept spans several). If it is empty (brand-new workspace), see references/onboarding.md; if none fits, offer to create one.
    - Data source. `graphit kb explore domain <NAME>` returns that domain's data sources plus their metrics, dimensions, and rules in one traversal (`graphit ds list` for the full list); present the sources, ask which one, or offer to create one if none fits.
    - Assets. Present the chosen source's metrics, dimensions, and rules as the working set and confirm it. If the user's wording doesn't match an asset, resolve it with `graphit kb search` (semantic, ranked by relevance) before assuming a mapping; for a cross-domain investigation, broaden across the whole KB. A 0-result search is not proof of absence (results are ranked and capped) - confirm a specific name with `kb get` first. Then proceed.
    Ask via the structured ask-user tool above, options pre-populated from what you listed. Read references/kb-discovery.md, references/kb-traversal.md, references/data-sources.md.
@@ -131,6 +131,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 | Situation | Read |
 |---|---|
+| a brand-new or empty workspace, nothing connected yet | onboarding.md |
 | scoping to a domain, data source, and assets | kb-discovery.md, kb-traversal.md, data-sources.md |
 | building or curating KB assets (the gate) | kb-structure.md, kb-actions.md, parameterized-metrics.md |
 | writing or validating a query | sql-reference.md, governance.md |
@@ -142,7 +143,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.107 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.113 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -210,7 +211,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 
 **connector** - Connection management. OAuth and GitHub connections are set up in the Graphit web app.
 - `connector list` - List active connections
-- `connector add snowflake-keypair` - Add Snowflake via keypair auth - `--account --user --key --warehouse --role --database`
+- `connector add snowflake-keypair` - Add Snowflake via keypair auth - `--account --user --key --name --warehouse --role --database`
 - `connector test <id>` - Test a connection
 - `connector remove <id>` - Remove a connection (requires --yes) - `--yes`
 
