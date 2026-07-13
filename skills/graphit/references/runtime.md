@@ -31,6 +31,8 @@ const result = await graphit.resolve({
 - `maxRows` (optional) defaults to **10,000**, capped at **50,000**. Aggregate to a chartable grain well under the default; raise it only for a genuine row-level export, never above the cap.
 - `result.data` is an array of row objects you render however you want.
 
+MUST: every resolve that feeds a rendered graph, KPI, or table carries attribution - `target` (an element inside the entity wrapper), or `sourceEntityId` plus `targetEntityIds` when one result feeds several graphs. Attribution is what records the live filtered query behind each entity's details panel; an unattributed resolve leaves that panel showing the static `data-graphit-sql` example with its baked default filters, so a user who changes a filter sees the SQL never move. Saving a page that has filters or params and zero attributed resolves returns an `unattributed_resolves` warning. Queries that feed no visual (filter option lists, freshness probes) stay unattributed.
+
 CRITICAL: use KB reference syntax (`{{metric:NAME}}`, `{{dim:NAME}}`) inside the resolve `sql` whenever a KB asset exists - the server expands it at query time, which produces the governed trust tier. See `governance.md` for the syntax and trust tiers.
 
 Error handling: `graphit.resolve()` rejects on timeout (120s), bad SQL, or an invalid data source ID. Wrap calls in try/catch and show a user-visible error in the target element on failure. Verify the SQL returns data via the CLI before embedding it.
@@ -113,13 +115,15 @@ A resolve query that follows these shapes serves from a semantic cache in roughl
 - `CURRENT_DATE`-relative predicates.
 - Top-N with the aggregate only in ORDER BY (`... GROUP BY dim ORDER BY SUM(metric) DESC LIMIT N` with no decomposable aggregate in SELECT).
 
+**Fresh anchors.** When a query needs a data-driven anchor - the latest install date, a "days since" reference, a MAX(date) - never fetch it once at page load into a JS variable and reuse it across refreshes. A long-open tab silently goes stale and every maturity gate or rolling window computed against it drifts. Re-resolve the anchor inside each refresh cycle, or derive it in a subquery so the query always anchors to the current data.
+
 ## Rate-limit budget
 
 `graphit.resolve()` is rate-limited to 120 requests per minute per user per dashboard. Each call counts as one request. Design for that budget:
 
 - **Single refresh function.** Put all queries in ONE `Promise.all` inside one `refresh()` function so they share the same time window. NEVER scatter `graphit.resolve()` across independent event handlers or timeouts - that turns one user action into several bursts.
 - **Count queries per interaction.** 6 charts is 6 requests per filter change, about 20 changes per minute of budget; 12 charts is about 10 changes per minute. With 10 or more charts and 3 or more filters, debounce filter changes (300ms) so rapid clicks do not each trigger a full refresh.
-- **Reuse trend data for KPIs.** If you already fetch a weekly time series, derive the KPI total and its sparkline from that result in JS instead of running a separate aggregate query - one query serves both. When one result serves several graphs like this, anchor every graph it feeds with `targetEntityIds` (keep `target` on the primary) so each graph's details panel shows the live filtered query, not stale base SQL. Canonical KPI-row example: `kpi.md`.
+- **Reuse trend data for KPIs.** If you already fetch a weekly time series, derive the KPI total and its sparkline from that result in JS instead of running a separate aggregate query - one query serves both. Anchor the extra graphs it feeds with `targetEntityIds` per the resolve attribution rule above. Canonical KPI-row example: `kpi.md`.
 - **Avoid redundant refreshes.** If a filter affects only some charts, split into targeted refresh functions (`refreshKPIs()`, `refreshCharts()`) so unchanged sections do not re-query.
 - **No polling.** NEVER use `setInterval(refresh, ...)`. Data sources update on their own schedule; a polling dashboard burns the entire budget.
 
