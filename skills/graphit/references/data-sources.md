@@ -9,11 +9,11 @@ Always prefer a cached data source over the live warehouse. Check what exists wi
 | Situation | Command | Speed |
 |---|---|---|
 | The table has a cached data source | `graphit query "SQL" --ds <NAME>` | roughly 100ms, DuckDB |
-| No data source covers the table | `graphit query "SQL" --warehouse --connection <id>` | roughly 10s, Snowflake |
+| No data source covers the table | `graphit query "SQL" --warehouse --connection <id>` | roughly 10s, the connected warehouse |
 
 `--ds` takes the data source **name** (the same name you SELECT FROM, e.g. `... FROM MARKETING_UA_DS ... --ds MARKETING_UA_DS`); a full id or unique id-prefix also resolves.
 
-If no data source covers the table the user needs, propose creating one for future speed rather than defaulting to repeated warehouse queries. Dialect differs by route (DuckDB for `--ds`, Snowflake for `--warehouse`); see `sql-reference.md`.
+If no data source covers the table the user needs, propose creating one for future speed rather than defaulting to repeated warehouse queries. Dialect differs by route: DuckDB for `--ds`, and the connected warehouse's own dialect (Snowflake or BigQuery) for `--warehouse`; see `sql-reference.md`.
 
 ## Build it right (in the source SQL)
 
@@ -53,11 +53,15 @@ graphit ds create --name "MY_DS" --sql "SELECT ..." --skip-scan
 
 **From a local file (Excel/CSV):** `graphit ds create --file <path>` uploads the file and creates one data source. Optional: `--name` (defaults to the file name), `--sheet <name>` (multi-sheet workbooks), `--domain <NAME>` (attach to an existing KB domain - create it first if needed). `--file` and `--sql` are mutually exclusive; same auto-scan + verification flow as above.
 
+**Warehouse connection.** `--connection` names the warehouse a `--sql` source reads from. Add BigQuery with `graphit connector add bigquery-serviceaccount --key-file <path> [--project --dataset --location]` (org admin; project defaults from the key). The pipeline routes by connection type - the same `ds create` works for either warehouse.
+
 For existing unverified sources, `graphit ds verify <id>` scans and shows the schema; add `--accept-schema` to accept the AI schema and activate a warehouse/SQL source from the CLI (file uploads activate automatically).
 
 ## Refreshing data sources
 
-Data sources cache a snapshot of the Snowflake query result. Refresh when you need current data. **File-upload sources can't be refreshed (no query to re-run) - update them by re-uploading with `graphit ds create --file <path>`.**
+Data sources cache a snapshot of the warehouse query result. Refresh when you need current data. **File-upload sources can't be refreshed (no query to re-run) - update them by re-uploading with `graphit ds create --file <path>`.**
+
+On BigQuery a refresh scans billed bytes, so keep the source shape tight and prefer incremental/partition-pruned refresh over full re-scans to control cost; a per-connection scan cap (max bytes billed) fails an oversized query fast rather than running up a bill.
 
 ```bash
 # Refresh all data sources and wait for completion (live status table)

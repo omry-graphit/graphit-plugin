@@ -2,10 +2,10 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.113"
+skill_version: "0.2.114"
 ---
 
-<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 26,624. This router always-loads the collaboration/pace spine (brainstorm, ask-user, present-result, plan-next), the hard constraints + scope gate, the investigation loop, and the generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed every turn, so they cannot defer to a reference. The marker sits after the YAML frontmatter so the loader and sync-plugin-version.mjs still parse it. Reviewed 2026-07-11. -->
+<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 27,648. This router always-loads the collaboration/pace spine (brainstorm, ask-user, present-result, plan-next), the hard constraints + scope gate, the investigation loop, and the generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed every turn, so they cannot defer to a reference. The marker sits after the YAML frontmatter so the loader and sync-plugin-version.mjs still parse it. Reviewed 2026-07-11. -->
 
 # Graphit CLI
 
@@ -143,7 +143,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.113 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.114 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -181,12 +181,12 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `kb update topic <name>` - Update a topic - `--description`
 - `kb delete <type> <name>` - Delete a KB entity (requires --yes flag) - `--yes`
 
-**query** - Run SQL against a cached data source or live Snowflake
-- `query <sql>` - Run SQL against a cached data source or live Snowflake - `--ds --warehouse --connection --limit --override-rules --verbose --adhoc-reason --timeout`
+**query** - Run SQL against a cached data source or a live warehouse (Snowflake / BigQuery)
+- `query <sql>` - Run SQL against a cached data source or a live warehouse (Snowflake / BigQuery) - `--ds --warehouse --connection --limit --override-rules --verbose --adhoc-reason --timeout`
 
-**metadata** - Snowflake metadata
-- `metadata schemas` - List Snowflake schemas - `--connection`
-- `metadata tables` - List tables in a Snowflake schema - `--connection --schema`
+**metadata** - Warehouse metadata (Snowflake schemas / BigQuery datasets)
+- `metadata schemas` - List schemas (Snowflake) or datasets (BigQuery) - `--connection`
+- `metadata tables` - List tables in a schema (Snowflake) or dataset (BigQuery) - `--connection --schema`
 
 **ds** - Data source management
 - `ds refresh-history <id>` - Show recent refresh runs for a data source with the Snowflake query id per run (status, time, rows, duration). Runs from before query-id capture - or a failure before any query ran - show 'not captured'. Read-only; no ds refresh-history delete. - `--limit`
@@ -210,8 +210,9 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `dashboard delete <id>` - Delete a custom dashboard (requires --yes) - `--yes`
 
 **connector** - Connection management. OAuth and GitHub connections are set up in the Graphit web app.
-- `connector list` - List active connections
+- `connector list` - List active connections (Snowflake + BigQuery)
 - `connector add snowflake-keypair` - Add Snowflake via keypair auth - `--account --user --key --name --warehouse --role --database`
+- `connector add bigquery-serviceaccount` - Add BigQuery via a service-account key (org admin only) - `--key-file --project --dataset --location --name --max-bytes-billed`
 - `connector test <id>` - Test a connection
 - `connector remove <id>` - Remove a connection (requires --yes) - `--yes`
 

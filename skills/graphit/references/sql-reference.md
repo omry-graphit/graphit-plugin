@@ -1,6 +1,6 @@
 # SQL Reference
 
-Consult when writing queries. Data source queries (`graphit query --ds`) run DuckDB. Warehouse queries (`graphit query --warehouse`) run Snowflake. You MUST use the correct dialect. To read a table's columns, use `graphit kb explore table <NAME>` - never `DESCRIBE`/DDL (`graphit query` runs SELECT only).
+Consult when writing queries. Data source queries (`graphit query --ds`) always run DuckDB. Warehouse queries (`graphit query --warehouse`) run the connected warehouse - Snowflake or BigQuery - and the dialect follows the connection type; governance parses your SQL in that dialect. You MUST use the correct dialect. To read a table's columns, use `graphit kb explore table <NAME>` - never `DESCRIBE`/DDL (`graphit query` runs SELECT only).
 
 ## DuckDB vs Snowflake Translation
 
@@ -49,6 +49,19 @@ NEVER use `->>`  in Snowflake or `:field::STRING` in DuckDB.
 - Snowflake does NOT support `FILTER (WHERE)` - use `CASE WHEN` instead
 - `COUNT_IF` MUST receive a boolean expression, not a raw INT column. Use `COUNT_IF(is_active = 1)`, not `COUNT_IF(is_active)`
 - String matching: prefer `ILIKE` (case-insensitive) over `LIKE`
+
+## BigQuery Standard SQL Notes
+
+Applies only to `--warehouse` queries on a BigQuery connection. Key differences from Snowflake:
+
+- Date math is `DATE_ADD(date, INTERVAL N DAY)` and `DATE_DIFF(a, b, DAY)` - the unit is a bare keyword and `DATE_DIFF` arg order is `(later, earlier, unit)`
+- Null/branch: `IFNULL(a, b)` or `COALESCE(a, b)`; `IF(cond, a, b)` (not `IFF`); `NULLIF` as usual
+- Error-tolerant: `SAFE_CAST(x AS INT64)`, `SAFE_DIVIDE(a, b)`, and the `SAFE.` prefix on most functions (`SAFE.PARSE_DATE(...)`) return NULL instead of erroring
+- Dates/strings: `FORMAT_DATE('%Y-%m', d)`, `PARSE_DATE('%Y-%m-%d', s)`, `EXTRACT(MONTH FROM d)`, `DATE_TRUNC(d, MONTH)` (unit is a keyword, date-arg first)
+- Approx: `APPROX_COUNT_DISTINCT(x)` (not `APPROX_COUNT_DISTINCT` colon syntax); `COUNTIF(cond)` is one word
+- Like DuckDB and unlike Snowflake, BigQuery has `GROUP BY ALL` and `SELECT * EXCEPT(col)`
+- Identifiers: back-tick fully-qualified names `` `project.dataset.table` ``; strings use single quotes
+- JSON: `JSON_VALUE(col, '$.field')` (scalar) / `JSON_QUERY(col, '$.field')` (subtree) - not Snowflake colon syntax or DuckDB arrows
 
 ## SQL Formatting Standards (Both Engines)
 
@@ -117,7 +130,7 @@ When the query feeds a canvas `graphit.resolve()` call, write it in the cache-fr
 
 ## Data source routing
 
-Always prefer a cached data source (`graphit query "SQL" --ds <NAME>`, roughly 100ms via DuckDB) over a live warehouse query (`graphit query "SQL" --warehouse --connection <id>`, roughly 10s via Snowflake). Pass the data source name to `--ds` - the same name you SELECT FROM (a full id or unique id-prefix also works). The full routing table, the `ds list` output template, and the source-shape guidance live in `data-sources.md`.
+Always prefer a cached data source (`graphit query "SQL" --ds <NAME>`, roughly 100ms via DuckDB) over a live warehouse query (`graphit query "SQL" --warehouse --connection <id>`, roughly 10s via the connected warehouse). Pass the data source name to `--ds` - the same name you SELECT FROM (a full id or unique id-prefix also works). The full routing table, the `ds list` output template, and the source-shape guidance live in `data-sources.md`.
 
 ## Percent scaling
 
