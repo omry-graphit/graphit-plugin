@@ -29,7 +29,7 @@ Present the plan, then stop. Do not create until the user approves.
 |---|---|
 | Metric | `graphit kb create metric --name X --sql "<expr>" --table T` (optional `--topics "A,B"`, `--default-dimensions "D1,D2"`, `--parameters`/`--parameters-file` for templates, `--skip-validate`) |
 | Dimension | `graphit kb create dimension --name X --expr "<expr>" --table T` (type auto-inferred; override with `--type` / `--output-type`; `--skip-validate`) |
-| Rule | `graphit kb create rule --name X --sql "<text>" --table T` (optional `--constraint`, `--override-policy`, `--apply-on`, `--topics`, `--skip-validate`) |
+| Rule | `graphit kb create rule --name X --sql "<text>" --table T` (optional `--constraint`, `--apply-on`, `--topics`, `--skip-validate`) |
 | Synonym | `graphit kb create synonym --term X --canonical Y --type metric` |
 | Domain | `graphit kb create domain --name X` (optional `--color "#4DB6AC"`) |
 | Topic | `graphit kb create topic --name X` |
@@ -40,12 +40,11 @@ Present the plan, then stop. Do not create until the user approves.
 A plain rule is documentation. To make it enforced server-side at query time, pass typed constraints on `graphit kb create rule` / `graphit kb update rule`:
 
 - `--constraint <spec...>` - one or more typed constraints, each written `type:value`. Types: `required_where:"<predicate>"`, `forbidden_column:<col>`, `required_filter:<col>`, `required_aggregation:<col>`, `value_restriction:<col>:<in|not_in>:<v1,v2>`. On update the supplied list REPLACES the rule's existing constraints.
-- `--override-policy <policy>` - who may bypass the rule with `--override-rules`: `anyone`, `analyst_only`, `admin_only`, or `never`. Create defaults to `anyone`.
 
 What each constraint type does at query time, plus the override flow, lives in `governance.md`. Example: a rule that always scopes verified purchases -
 
 ```bash
-graphit kb create rule --name FILTER_VERIFIED_PURCHASES --sql "Only count verified purchases" --table ORDERS --constraint required_where:"is_verified = true" --override-policy analyst_only
+graphit kb create rule --name FILTER_VERIFIED_PURCHASES --sql "Only count verified purchases" --table ORDERS --constraint required_where:"is_verified = true"
 ```
 
 ## Rule Targeting - what a rule governs

@@ -16,7 +16,7 @@ Governance means every number is computed the team's agreed way and carries an h
 | verified | Raw SQL whose math matches a KB definition | Amber |
 | ad_hoc | Inline formula with no KB match | Gray |
 
-Enforcement is server-side and identical on every channel (agent, CLI, dashboard, warehouse); it cannot be weakened from the CLI. The org's governance mode sets how hard rules bite: observe (log only), warn (warn but run), strict (block, override only if the rule and the user's role allow). If a query was blocked or asked for a justification, that is the ad-hoc gate: it used no KB reference and matched no definition, so Graphit wants you to either rewrite it with a metric or dimension (creating one if it is missing) or state honestly why a raw run is warranted. The reason is recorded in the audit log.
+Enforcement is server-side and identical on every channel (agent, CLI, dashboard, warehouse); it cannot be weakened from the CLI. An ad-hoc business measure requires EXPLORE access across every table it touches. A rule override additionally requires EXPLORE, the rule policy, and the user's role to allow it. If a query was blocked or asked for a justification, that is the ad-hoc gate: it used no KB reference and matched no definition, so Graphit wants you to either rewrite it with a metric or dimension (creating one if it is missing) or state honestly why a raw run is warranted. The reason is recorded in the audit log; it never bypasses missing access or a disallowed rule override.
 
 **2. Auditing, after the fact (Proactive Insights).** Separately, Graphit continuously scans everything the team built - KB definitions, dashboard graphs, the queries that actually ran - and turns each governance gap into a ranked Fix card routed to an owner. Three principles: a card shows only when Graphit is confident it is real (right or silent), one root cause is one card even if it spans many surfaces, and each is routed to an owner (the resource's owner, else its domain owner, else org admins). The ten card types:
 
@@ -33,7 +33,7 @@ Enforcement is server-side and identical on every channel (agent, CLI, dashboard
 | Unenforced rule | A rule that structurally cannot act on anything |
 | Missing owner | Assets with nobody responsible for them |
 
-Fix is a guided one-click resolution: it drafts and previews the exact change, you apply it (analyst seat, same validation as a manual edit), then Graphit re-checks and clears the card. This queue lives only in the **web app's Governance page** - the CLI cannot list or fix Insights cards (`governance status` and `governance audit` report mode and conformance only). When a user asks about a finding, explain what it means and point them to the Governance page to Fix it.
+Fix is a guided one-click resolution: it drafts and previews the exact change, you apply it (analyst seat, same validation as a manual edit), then Graphit re-checks and clears the card. This queue lives only in the **web app's Governance page** - the CLI cannot list or fix Insights cards (`governance status` and `governance audit` report conformance only). When a user asks about a finding, explain what it means and point them to the Governance page to Fix it.
 
 ## Relaying it
 

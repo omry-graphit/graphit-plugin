@@ -221,15 +221,13 @@ You are the rendering layer - format and present every CLI result using markdown
 | `graphit ds refresh --all --skip-empty` | Refresh non-empty data sources only |
 | `graphit ds refresh --all --no-wait` | Trigger all refreshes without waiting |
 | `graphit ds refresh <id> [id2...]` | Refresh one or more data sources by ID |
-| `graphit ds update <id> --governed-mode on\|off` | Enable/disable governed mode on a data source |
-| `graphit ds update <id> --max-rows N` | Set max rows cap on a data source |
+| `graphit ds update <id> --max-rows N` | Set or clear a data-source row cap |
 | `graphit query "<sql>" --ds <id>` | Query cached data source (~100ms) |
 | `graphit query "<sql>" --ds <id> --override-rules RULE1 RULE2` | Query with governance rule overrides |
 | `graphit query "<sql>" --ds <id> --verbose` | Show expanded SQL and trust tier |
-| `graphit query "<sql>" --ds <id> --approve-adhoc` | Approve running an ad-hoc measure query on a governed source |
+| `graphit query "<sql>" --ds <id> --adhoc-reason "<reason>"` | Justify an ad-hoc query when no KB definition fits |
 | `graphit query "<sql>" --warehouse --connection <id>` | Query live Snowflake (~10s) |
-| `graphit governance status` | Show governance mode and conformance stats |
-| `graphit governance set <mode>` | Set governance mode (observe/warn/strict) |
+| `graphit governance status` | Show governance conformance stats |
 | `graphit governance audit` | View recent governance audit events |
 | `graphit dashboard create --name "..."` | Create dashboard (returns ID) |
 | `graphit dashboard get-html <id>` | Get current HTML content of a dashboard |
@@ -264,12 +262,11 @@ Use KB references for governed queries:
 graphit query "SELECT {{dim:INSTALL_MONTH}}, {{metric:CPI}} as cpi FROM MARKETING_UA_DS GROUP BY 1" --ds ds_abc123
 graphit query "SELECT {{metric:ARPU(DAY=7)}} as arpu FROM MARKETING_UA_DS" --ds ds_abc123  # parameterized
 graphit query "SELECT * FROM events" --ds ds_123 --override-rules EXCLUDE_RETARGETING   # bypass rule
-graphit governance status   # view mode and conformance
-graphit governance set warn # change mode (admin)
-graphit ds update <id> --governed-mode on  # enable governance on DS
+graphit governance status   # view conformance
+graphit ds update <id> --max-rows 10000  # cap result size
 ```
 
-Reference syntax in `graphit.resolve()` calls works the same way - server expands at query time. Trust tiers: **governed** (KB refs), **verified** (matches KB), **ad-hoc** (inline). On a governed DS, an ad-hoc **measure** query (aggregate / `GROUP BY` without `{{metric:X}}`) is gated: warn mode rejects it (rewrite with `{{metric:X}}`, or ask the user and re-run with `--approve-adhoc`); strict hard-blocks all ad-hoc. Exploration (`SELECT *`, `COUNT(*)`, `DISTINCT`) runs free.
+Reference syntax in `graphit.resolve()` calls works the same way - server expands at query time. Trust tiers: **governed** (KB refs), **verified** (matches KB), **ad-hoc** (inline). On the CLI, an ad-hoc query needs a substantive `--adhoc-reason` when no KB definition fits. An ad-hoc **business measure** (aggregate / `GROUP BY` without `{{metric:X}}`) is hard-blocked when the caller lacks EXPLORE access to any queried scope; a reason never bypasses that access denial.
 
 ---
 

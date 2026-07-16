@@ -5,10 +5,13 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   renameSync,
   rmSync,
+  statSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
@@ -513,6 +516,47 @@ function tryParseJson(value) {
   }
 }
 
+// Feature #743: stamp a per-session marker so the CLI can tell whether the plugin
+// actually loaded THIS session. This SessionStart hook only runs when Claude Code
+// loaded the plugin at session start - a mid-session install never runs it, so the
+// marker is absent and the CLI can warn. The SessionStart payload carries session_id
+// (the same value as the Bash tool's CLAUDE_CODE_SESSION_ID - both from getSessionId()),
+// and the marker is keyed by it so concurrent sessions never clobber each other.
+function stampSessionMarker() {
+  if (hookEvent !== "SessionStart") return;
+  let sessionId = "";
+  try {
+    sessionId = String(tryParseJson(readFileSync(0, "utf-8"))?.session_id ?? "").trim();
+  } catch {
+    return;
+  }
+  // The id becomes a filename, so accept only an id-shaped token (path-safety).
+  if (!/^[A-Za-z0-9._-]{1,128}$/.test(sessionId)) return;
+  const dir = join(cacheRoot, "sessions");
+  try {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, sessionId), String(Date.now()), "utf-8");
+    pruneOldSessionMarkers(dir);
+  } catch {
+    // Best-effort: a missing marker only costs an extra (harmless) CLI warning.
+  }
+}
+
+function pruneOldSessionMarkers(dir) {
+  const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+  try {
+    for (const name of readdirSync(dir)) {
+      try {
+        if (statSync(join(dir, name)).mtimeMs < cutoff) unlinkSync(join(dir, name));
+      } catch {
+        /* skip an unreadable entry */
+      }
+    }
+  } catch {
+    /* dir missing or unreadable - nothing to prune */
+  }
+}
+
 // Feature #675: read session liveness locally (zero network) so the single
 // startup check covers version AND auth. logged_in = a credentials file holding
 // a refresh_token is present; email powers the greeting. The real token refresh
@@ -729,6 +773,10 @@ if (isMainModule()) {
   if (hookEvent && !shouldRunForPrompt()) {
     process.exit(0);
   }
+
+  // Feature #743: record that the plugin loaded this session (SessionStart only;
+  // reads stdin before anything else would consume it).
+  stampSessionMarker();
 
   const status = await collectStatus();
 

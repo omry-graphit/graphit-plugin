@@ -157,8 +157,8 @@ Ground every query in the KB. When using `{{metric:X}}`/`{{dim:X}}` references, 
 
 For inline SQL (no KB refs): show query + results + governance, and suggest the KB reference equivalent to nudge toward governed tier.
 
-On a governed DS, an ad-hoc **measure** query (aggregate / `GROUP BY` without `{{metric:X}}`) is gated: warn mode rejects it (rewrite with `{{metric:X}}`, or ask the user and re-run with `--approve-adhoc`); strict hard-blocks all ad-hoc. Exploration (`SELECT *`, `COUNT(*)`, `DISTINCT`) runs free.
+On the CLI, every ad-hoc query needs a substantive `--adhoc-reason` when no KB definition fits. An ad-hoc **business measure** (aggregate / `GROUP BY` without `{{metric:X}}`) is hard-blocked when the caller lacks EXPLORE access to any queried scope; a reason never bypasses that access denial.
 
 ## Presenting Data Source Results
 
-After `graphit ds list`: table with **bold Name**, ID, Rows (right-aligned), Status, Governed. End with DS recommendation for current task.
+After `graphit ds list`: table with **bold Name**, ID, Rows (right-aligned), Status, Row cap. End with DS recommendation for current task.

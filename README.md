@@ -51,6 +51,8 @@ graphit setup
 
 Either path installs the Graphit skill so the assistant can drive the CLI on your behalf.
 
+> **Start a new session after installing the plugin.** Claude Code (and Codex) load plugin skills and commands at session start, so the Graphit skill, `/graphit`, and the `graphit` commands are not available in the session you installed from. Open a new session first - otherwise the assistant will not have the skill loaded and will improvise instead of following the guided workflow.
+
 ## Authenticate
 
 ```bash

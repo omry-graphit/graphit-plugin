@@ -1,8 +1,8 @@
 # Query Governance
 
-Load this when writing or validating a governed query, working trust tiers, or working the ad-hoc frontier (deciding whether an ad-hoc query is allowed, and justifying it when it is).
+Load this when writing or validating a governed query, working trust tiers, declaring a conditionally-enforced rule, or working the ad-hoc frontier.
 
-Governance is enforced server-side in the QueryGateway, the same across every channel. You CANNOT weaken it from the CLI; you can only write queries that pass it or, where the mode allows, run a raw measure with explicit approval.
+Governance is enforced server-side in the QueryGateway, the same across every channel. You CANNOT weaken it from the CLI: an ad-hoc business measure requires EXPLORE access across every queried scope, and rule overrides must also satisfy EXPLORE.
 
 ## Reference syntax
 
@@ -27,7 +27,7 @@ Some metrics (for example ARPU, ROAS, RETENTION) carry required parameters and c
 
 ## Trust tiers
 
-Every result is stamped with a tier the platform shows the user as a badge on dashboard graphs and canvas entities - your honest signal of how trustworthy the number is.
+Every result is stamped with a tier, shown to the user as a badge on graphs and canvas entities - your honest signal of how trustworthy the number is.
 
 | Tier | Meaning | Badge |
 |------|---------|-------|
@@ -39,12 +39,12 @@ Prefer the governed tier. The server may upgrade matching raw SQL to verified, b
 
 ## The ad-hoc gate
 
-This is the hard frontier, enforced server-side. The rules below are what the QueryGateway does, not a suggestion you can soften.
+This is the hard frontier - the rules below are what the QueryGateway does.
 
-A query lands at the `ad_hoc` tier when it uses no `{{metric:NAME}}` / `{{dim:NAME}}` reference and its raw expressions match no KB definition. On the CLI (`graphit query`, cached `--ds` or `--warehouse`), **every** ad-hoc query must be justified - business measures (an aggregate or `GROUP BY`) AND plain exploration alike (`SELECT *`, raw column selects, `COUNT(*)` peeks, `DISTINCT` value lists). Governed and verified results are exempt.
+A query lands at the `ad_hoc` tier when it uses no `{{metric:NAME}}` / `{{dim:NAME}}` reference and its raw expressions match no KB definition. On the CLI (`graphit query`, cached `--ds` or `--warehouse`), **every** ad-hoc query must be justified - business measures (an aggregate or `GROUP BY`) and plain exploration alike (`SELECT *`, `COUNT(*)`, `DISTINCT` peeks). Governed and verified results are exempt.
 
-- **observe / warn.** The ad-hoc query is withheld and asks for a justification. Preferred path first: rewrite with `{{metric:NAME}}` / `{{dim:NAME}}` references - genuinely search the KB (`graphit kb explore`, `graphit kb list metric`, `graphit kb list dimension`), and if the metric or dimension you need does not exist, CREATE it first. A filter's value list belongs in a `{{dim:NAME}}`, not a raw `SELECT DISTINCT` peek. Only if nothing fits and the user needs the raw run, pass `--adhoc-reason "<text>"` stating what you searched, what you found, and why it does not fit. When you already know the query is ad-hoc, pass it on the first call to skip the round-trip. A trivial or empty reason is rejected server-side, and every justification is recorded in the audit log - so it must be honest, not a rationalization.
-- **strict.** CRITICAL: every `ad_hoc`-tier query on a governed DS is a HARD BLOCK. Rewrite with references or stop. `--adhoc-reason` NEVER bypasses strict and does not weaken it; do not offer it in strict mode.
+- **EXPLORE access is a hard prerequisite for ad-hoc business measures.** If the user lacks EXPLORE access to any queried table scope, the server blocks that measure. An ad-hoc reason cannot bypass that denial.
+- **Justification floor.** The ad-hoc query is withheld and asks for a justification. Preferred path first: rewrite with `{{metric:NAME}}` / `{{dim:NAME}}` references - genuinely search the KB (`graphit kb explore`, `graphit kb list metric`, `graphit kb list dimension`), and if the metric or dimension you need does not exist, CREATE it first. A filter's value list belongs in a `{{dim:NAME}}`, not a raw `SELECT DISTINCT` peek. Only if nothing fits and the user needs the raw run, pass `--adhoc-reason "<text>"` stating what you searched, what you found, and why it does not fit - pass it on the first call when you already know the query is ad-hoc. A trivial or empty reason is rejected server-side and recorded in the audit log, so it must be honest.
 
 When the gate fires, do not narrate around it or pretend the query ran. Report truthfully: it was blocked or needs approval, name the governed rewrite, and let the user decide.
 
@@ -60,36 +60,41 @@ Rules with typed constraints are enforced automatically, rewriting the SQL befor
 | `required_filter` | Validates a column appears in WHERE |
 | `required_aggregation` | Validates GROUP BY includes a column |
 
-User-context variables (`${user.team_id}`, `${user.email}`) resolve server-side for row-level security. Override a rule only when the user explicitly asks and the rule's `override_policy` (anyone / analyst_only / admin_only / never) and the user's role allow it; a `never` policy can never be overridden, and every override is logged. Pass several names to override more than one.
+User-context variables (`${user.team_id}`, `${user.email}`) resolve server-side for row-level security. Override a rule only when the user explicitly asks; the server honors it only if the user holds EXPLORE on every queried scope. A rule that masks a column (a `forbidden_column` constraint) can never be overridden. Every override is logged. Pass several names to override more than one.
 
 ```bash
 graphit query "SELECT * FROM EVENTS" --ds EVENTS --override-rules EXCLUDE_RETARGETING
 ```
 
-## Per-DS settings and governance mode
+## Conditionally-enforced rules
 
-Governed mode and the row cap are set per data source; enabling governed mode lets `strict` hard-block ad-hoc queries on that DS (the CLI justification floor above applies regardless of this setting). The governance mode is org-wide and admin-only, set with a `--mode` flag, not a positional argument (values `observe`, `warn`, `strict`). Run `graphit ds update --help` and `graphit governance set --help` for exact flag spelling.
+A rule's mode is Advisory (guidance), Always (every query), or **Conditional** - fires only when its plain-language body (the condition) holds for the query you wrote. No server classifier decides that; you do. Read a table's rules first (`graphit kb explore table <name>`), judge your query against each conditional rule's body, and declare it up front:
 
-```bash
-graphit governance set --mode warn
-```
+- `--apply-conditional RULE` - enforce it for this query.
+- `--skip-conditional RULE:"reason"` - skip it; a reason is required and audit-logged.
+
+Declare up front so a clean query never stalls. An undeclared conditional returns a retryable prompt naming each unresolved rule and its condition - read it, decide, re-run. A saved tile stores your decision and replays it every refresh.
+
+## Data-source row caps
+
+An admin can set a `max_rows` cap per data source. A cap limits the result set; it does not change authorization, trust-tier classification, or the ad-hoc justification floor.
 
 ## Presenting governance results
 
 The user CANNOT see raw CLI output. Render every result as markdown.
 
-**After a governed query**, append a provenance footer so the trust signal travels with the number: tier, governed DS, KB references used, rules enforced by name, row cap if applied. For an ad-hoc result, state the tier honestly and offer the governed `{{metric:NAME}}` / `{{dim:NAME}}` rewrite.
+**After a governed query**, append a provenance footer so the trust signal travels with the number: tier, KB references used, row cap if applied. Because a governed query may be rewritten before it runs, read `provenance.injection_summary` and report which rules changed it and how (each rule, its outcome, and why), not just a count. An ungoverned query reports no rules applied. For an ad-hoc result, state the tier honestly and offer the governed `{{metric:NAME}}` / `{{dim:NAME}}` rewrite.
 
 ~~~
-**Trust tier:** governed - governed DS, 2 KB refs, 1 rule enforced (**EXCLUDE_INTERNAL**), max rows 10000
+**Trust tier:** governed - 2 KB refs, 1 rule enforced (**EXCLUDE_INTERNAL**), max rows 10000
 ~~~
 
-**After `graphit governance status`**, show the mode plus the 7-day conformance counts (governed / verified / ad-hoc / total) as a small markdown table headed by `**Governance mode:** <mode>`.
+**After `graphit governance status`**, show the 7-day conformance counts (governed / verified / ad-hoc / total) as a small markdown table.
 
 **When a gate or rule blocks a query**, explain it and the path forward, no raw dump:
 
 ~~~
 **Blocked by governance.**
 
-Rule **EXCLUDE_ORGANIC** has override policy `never` and cannot be overridden. Ask your admin to change the policy, or rewrite the query to include the required filter.
+Rule **EXCLUDE_ORGANIC** is enforced; overriding it requires EXPLORE access on every queried scope. Rewrite the query to include the required filter, or ask an admin for EXPLORE access.
 ~~~
