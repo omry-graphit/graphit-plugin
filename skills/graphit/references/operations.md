@@ -58,7 +58,7 @@ The CLI enforces the same permission model as the platform. Three codes:
 |---|---|---|
 | 403 | Analyst seat or admin role required | Most commands need an Analyst seat. Viewer-seat users can run `graphit auth` only; everything else is blocked, so they use the platform UI. Connector create and delete also need an org owner or admin role, so a non-admin analyst gets 403 there. |
 | 404 | Not found, or no access | Returned for dashboards the user cannot reach (private ones owned by others, team dashboards they are not on). The API does not distinguish "does not exist" from "you cannot access it", to prevent ID enumeration. Do not assume the dashboard is gone. |
-| 423 | Shared dashboard needs an active editing session | Shared-dashboard mutations need the user to open the dashboard on the platform and click Edit first; the CLI cannot acquire the session. See the shared-dashboard constraint in the router. |
+| 423 | Shared dashboard needs an active editing session | Catch one from the CLI: `graphit dashboard edit <id>` acquires the session and starts a draft; make the edits, then `graphit dashboard publish <id>` to go live (or `graphit dashboard release <id> --yes` to abandon). 409 = someone else is editing; 423 = locked; 403 = view-only. Private dashboards need no session. |
 
 For the exact remediation flags on the failed command, run it with `--help`.
 

@@ -2,10 +2,10 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.136"
+skill_version: "0.2.140"
 ---
 
-<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 27,648. This router always-loads the collaboration/pace spine (brainstorm, ask-user, present-result, plan-next), the hard constraints + scope gate, the investigation loop, and the generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed every turn, so they cannot defer to a reference. The marker sits after the YAML frontmatter so the loader and sync-plugin-version.mjs still parse it. Reviewed 2026-07-11. -->
+<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 28,672. This router always-loads the collaboration/pace spine (brainstorm, ask-user, present-result, plan-next), the hard constraints + scope gate, the investigation loop, and the generated command table (between the COMMANDS markers, written by scripts/generate-commands-doc.mjs) - all needed every turn, so they cannot defer to a reference. The marker sits after the YAML frontmatter so the loader and sync-plugin-version.mjs still parse it. Reviewed 2026-07-11. -->
 
 # Graphit CLI
 
@@ -38,7 +38,7 @@ Two interlocking jobs: use the knowledge base (investigate, then build the dashb
 ### MUST
 
 - Govern first: if the dashboard needs a business measure the KB lacks, create the governed metric or dimension before building (the gate).
-- Hold an active edit session before mutating a shared dashboard; the CLI cannot force it (you will get a 423).
+- Mutating a shared dashboard needs an active edit session - catch one with `graphit dashboard edit <id>` (acquires the session, starts a draft, opens it in the browser in edit mode). Edits land in that draft until `graphit dashboard publish <id>` makes them live, or `graphit dashboard release <id> --yes` discards them. Gated: 409 if someone else is editing, 423 if locked, 403 if view-only. Private dashboards need no session - edit directly.
 - Confirm destructive actions (deleting a KB asset or a dashboard) with the user before running them.
 - Honor the canvas render contracts: the `percent` format only appends `%` (it does not multiply by 100), so multiply 0-1 ratios in SQL (`AVG(x) * 100.0 ... AS x_pct`); `graphit.table` formats per column via `columnFormats`; and each resolving container wraps in `class="gh-loading"` with the baked overlay (`gh-loading-overlay`, `gh-loading-spin`, `@keyframes gh-spin`) so first paint shows a spinner until resolves settle (detail in references/runtime.md and chart-patterns.md).
 
@@ -87,7 +87,7 @@ Soft narration is what "just build it" drops. These hard stops hold even then: c
 
 ### Handoffs, failure, truthful reporting
 
-- Name the handoffs. Some actions live on the platform, not the CLI: entering Edit mode on a shared dashboard, visiting a data source's verification link, deleting a source from the Sources Hub. Say when a step hands control back to the user, and move between building the dashboard and building the knowledge base through the gate.
+- Name the handoffs. Some actions live on the platform, not the CLI: visiting a data source's verification link, deleting a source from the Sources Hub. Say when a step hands control back to the user, and move between building the dashboard and building the knowledge base through the gate.
 - Keep local files ephemeral. Any file you create - scratch HTML, an export, throwaway SQL - goes in one `./.graphit/` working dir, never scattered in the repo; the platform dashboard is the source of truth and re-exports on demand. When a piece of work is done, offer to remove `.graphit/` (nothing of value is lost). Mechanics: operations.md.
 - On failure: retry once if it looks transient (timeout, rate limit); on a real error (missing column, permission, validation) stop, say what failed and the next step, never a bare "something went wrong".
 - Report truthfully: what worked, what did not, what you are unsure of. If only part succeeded, say which part and why the rest did not. Done means the answer is delivered and every dashboard element resolves on real data with no entity_sql_warnings.
@@ -144,7 +144,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.136 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.140 <command>` (a stamped version, kept current automatically by the build), or pin an exact one - `npx -y @graphit/cli@<exact> <command>` - for a reproducible run. The table below is the always-loaded command map, generated from the CLI itself, so it is the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -206,8 +206,11 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `dashboard update-entity <id> <entityId>` - Update a single entity's inner HTML without replacing the full page - `--file --stdin --title --label`
 - `dashboard get-html <id>` - Get the current HTML content of a dashboard
 - `dashboard list-entities <id>` - List the entities on a dashboard (id, label, KB refs, data source)
-- `dashboard get-entity <id> <entityId>` - Get a single entity's inner HTML (the fragment update-entity accepts)
+- `dashboard get-entity <id> <entityId>` - Get a single entity's structured context (label, SQL, KB refs, data source, HTML). Use --with-data to also execute the governed query and return resolved data inline. Use --image for a local PNG of the graph (as last viewed) to Read - `--with-data --params --image --raw`
 - `dashboard export <id>` - Export dashboard as PNG or PDF - `--format --output`
+- `dashboard edit <id>` - Enter edit mode on a shared dashboard: catch the editing session + start a draft, then open it in your browser. Gated (409) if someone else is editing, (423) if locked, (403) if view-only. Private dashboards need no session - edit directly. - `--no-open`
+- `dashboard publish <id>` - Publish your draft edits on a shared dashboard (makes them live) and release the editing session
+- `dashboard release <id>` - Discard your unpublished draft edits on a shared dashboard and release the editing session (requires --yes) - `--yes`
 - `dashboard delete <id>` - Delete a custom dashboard (requires --yes) - `--yes`
 
 **connector** - Connection management. OAuth and GitHub connections are set up in the Graphit web app.

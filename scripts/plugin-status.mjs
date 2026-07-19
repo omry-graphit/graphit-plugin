@@ -32,6 +32,7 @@ const REPAIRABLE_BUNDLE_ENTRIES = [
   "skills",
   "hooks",
   "scripts",
+  "commands",
   "bin",
   "README.md",
   "package.json",
