@@ -61,7 +61,7 @@ For existing unverified sources, `graphit ds verify <id>` scans and shows the sc
 
 Data sources cache a snapshot of the warehouse query result. Refresh when you need current data. **File-upload sources can't be refreshed (no query to re-run) - update them by re-uploading with `graphit ds create --file <path>`.**
 
-On BigQuery a refresh scans billed bytes, so keep the source shape tight and prefer incremental/partition-pruned refresh over full re-scans to control cost; a per-connection scan cap (max bytes billed) fails an oversized query fast rather than running up a bill.
+On BigQuery a refresh scans billed bytes, so keep the shape tight and prefer incremental/partition-pruned refresh over full re-scans; a per-connection scan cap (max bytes billed) fails an oversized query fast rather than running up a bill.
 
 ```bash
 # Refresh all data sources and wait for completion (live status table)
@@ -74,9 +74,9 @@ graphit ds refresh --all --no-wait
 graphit ds refresh <id1> <id2>
 ```
 
-Refreshes fire in parallel and the CLI polls to completion (large sources may take 30-60s). With `--no-wait`, check status later via `graphit ds list`.
+`graphit ds refresh` only runs an **incremental** refresh (new rows since last update); it never re-exports the whole source. A full rebuild is UI-only (Sources -> Refresh -> Full rebuild); hand off to the UI if one is needed.
 
-Refreshes are governed per organization. Manual refreshes have an hourly budget, and a limited number of refreshes run at once (with a slot reserved so a person's manual refresh is never blocked by scheduled ones). If you hit a limit the CLI returns a clear reason - an hourly-limit message with roughly when it resets, or a "wait for running operations to finish" message - as a 429; wait the indicated time and retry rather than looping. These are not errors in the source. Review past runs and failures with `graphit ds refresh-history <id>`.
+Refreshes fire in parallel; polls to completion (large sources 30-60s), or returns at once with `--no-wait` (check status via `graphit ds list`). Governed per org: manual refreshes have an hourly budget and a limited number run at once (a reserved slot keeps manual ones unblocked by scheduled). A limit returns a 429 with a clear reason (reset time, or "wait for running operations to finish"); wait it out, don't loop - not source errors. Review past runs with `graphit ds refresh-history <id>`.
 
 ## Incremental refresh and early-filtering (advanced)
 
