@@ -82,6 +82,10 @@ When a command fails or only part of a multi-step task succeeds, report it truth
 
 State three things: what succeeded, what failed (with the cause from the CLI output), and the single next step. Distinguish a transient failure (a network timeout, a mid-refresh data source - worth one retry) from a non-transient one (bad SQL, an entity not found, a permission code, a governance rejection - needs a fix, not a retry).
 
+A passing CLI probe does not clear a failing dashboard chart. The browser dashboard runtime resolves queries with named parameters attached, while `graphit query` inlines literal values, so a query that succeeds from the CLI does not prove the chart's query path works. When charts fail in the browser but CLI probes pass, suspect the resolve/parameters path or server-side state, and say so - do not conclude browser cache.
+
+A bare "Internal server error" from a CLI query is a masked server-side exception, not evidence of data corruption or an outage. Do not build corruption theories or trigger data-source refreshes off a bare 500 alone; state that the error is opaque and needs the platform team or server logs.
+
 Failure template:
 
 ~~~
