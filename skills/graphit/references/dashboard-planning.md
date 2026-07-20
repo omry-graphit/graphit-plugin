@@ -30,6 +30,18 @@ Compound intent ("what and why") - sequence trend then root-cause as two charts.
 
 Never mix archetypes on a single page.
 
+## Report Artifacts
+
+Not every deliverable is a chart grid. When the question ends in a judgment or a decision - a diagnosis write-up, an incident postmortem, a weekly insight digest, a decision one-pager - build a report page: the same canvas, prose-led.
+
+- Narrative leads. Structure as finding -> evidence -> implication -> recommended action; charts appear inline as evidence for the claim above them, not as a gallery.
+- Numbers are resolved, never typed. Every figure stated in prose is a data-bearing element: entity-wrap it and resolve it on governed SQL like any KPI. A report is not a loophole around the no-hardcoded-numbers rule - reopened next month, it re-resolves and stays true.
+- Insight titles still apply: headline the takeaway, not the topic.
+- Recurring reports are dashboards: share them, export to PDF, schedule them like any other. A one-off analysis can stay a quick query result in chat.
+- Form routing: document-shaped -> report page (this section); presenting live -> slide deck (presentations.md); watching or exploring -> chart-led dashboard (the rest of this reference).
+
+Choose the report form when the reader needs to be convinced or briefed; choose a chart-led dashboard when the reader needs to monitor or explore.
+
 ## Mandatory Rules
 
 - **Time-series**: if data has a date column, include at least 1 line/area trend. A dashboard without a trend is a snapshot - it cannot answer "is it improving?"
