@@ -536,12 +536,33 @@ function stampSessionMarker() {
   const dir = join(cacheRoot, "sessions");
   try {
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, sessionId), String(Date.now()), "utf-8");
+    // Feature #765: marker CONTENT is a capability signal. The CLI arms the
+    // skill-invocation tripwire only when the marker declares skill-ack; legacy
+    // markers (bare timestamp) keep it dormant, so a new npm CLI over an old
+    // bundle can never block a session that cannot stamp.
+    //
+    // This is an implication, NOT an equivalence: within the plugin-bundle install
+    // path the hook, SKILL.md, and CLI bin ship together, so caps => the loaded
+    // SKILL.md teaches the attestation. It does NOT hold for legacy copied
+    // snapshots (`graphit setup --legacy-copy`, see src/skill-version.ts), where a
+    // stale copied SKILL.md can be loaded alongside a current plugin hook. Those
+    // sessions are why every block message carries the "already invoked?" escape.
+    writeFileSync(
+      join(dir, sessionId),
+      JSON.stringify({ caps: ["skill-ack"], ts: Date.now() }),
+      "utf-8",
+    );
     pruneOldSessionMarkers(dir);
   } catch {
     // Best-effort: a missing marker only costs an extra (harmless) CLI warning.
   }
 }
+
+// Feature #765: the `--skill-ack` session attestation is stamped in src/skill-guard.ts
+// (`stampSkillAck`), called from the `plugin status` command BEFORE it delegates here.
+// It deliberately does NOT live in this script: stamping must not depend on a second
+// artifact, or a package missing this file could leave the gate armed with no way to
+// clear it. A failed write is reported there rather than swallowed.
 
 function pruneOldSessionMarkers(dir) {
   const cutoff = Date.now() - 48 * 60 * 60 * 1000;
@@ -778,6 +799,7 @@ if (isMainModule()) {
   // Feature #743: record that the plugin loaded this session (SessionStart only;
   // reads stdin before anything else would consume it).
   stampSessionMarker();
+
 
   const status = await collectStatus();
 
