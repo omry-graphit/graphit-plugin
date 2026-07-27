@@ -2,14 +2,6 @@
 
 Load this when the concern is the Graphit CLI or plugin itself, not the analysis: the session-start check, a health check, a permission error (403/404/423), the output contract, or local working artifacts. Skip it on every healthy build or query turn.
 
-## Contents
-
-- [Session start](#session-start)
-- [Health gate](#health-gate)
-- [Permission errors](#permission-errors)
-- [Output contract](#output-contract)
-- [Working artifacts](#working-artifacts)
-
 Depth that lives elsewhere: installing, updating, or repairing Graphit -> references/install-update.md. Reporting a failure or a partial result -> references/reporting.md.
 
 Governance itself is enforced server-side by the query gateway: a governed query is rejected by the platform, not the CLI, so never claim to have blocked a query locally. The one local guard is a session tripwire - until this skill attests at session start (below), the CLI declines commands that change org state or that assert a governance decision (`--adhoc-reason`, `--override-rules`, `--skip-conditional`). That guard is about this session, never about the query itself, and dropping those flags does not skip governance - the server still decides.
@@ -46,9 +38,13 @@ The CLI enforces the same permission model as the platform. Three codes:
 
 | Code | Meaning | What to tell the user |
 |---|---|---|
-| 403 | Analyst seat or admin role required | Most commands need an Analyst seat. Viewer-seat users can run `graphit auth` only; everything else is blocked, so they use the platform UI. Connector create and delete also need an org owner or admin role, so a non-admin analyst gets 403 there. |
-| 404 | Not found, or no access | Returned for dashboards the user cannot reach (private ones owned by others, team dashboards they are not on). The API does not distinguish "does not exist" from "you cannot access it", to prevent ID enumeration. Do not assume the dashboard is gone. |
+| 403 | Your org role or data access profile does not allow this | Every signed-in member can use the CLI. This action needs more than the caller has: connector create/delete needs org owner or admin, and data source or knowledge-base writes are limited to the domains an admin granted on their data access profile. |
+| 404 | Not found, or no access | A permission 404 is uniform across a resource that does not exist, one the caller cannot see, and another org's id - deliberately indistinguishable, to prevent id enumeration (some older routes still name the missing entity). Never assume the thing is gone or tell the user it was deleted. |
 | 423 | Shared dashboard needs an active editing session | Catch one from the CLI: `graphit dashboard edit <id>` acquires the session and starts a draft; make the edits, then `graphit dashboard publish <id>` to go live (or `graphit dashboard release <id> --yes` to abandon). 409 = someone else is editing; 423 = locked; 403 = view-only. Private dashboards need no session. |
+
+A 403 body is structured: `code` (e.g. `domain.kb_write_required`), `required_capability`, `retryable`, `next_step`. Read those fields, never the prose. `retryable: false` is a decision, not a hiccup - stop, give the user the `next_step`, and never retry, route around it, or report the write as done. A 404 carries none of those by design.
+
+`graphit status` lists the caller's writable domains and Templates result - check it before planning writes, never reuse an older answer. Advisory only: the server re-authorizes every operation, so neither a past status nor a command's existence is permission.
 
 For the exact remediation flags on the failed command, run it with `--help`.
 

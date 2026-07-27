@@ -55,7 +55,7 @@ graphit ds create --name "MY_DS" --sql "SELECT ..." --skip-scan
 
 **Warehouse connection.** `--connection` names the warehouse a `--sql` source reads from. Add BigQuery with `graphit connector add bigquery-serviceaccount --key-file <path> [--project --dataset --location]` (org admin; project defaults from the key). The pipeline routes by connection type - the same `ds create` works for either warehouse.
 
-For existing unverified sources, `graphit ds verify <id>` scans and shows the schema; add `--accept-schema` to accept the AI schema and activate a warehouse/SQL source from the CLI (file uploads activate automatically).
+For existing unverified sources, `graphit ds verify <id>` scans and shows the schema; add `--accept-schema` to accept the AI schema and activate a warehouse/SQL source from the CLI. A file upload needs `ds verify` too - it activates without `--accept-schema`, but never at create time, so it stays unqueryable until you run it.
 
 ## Refreshing data sources
 
@@ -80,7 +80,7 @@ Refreshes fire in parallel; polls to completion (large sources 30-60s), or retur
 
 ## Incremental refresh and early-filtering (advanced)
 
-Incremental mode fetches only rows past a watermark and merges them in. Three windows govern it: the **watermark column** (which output rows are new), the **merge window** (`--merge-window` - how far back each run re-fetches and upserts, healing late data; API responses call it `lookback_periods`), and per-table **lookback windows** (`--table-lookback` - how far back each source table is *read*). Set on a scanned source (creator only); each call sets the COMPLETE config - omitted flags reset to defaults (no `--table-lookback` = windows cleared).
+Incremental mode fetches only rows past a watermark and merges them in. Three windows govern it: the **watermark column** (which output rows are new), the **merge window** (`--merge-window` - how far back each run re-fetches and upserts, healing late data; API responses call it `lookback_periods`), and per-table **lookback windows** (`--table-lookback` - how far back each source table is *read*). Set on a scanned source; each call sets the COMPLETE config - omitted flags reset to defaults (no `--table-lookback` = windows cleared).
 
 When a source aggregates over a wide internal window (e.g. a multi-year rollup), incremental refresh is nearly as slow as full: the outer watermark filter can't prune the inner scan. Early-filtering fixes that - get the contract right first, or older periods silently corrupt on merge:
 
@@ -104,9 +104,15 @@ graphit ds refresh-config <id> --mode incremental \
 
 Only early-filter when an incremental source is slow for this reason; the default refresh is correct and simpler otherwise.
 
+## What needs write access
+
+Querying a source, listing sources, reading schema or refresh history, and an ordinary `graphit ds refresh` are reads - any member who can read that source's domain can run them, and a source in a domain they cannot read returns the same uniform 404 as one that does not exist. These need `data_source_write` in the source's domain: `ds create`, editing its SQL, `ds refresh-config`, a `--force` refresh or accepting a schema, `ds verify`, scanning, per-source governance settings, and deletion. Moving a source to another domain needs write in both the old and the new domain, and `ds create` must name a domain the caller can write to.
+
+Check `graphit status` for those domains before proposing a create or a config change. It is advisory - the server authorizes each operation when it runs, and a denial with `retryable: false` is a stop, not a retry (`operations.md`).
+
 ## Deleting data sources
 
-There is no `graphit ds delete` command. Deleting a data source cascades to storage and the KB table, removing all metrics, dimensions, and rules on it. Direct the user to the platform UI (Sources Hub), whose confirmation flow shows what will be affected.
+`ds delete` is not available on the CLI. Deleting a data source cascades to storage and the KB table, removing all metrics, dimensions, and rules on it. Direct the user to the platform UI (Sources Hub), whose confirmation flow shows what will be affected.
 
 ## Presenting data source results
 

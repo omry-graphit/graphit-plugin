@@ -2,10 +2,10 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.208"
+skill_version: "0.2.236"
 ---
 
-<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 28,672. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-07-20. -->
+<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 29,696. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-07-20. -->
 
 # Graphit CLI
 
@@ -105,7 +105,7 @@ One loop serves both jobs. Each step names the reference to read when you need d
    - Data source. `graphit kb explore domain <NAME>` returns that domain's data sources plus their metrics, dimensions, and rules in one traversal (`graphit ds list` for the full list); present the sources, ask which one, or offer to create one if none fits.
    - Assets. Present the chosen source's metrics, dimensions, and rules as the working set and confirm it. If the user's wording doesn't match an asset, resolve it with `graphit kb search` (semantic, ranked by relevance) before assuming a mapping; for a cross-domain investigation, broaden across the whole KB. A 0-result search is not proof of absence (results are ranked and capped) - confirm a specific name with `kb get` first. Then proceed.
    Ask via the structured ask-user tool above, options pre-populated from what you listed. Read references/kb-discovery.md, references/kb-traversal.md, references/data-sources.md.
-3. KB-readiness gate (BLOCKING). Check the knowledge base has the metrics and dimensions this question needs - name them from the user's ask and the domain's real assets you just listed. If they exist, proceed. If any are missing, STOP and build the knowledge base first: identify the missing concepts, show a gap table (what is missing, the proposed definition, which rules apply), get approval, then create and verify the assets. Read references/kb-structure.md, references/kb-actions.md, and references/parameterized-metrics.md for variant axes (D7/D30, gross/net). This gate is not optional - do not reframe it as the user's choice.
+3. KB-readiness gate (BLOCKING). Check the knowledge base has the metrics and dimensions this question needs - name them from the user's ask and the domain's real assets you just listed. If they exist, proceed. If any are missing, STOP and build the knowledge base first: identify the missing concepts, show a gap table (what is missing, the proposed definition, which rules apply), get approval, then create and verify the assets. Run `graphit status` first for the domains you can write to - advisory (the server still decides). Read references/kb-structure.md, references/kb-actions.md, and references/parameterized-metrics.md for variant axes (D7/D30, gross/net). This gate is not optional - do not reframe it as the user's choice.
 4. Investigate. Write governed queries with `{{metric:NAME}}` / `{{dim:NAME}}` reference syntax, validate before you rely on them, show the rows, then propose the next cut or the first graph before building it. Ad-hoc only at the frontier, provenance-tagged. Read references/sql-reference.md, references/governance.md.
 5. Deliver. A quick query result for a one-off; a designed HTML dashboard for anything recurring or shared; or a written report artifact - insight digest, analysis one-pager, postmortem - when narrative should lead. Build and show one section at a time, not one finished deliverable at the end. Pull only the reference for the move you are making:
    - Frame and plan the dashboard (or report artifact): references/dashboard-planning.md.
@@ -154,7 +154,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.208 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself - the source of truth for which commands, subcommands, and flags exist. For exact flag values and full descriptions, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.236 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -164,6 +164,9 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `auth login` - Log in to Graphit via browser
 - `auth status` - Show current authentication status
 - `auth logout` - Log out and clear stored credentials
+
+**status** - Show your effective permissions per domain (advisory; the server re-authorizes every operation)
+- `status` - Show your effective permissions per domain (advisory; the server re-authorizes every operation)
 
 **kb** - Knowledge Base operations
 - `kb list <type>` - List KB entities (metric, dimension, table, rule, domain, synonym) - the inventory verb. Parameterized metrics are collapsed: each template shows a variant_count, child variants are hidden. Use --include-variants for the full flat set, kb explore metric <name> to enumerate one template's variants, kb get for the full definition. The response carries total/truncated, so fewer rows than total means raise --limit. - `--limit --verified --unverified --include-variants`
@@ -201,10 +204,12 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 
 **ds** - Data source management
 - `ds refresh-history <id>` - Show recent refresh runs for a data source with the Snowflake query id per run (status, time, rows, duration). Runs from before query-id capture - or a failure before any query ran - show 'not captured'. Read-only; no ds refresh-history delete. - `--limit`
+- `ds delete <id>` - Delete a data source - not available on the CLI, use the Sources Hub
+- `ds move <id>` - Move a data source between domains - not available on the CLI, use the Sources Hub
 - `ds list` - List data sources - `--limit`
 - `ds create` - Create a data source from a SQL query (--sql) or a local Excel/CSV file (--file) - `--sql --name --connection --schema --skip-scan --detect-tables --source-tables --file --domain --sheet`
 - `ds refresh [ids...]` - Refresh data sources (use --all for all, or pass one or more IDs). On a breaking schema change a refresh is paused (status 'schema_changed') and the old data keeps serving; re-run with --force to accept the new schema. - `--all --no-wait --skip-empty --force`
-- `ds verify <id>` - Scan an unverified data source's schema and review it. Warehouse/SQL sources print a verification link; add --accept-schema to accept the AI schema and activate from the CLI. File uploads activate automatically. - `--force --accept-schema`
+- `ds verify <id>` - Scan an unverified data source's schema and review it, and activate it. Warehouse/SQL sources print a verification link; add --accept-schema to accept the AI schema and activate from the CLI. File uploads activate on this command without --accept-schema, but NOT on create: `ds create --file` leaves them at pending_verification until you run this. Requires data_source_write in the source's domain. - `--force --accept-schema`
 - `ds update <id>` - Update a data source row cap - `--max-rows`
 - `ds refresh-config <id>` - Configure a data source's refresh mode (full or incremental/watermark) and settings. Sets the complete incremental config each call - omitted flags reset to server defaults (e.g. omitting --table-lookback clears existing lookback windows). - `--mode --watermark-column --watermark-type --merge-key --merge-window --table-lookback --reconciliation`
 

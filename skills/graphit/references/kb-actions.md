@@ -1,6 +1,6 @@
 # KB Actions (Execute)
 
-The execute side of KB work: run approved create / update / delete through the `graphit kb` commands. The plan side - what a domain or topic is, why an asset sits where it does - lives in `kb-structure.md`. On a from-scratch build the two pair up (plan there, execute here); a normal build that reuses existing assets needs only this file.
+The execute side of KB work: run approved create / update / delete through the `graphit kb` commands. The plan side - what a domain or topic is, why an asset sits where it does - lives in `kb-structure.md`.
 
 Create only after the user approves the gap plan below. Names are stored UPPER_SNAKE_CASE. Run `graphit kb create <type> --help` for the exact flag spelling - this file teaches the recipes and policy, the CLI owns the syntax.
 
@@ -77,7 +77,18 @@ Reference a **metric or dimension** onto another table with `graphit kb update m
 
 Domain is set on the TABLE, never per asset, and cascades to every asset on it (model in `kb-structure.md`). To re-home a whole table at once: `graphit kb update table NAME --domain MARKETING`. Change it once on the table, never asset by asset.
 
-## Navigation
+## Who can write what
+
+Reads are open to every member; writes are scoped by the caller's data access profile. Check `graphit status` before presenting a gap plan, so the plan is one they can execute.
+
+| Write | Needs |
+|---|---|
+| Metric, dimension, rule, synonym, relationship, table | `kb_write` in the asset's domain |
+| Moving an asset or table to another domain | `kb_write` in BOTH domains - the one it leaves and the one it enters |
+| Domain and topic create / update / delete | Org admin; a profile never grants it |
+| Template create / update / delete | Org admin, OR `kb_write` in any one domain - never a per-template or per-domain grant |
+
+Every member can read and use templates. Status is advisory; a denial with `retryable: false` is a stop, not a retry (`operations.md`).
 
 To find what exists and how it connects, use the read recipes in `kb-traversal.md`.
 

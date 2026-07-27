@@ -33,7 +33,7 @@ Enforcement is server-side and identical on every channel (agent, CLI, dashboard
 | Unenforced rule | A rule that structurally cannot act on anything |
 | Missing owner | Assets with nobody responsible for them |
 
-Fix is a guided one-click resolution: it drafts and previews the exact change, you apply it (analyst seat, same validation as a manual edit), then Graphit re-checks and clears the card. This queue lives only in the **web app's Governance page** - the CLI cannot list or fix Insights cards (`governance status` and `governance audit` report conformance only). When a user asks about a finding, explain what it means and point them to the Governance page to Fix it.
+Fix is a guided one-click resolution: it drafts and previews the exact change, you apply it (same validation as a manual edit), then Graphit re-checks and clears the card. This queue lives only in the **web app's Governance page** - the CLI cannot list or fix Insights cards (`governance status` and `governance audit` report conformance only). When a user asks about a finding, explain what it means and point them to the Governance page to Fix it.
 
 ## Relaying it
 
