@@ -56,7 +56,7 @@ For a custom look, draw your own SVG through the same entry: `graphit.graph(el, 
 Escaping is yours: data-derived text through `ctx.esc()`, author colors through `ctx.safeColor()` - the runtime does not auto-escape your marks. Opt out per concern with `responsive: false` (render once) or `themed: false` (no dark re-draw).
 
 ```js
-const r = await graphit.resolve({ sql, dataSourceId: "ORDERS_DS", target: "#chart" });
+const r = await graphit.resolve({ target: "#chart" });
 graphit.graph("#chart", { type: "custom", draw: (ctx) => r.data.map(function (row, i) {
   var h = ctx.num(row.value) / 100 * ctx.height, x = (ctx.width / r.data.length) * i;
   return '<rect x="' + x + '" y="' + (ctx.height - h) + '" width="22" height="' + h +
