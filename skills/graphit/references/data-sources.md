@@ -116,18 +116,17 @@ Check `graphit status` for those domains before proposing a create or a config c
 
 ## Presenting data source results
 
-The user cannot see the raw CLI output - you are the rendering layer. After `graphit ds list`, present a markdown table and end with a recommendation of which source to use (or note that none covers the needed table):
+The user cannot see raw CLI output - you are the rendering layer. After `graphit ds list`, present a markdown table and end with a recommendation of which source to use (or note none covers the needed table):
 
 ~~~
-**3 data sources:**
+**2 data sources:**
 
 | Name | ID | Rows | Status | Governed |
 |---|---|---:|---|---|
 | **MARKETING_UA_DS** | ds_abc123 | 1,247,832 | active | yes |
-| **PLAYER_QUALITY** | ds_def456 | 892,104 | active | no |
 | **REVENUE_EVENTS** | ds_ghi789 | 3,412,006 | stale | yes |
 
 Using **MARKETING_UA_DS** (ds_abc123), which covers spend, installs, and ROAS columns.
 ~~~
 
-Bold every data source name. If a source is stale, say so and offer to refresh it before querying.
+Bold every data source name. If a source is stale, say so and offer to refresh it before querying. If `truncated` is true, raise `--limit` before recommending.

@@ -2,10 +2,10 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.248"
+skill_version: "0.2.250"
 ---
 
-<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 29,696. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-07-20. -->
+<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 29,952. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-08-02. -->
 
 # Graphit CLI
 
@@ -155,7 +155,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.248 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.250 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -196,8 +196,8 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `kb update topic <name>` - Update a topic - `--description`
 - `kb delete <type> <name>` - Delete a KB entity (requires --yes flag) - `--yes`
 
-**query** - Run SQL against a cached data source or a live warehouse (Snowflake / BigQuery)
-- `query <sql>` - Run SQL against a cached data source or a live warehouse (Snowflake / BigQuery) - `--ds --warehouse --connection --limit --override-rules --verbose --adhoc-reason --apply-conditional --skip-conditional --timeout`
+**query** - Run SQL against a cached data source or a live warehouse (Snowflake / BigQuery). Check truncated before concluding
+- `query <sql>` - Run SQL against a cached data source or a live warehouse (Snowflake / BigQuery). Check truncated before concluding - `--ds --warehouse --connection --limit --override-rules --verbose --adhoc-reason --apply-conditional --skip-conditional --timeout`
 
 **metadata** - Warehouse metadata (Snowflake schemas / BigQuery datasets)
 - `metadata schemas` - List schemas (Snowflake) or datasets (BigQuery) - `--connection`
@@ -207,7 +207,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `ds refresh-history <id>` - Show recent refresh runs for a data source with the Snowflake query id per run (status, time, rows, duration). Runs from before query-id capture - or a failure before any query ran - show 'not captured'. Read-only; no ds refresh-history delete. - `--limit`
 - `ds delete <id>` - Delete a data source - not available on the CLI, use the Sources Hub
 - `ds move <id>` - Move a data source between domains - not available on the CLI, use the Sources Hub
-- `ds list` - List data sources - `--limit`
+- `ds list` - List data sources. Response carries count/total/truncated; below total = capped, raise --limit - `--limit`
 - `ds create` - Create a data source from a SQL query (--sql) or a local Excel/CSV file (--file) - `--sql --name --connection --schema --skip-scan --detect-tables --source-tables --file --domain --sheet`
 - `ds refresh [ids...]` - Refresh data sources (use --all for all, or pass one or more IDs). On a breaking schema change a refresh is paused (status 'schema_changed') and the old data keeps serving; re-run with --force to accept the new schema. - `--all --no-wait --skip-empty --force`
 - `ds verify <id>` - Scan an unverified data source's schema and review it, and activate it. Warehouse/SQL sources print a verification link; add --accept-schema to accept the AI schema and activate from the CLI. File uploads activate on this command without --accept-schema, but NOT on create: `ds create --file` leaves them at pending_verification until you run this. Requires data_source_write in the source's domain. - `--force --accept-schema`
@@ -222,7 +222,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `dashboard update-entity <id> <entityId>` - Update a single entity's inner HTML without replacing the full page - `--file --stdin --title --label`
 - `dashboard get-html <id>` - Get the current HTML content of a dashboard
 - `dashboard list-entities <id>` - List the entities on a dashboard (id, label, KB refs, data source)
-- `dashboard get-entity <id> <entityId>` - Get a single entity's structured context (label, SQL, KB refs, data source, HTML). Use --with-data to also execute the governed query and return resolved data inline. Use --image for a local PNG of the graph (as last viewed) to Read - `--with-data --params --image --raw`
+- `dashboard get-entity <id> <entityId>` - Get a single entity's structured context (label, SQL, KB refs, data source, HTML). Use --with-data to also execute the governed query and return resolved data inline - that envelope carries truncated (false = complete) and executed_row_count when capped. Use --image for a local PNG of the graph (as last viewed) to Read - `--with-data --max-rows --params --image --raw`
 - `dashboard export <id>` - Export dashboard as PNG or PDF - `--format --output`
 - `dashboard edit <id>` - Enter edit mode on a shared dashboard: catch the editing session + start a draft, then open it in your browser. Gated (409) if someone else is editing, (423) if locked, (403) if view-only. Private dashboards need no session - edit directly. - `--no-open`
 - `dashboard publish <id>` - Publish your draft edits on a shared dashboard (makes them live) and release the editing session
