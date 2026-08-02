@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.242"
+skill_version: "0.2.248"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 29,696. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-07-20. -->
@@ -155,7 +155,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.242 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.248 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -215,7 +215,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `ds refresh-config <id>` - Configure a data source's refresh mode (full or incremental/watermark) and settings. Sets the complete incremental config each call - omitted flags reset to server defaults (e.g. omitting --table-lookback clears existing lookback windows). - `--mode --watermark-column --watermark-type --merge-key --merge-window --table-lookback --reconciliation`
 
 **dashboard** - Custom dashboard management
-- `dashboard list` - List custom dashboards - `--view --team`
+- `dashboard list` - List custom dashboards. --view takes mine, shared, editable, all (default). mine is what you created and so own - exactly one owner per dashboard, so mine is how teammates split migration work with no overlap. editable adds dashboards others own that you can change. Every row carries permission owner/editor/viewer. - `--view --team`
 - `dashboard create` - Create a new custom dashboard - `--name`
 - `dashboard get <id>` - Get dashboard details - `--html`
 - `dashboard update-html <id>` - Replace dashboard HTML content - `--file --stdin --label`
