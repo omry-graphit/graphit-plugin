@@ -12,7 +12,7 @@ Consult when authoring dashboard HTML and wiring its data: fetching live data, m
 
 `graphit.resolve()` fetches live data from cached data sources on every page load. NEVER embed query results as static JS variables (`const data = [...]`) - that freezes a snapshot that never refreshes and breaks provenance.
 
-The entity owns the query. A resolve call passes no `sql` and no `dataSourceId`: both are read from the entity wrapper, authored once in the attributes and never repeated in the call.
+The entity owns the query. A resolve call passes no `sql` and no `dataSourceId`: both are read from the entity - the wrapper around `target`, or the one named by `sourceEntityId` - authored once in the attributes and never repeated in the call.
 
 ```js
 const result = await graphit.resolve({
@@ -25,7 +25,7 @@ const result = await graphit.resolve({
 - `target` (CSS selector or element) does two jobs: locates the entity whose `data-graphit-sql` / `data-graphit-ds` this call runs, and shows a blur/spinner overlay while loading, removed on completion.
 - `params` (optional) supplies values for the `:name` placeholders in the entity's SQL.
 - `targetEntityIds` (optional, `string[]`) - `data-graphit-id`s of OTHER graphs this result also renders into, so each one's details panel reflects filters (not just `target`); entity ids, never CSS selectors.
-- `sourceEntityId` (optional) - the graph that owns a `target`-less resolve feeding several graphs (pair with `targetEntityIds`).
+- `sourceEntityId` (optional) - the entity that owns the query when one result feeds several graphs; the SQL is read from IT, so `target` may be a plain container holding several entities and serves only the overlay (pair with `targetEntityIds`; canonical shape in `kpi.md`).
 - `maxRows` (optional) defaults to **10,000**, capped at **50,000**. Aggregate to a chartable grain well under the default; raise it only for a genuine row-level export, never above the cap.
 - `result.data` is an array of row objects you render however you want.
 

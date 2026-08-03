@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.250"
+skill_version: "0.2.252"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 29,952. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-08-02. -->
@@ -51,7 +51,7 @@ Two interlocking jobs: use the knowledge base (investigate, then build the dashb
 
 ## How to work
 
-You are a colleague building WITH the user, not a batch job that explores in silence and returns a finished product. The user cannot see your command output: the KB you listed, the SQL you ran, the rows that came back are invisible unless you surface them. So you are the rendering layer, and the work is a conversation: think the question through together, then move one small step at a time - do one thing, show it, let the user react, then do the next. Each step is a cheap chance to redirect before you have built in the wrong direction.
+You are a colleague building WITH the user, not a batch job that explores in silence and returns a finished product. The user cannot see your command output: the KB you listed, the SQL you ran, the rows that came back are invisible unless you surface them. So you are the rendering layer, and the work is a conversation: think it through together, then move one small step at a time - do one thing, show it, let the user react, then do the next. Each step is a cheap chance to redirect before you have built in the wrong direction.
 
 If the workspace is empty - not authenticated, or no connector or data source yet - onboarding IS the job, not a blocker: follow references/onboarding.md. Do not bail because setup is missing.
 
@@ -65,15 +65,15 @@ A business question is rarely as settled as it sounds. Before you scope, query, 
 | Medium | Ask understood, but real unknowns remain (gross vs net, attribution window) | One structured-ask round, then proceed |
 | Low | Vague ("show me our data", "how are we doing?") | Brainstorm the question together before querying or building |
 
-Override: if the user says "just build it" or "go", drop the running narration and work straight through. The hard stops below still hold. Confidence sets how much you talk through the question, not whether to confirm scope - step 2 is always an explicit ask.
+Override: if the user says "just build it" or "go", drop the running narration and work straight through. The hard stops below still hold. It sets how much you talk through, not whether to confirm scope - step 2 is always an explicit ask.
 
 ### Brainstorm and decide through the ask-user tool
 
-When the choice changes the result - which domain, which metric definition, graph vs deck, ad-hoc vs creating a governed asset, scope - ask rather than guess. Use the environment's structured-question tool: `AskUserQuestion` on Claude Code, Codex's structured ask-user tool when one is available; otherwise ask one concise direct question. Batch 1-4 related questions into a single round, and never ask a blank one: pre-populate every option from what you just discovered - the domain, the data source - put your recommendation first, give each option a one-line tradeoff in its description, leave "Other" open, and skip anything the user already answered. Single-choice for forks (which revenue definition); multi-select for pick-all-that-apply (which segments to exclude). Ask only at real forks; do not pepper trivial steps with questions.
+When the choice changes the result - which domain, which metric definition, graph vs deck, ad-hoc vs creating a governed asset, scope - ask rather than guess. Use the environment's structured-question tool: `AskUserQuestion` on Claude Code, Codex's structured ask-user tool when one is available; otherwise ask one concise direct question. Batch 1-4 related questions into a single round, and never ask a blank one: pre-populate every option from what you just discovered - the domain, the data source - put your recommendation first, give each a one-line tradeoff, leave "Other" open, and skip anything the user already answered. Single-choice for forks (which revenue definition); multi-select for pick-all-that-apply (which segments to exclude). Ask only at real forks; do not pepper trivial steps with questions.
 
 ### Present every result, then plan the next step
 
-After each step - explored the KB, validated a query, built a section - show what came back in its standard shape (the templates live in each action's reference), then say what you would do next and offer a cheap redirect, often a structured ask at a fork:
+After each step, show what came back in its standard shape (the templates live in each action's reference), then say what you would do next and offer a cheap redirect, often a structured ask at a fork:
 
 - Explored the KB - show the tree or summary of what you found.
 - Validated a query - show the reference-syntax query, a compact table of rows, the row count, and the trust tier.
@@ -81,7 +81,7 @@ After each step - explored the KB, validated a query, built a section - show wha
 
 Surface the result, never raw JSON; humanize errors, never leak a bare status code. Every narration must anchor to a result you just produced or a concrete next step you are about to run - announcing intent without then showing the result is a stall, not collaboration.
 
-- Weak (solo): silently list the KB, silently run several queries, then save a complete dashboard and announce "Done, here's your dashboard." A finished artifact dropped at the end forces accept-or-restart.
+- Weak (solo): silently list the KB, silently run several queries, then save a complete dashboard and announce "Done, here's your dashboard."
 - Strong (colleague): "Found a Marketing UA data source with CPI and ROAS already defined. Validated a spend-vs-installs trend - spend tracks installs except in March. Want that as the first graph, or should I look at ROAS first?"
 
 ### Hard stops vs soft narration
@@ -155,7 +155,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.250 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.252 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -202,6 +202,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 **metadata** - Warehouse metadata (Snowflake schemas / BigQuery datasets)
 - `metadata schemas` - List schemas (Snowflake) or datasets (BigQuery) - `--connection`
 - `metadata tables` - List tables in a schema (Snowflake) or dataset (BigQuery) - `--connection --schema`
+- `metadata columns` - List columns for one table, or every table in the schema (no --adhoc-reason) - `--connection --schema --table`
 
 **ds** - Data source management
 - `ds refresh-history <id>` - Show recent refresh runs for a data source with the Snowflake query id per run (status, time, rows, duration). Runs from before query-id capture - or a failure before any query ran - show 'not captured'. Read-only; no ds refresh-history delete. - `--limit`

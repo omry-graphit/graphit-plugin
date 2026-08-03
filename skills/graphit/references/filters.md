@@ -31,7 +31,7 @@ const country = graphit.filter('country', {
 Handle API:
 - `country.get()` - current value
 - `country.set(value)` - update value (triggers subscribers + bound re-resolves)
-- `country.subscribe(cb)` - called on change; returns unsubscribe fn
+- `country.subscribe(cb)` - called immediately with the current value, then on every change; returns unsubscribe fn
 
 ## graphit.param(id, options)
 
@@ -45,14 +45,14 @@ const topN = graphit.param('top_n', { label: 'Top N', default: 10, options: [5, 
 
 The registration renders nothing, so connect your own markup to the handle in three steps: set the element's initial value from `handle.get()`, call `handle.set(newValue)` in the change event, and pass `handle.subscribe(v => updateElement(v))` so the control restores its visual state on saved-view apply or page reload. The Complete Example below shows this end to end for a `<select>`.
 
+`subscribe` fires the callback IMMEDIATELY at registration, then on every change, so init must be order-independent: a callback reaching a `const`/`let` declared further down throws at boot, and one uncaught throw kills the whole dashboard script - every chart spins forever with no error surfaced. Declare what the callback touches before you subscribe.
+
 ## graphit.bind(el, options) - Reactive Data Binding
 
-Connects a data entity to filter dependencies so it re-resolves automatically on change.
+Connects a data entity to filter dependencies so it re-resolves automatically on change. The entity owns the query: `el` sits inside the `[data-graphit-id]` wrapper whose `data-graphit-sql` carries the `:name` placeholders, and the call supplies only the values (`runtime.md`).
 
 ```js
 graphit.bind(document.getElementById('revenue-chart'), {
-  sql: 'SELECT date, SUM(revenue) AS revenue FROM orders WHERE country = :country GROUP BY 1',
-  dataSourceId: 'ORDERS',
   params: () => ({ country: graphit.state.get('country') }),
   deps: ['country'],      // state keys that trigger re-resolve (inferred from params if omitted)
   render: (result, el) => {
@@ -96,7 +96,9 @@ One control, wired to one reactive chart. The `<select>` is your own markup; `bi
   <option value="NA">North America</option>
   <option value="EU">Europe</option>
 </select>
-<div id="revenue-by-region"></div>
+<div data-graphit-id="revenue-by-region" data-graphit-label="Revenue by Region"
+     data-graphit-sql="SELECT month, SUM(revenue) AS revenue FROM sales WHERE (:region = 'ALL' OR region = :region) GROUP BY 1 ORDER BY 1"
+     data-graphit-ds="SALES"></div>
 
 <script>
   const region = graphit.filter('region', { label: 'Region', field: 'REGION', default: 'ALL' });
@@ -107,8 +109,6 @@ One control, wired to one reactive chart. The `<select>` is your own markup; `bi
   region.subscribe(v => { sel.value = v; });
 
   graphit.bind(document.getElementById('revenue-by-region'), {
-    sql: 'SELECT month, SUM(revenue) AS revenue FROM sales WHERE (:region = \'ALL\' OR region = :region) GROUP BY 1 ORDER BY 1',
-    dataSourceId: 'SALES',
     params: () => ({ region: region.get() }),
     deps: ['region'],
     render: (result, el) => {

@@ -23,13 +23,14 @@ Fetch `compareValue` in the same resolve as the value (a prior-period column) or
 
 ## KPI Row: One Resolve, Several Cards
 
-The standard dashboard header - several KPI cards fed by ONE query (per the rate-limit budget in `runtime.md`). Put the loading overlay on the shared container and pass it as the single `target`; render each card with `graphit.kpi`; anchor provenance with `sourceEntityId` (first card) plus `targetEntityIds` (the rest) so every card's details panel shows the live query. Each card still carries its own complete, executable `data-graphit-sql`.
+The standard dashboard header - several KPI cards fed by ONE query (per the rate-limit budget in `runtime.md`). One card OWNS the shared query: its `data-graphit-sql` is the combined statement the resolve runs, named by `sourceEntityId`. The other cards are `targetEntityIds` - each keeps its own complete, executable `data-graphit-sql` and gets the live query in its details panel. The resolve itself passes no `sql` and no `dataSourceId`; the entity contract in `runtime.md` holds here too, and passing both is the legacy shape that trips a `legacy_query_source` save warning (`migration.md`). Put the loading overlay on the shared container and pass it as the single `target` - with `sourceEntityId` set, `target` only carries the overlay, so it may wrap several entities.
 
 ```html
 <div id="kpi-row" class="gh-loading" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
   <!-- gh-loading-overlay spinner from runtime.md First-paint section goes here -->
+  <!-- owner: its sql IS the shared query the resolve runs -->
   <div data-graphit-id="kpi-credits" data-graphit-label="Total Credits"
-       data-graphit-sql="SELECT SUM(CREDIT_USED) AS v FROM CREDIT_USAGE_DS"
+       data-graphit-sql="SELECT SUM(CREDIT_USED) AS credits, COUNT(*) AS txns FROM CREDIT_USAGE_DS"
        data-graphit-ds="CREDIT_USAGE_DS">
     <div id="kpi-credits-card"></div>
   </div>
@@ -38,8 +39,6 @@ The standard dashboard header - several KPI cards fed by ONE query (per the rate
 <script>
 (async function () {
   var r = await graphit.resolve({
-    sql: "SELECT SUM(CREDIT_USED) AS credits, COUNT(*) AS txns FROM CREDIT_USAGE_DS",
-    dataSourceId: "CREDIT_USAGE_DS",
     target: "#kpi-row",
     sourceEntityId: "kpi-credits",
     targetEntityIds: ["kpi-txns", "kpi-success"]

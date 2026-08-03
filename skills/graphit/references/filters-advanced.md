@@ -46,12 +46,11 @@ A `dateRange` registration persists to saved views exactly like a `filter`/`para
 
 Relative presets auto-recompute on reload (a saved "last_7_days" always means the last 7 days from today). The 11 preset ids - also available via `graphit.datePresets` (`[{id,label}]`) and `graphit.datePreset(id)` (`{start,end}`): today, yesterday, last_7_days, last_30_days, this_month, last_month, this_quarter, last_quarter, ytd, last_90_days, last_12_months.
 
-Bind a chart to the range with two scalar params and a `BETWEEN`:
+Bind a chart to the range with two scalar params and a `BETWEEN`. The entity owns the query - its `data-graphit-sql` holds the `BETWEEN :start_date AND :end_date` template and the call passes only the values:
 
 ```js
+// entity #rev: data-graphit-sql="SELECT day, SUM(rev) AS rev FROM orders WHERE day BETWEEN :start_date AND :end_date GROUP BY 1"
 graphit.bind('#rev', {
-  sql: 'SELECT day, SUM(rev) AS rev FROM orders WHERE day BETWEEN :start_date AND :end_date GROUP BY 1',
-  dataSourceId: 'ORDERS',
   params: () => ({ start_date: dr.start, end_date: dr.end }),
   deps: dr.deps,
   render: (r, el) => graphit.graph(el, { type: 'area', data: r.data, x: 'day', y: 'rev' }),

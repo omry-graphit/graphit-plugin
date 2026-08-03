@@ -89,12 +89,9 @@ deck.slide({
 // After deck.start(), fire resolve calls
 deck.start();
 
-graphit.resolve({
-  sql: "SELECT MEDIA_SOURCE, SUM(APPSFLYER_COST) AS spend FROM MARKETING_UA_DS GROUP BY 1 ORDER BY spend DESC LIMIT 6",
-  dataSourceId: "MARKETING_UA_DS",
-  target: "#chart1"
-}).then(function(r) {
-  graphit.graph("#chart1", { type: "bar", data: r.data, x: "MEDIA_SOURCE", y: "spend", valueFormat: "currency" });
+// No sql/dataSourceId: target sits inside the entity, which owns the query
+graphit.resolve({ target: "#chart1" }).then(function(r) {
+  graphit.graph("#chart1", { type: "bar", data: r.data, x: "source", y: "spend", valueFormat: "currency" });
 });
 ```
 
