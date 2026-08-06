@@ -54,6 +54,7 @@ Every visible element - chart, KPI card, table, text section - must be wrapped s
 | `data-graphit-label` | Human-readable name | `"Ad Spend by Source"` |
 | `data-graphit-sql` | The query this entity runs - executable, parameterized (HTML-encode `<`, `>`, `&`, `"`) | `"SELECT ... WHERE d = :day"` |
 | `data-graphit-ds` | Data source name (same as the FROM table) or id | `"ORDERS_DS"` |
+| `data-graphit-state` | Not an entity attribute - a SIBLING wrapper around a user-changeable control, naming the state key saved views capture (`filters.md`) | `"country"` |
 
 KB asset references are derived automatically from `{{metric:X}}` / `{{dim:X}}` in the SQL; the governance compiler resolves these and shows KB asset chips in the details panel. Missing any one attribute breaks the entity; missing the wrapper makes the element invisible to the platform.
 

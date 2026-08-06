@@ -1,55 +1,50 @@
 # Headless Filters, Parameters, and Saved Views
 
-Load when the dashboard needs interactivity: a control the user changes that re-resolves a chart, plus saved views. A static dashboard skips this file. Dependent dropdowns and date presets live in `filters-advanced.md`.
+Load when the dashboard has ANY user-changeable control - a select, a button set, a slider, a date picker - plus saved views. A dashboard nobody changes skips this file. Dependent dropdowns and date presets live in `filters-advanced.md`.
 
 ## Contents
 
-Core Concept | `graphit.filter()` / `graphit.param()` | Wiring a Control | `graphit.bind()` | Safe Parameter Binding (`:name`) | Saved Views | Complete Example
+Declare State in Markup | Wiring a Control | `graphit.bind()` | Safe Parameter Binding (`:name`) | Saved Views | Complete Example
 
-## Core Concept
+## Declare State in Markup
 
-`graphit.filter()` and `graphit.param()` are headless JS registrations. They create NO DOM elements. You build 100% of the filter control's markup (any HTML, SVG, or CSS). The registration manages state so values can be snapshotted into saved views and survive page reloads.
+Every user-changeable control lives inside a wrapper naming its state key. The wrapper is static markup, so the platform sees the control without running your JavaScript - which is what lets saved views capture it.
 
-**Logic vs style.** `filter`, `param`, `bind` are headless logic - zero imposed styling, you own the markup. `chart`, `table`, `kpi`, `presentation`, `dropdown` render styled output you can use or hand-roll past.
-
-These four pieces always work together: register a control, register the binding that reads it, wire your markup to the handle, and let saved views snapshot it. A filter with no `bind` does nothing - plan to include all four when you add interactivity.
-
-**Reuse a control you built.** A finished filter control can be saved as a reusable template (`save_template`, or "Save as Template" in the UI) and dropped on other dashboards - its markup, styling, and wiring travel together. Keep the wiring `<script>` inside the control's own element so the capture carries the behavior, not just the markup.
-
-## graphit.filter(id, options)
-
-Register a named filter. Returns a handle for reading, writing, and subscribing to value changes.
-
-```js
-const country = graphit.filter('country', {
-  label: 'Country',       // display label (used in saved view UI)
-  field: 'COUNTRY',       // metadata for the platform (optional)
-  default: 'US',          // initial value if no saved view overrides it
-})
+```html
+<div data-graphit-state="country"
+     data-graphit-state-kind="filter"
+     data-graphit-state-label="Country"
+     data-graphit-field="COUNTRY"
+     data-graphit-state-default='["US","IL"]'>
+  <!-- your markup: any select, button set, or hand-rolled popover -->
+</div>
 ```
 
-Handle API:
-- `country.get()` - current value
-- `country.set(value)` - update value (triggers subscribers + bound re-resolves)
-- `country.subscribe(cb)` - called immediately with the current value, then on every change; returns unsubscribe fn
+| Attribute | Required | Value |
+|-----------|----------|-------|
+| `data-graphit-state` | yes | state key: lowercase letters, digits, `_`; starts with a letter or `_` |
+| `data-graphit-state-kind` | no (default `filter`) | `filter` or `param` - exactly these, lowercase |
+| `data-graphit-state-label` | no | display name, used by the saved-view UI |
+| `data-graphit-field` | no | KB field name (metadata) |
+| `data-graphit-state-default` | no (default `null`) | strict JSON, a scalar or an array of scalars - never an expression |
 
-## graphit.param(id, options)
+A declared key is a live filter before any of your script runs. `graphit.state.get('country')` reads it, `bind()` depends on it, and a saved view restores it - with no `graphit.filter()` call anywhere.
 
-Same API as filter but semantically a parameter (not tied to a KB field). Use for user-controlled inputs like threshold sliders or toggle switches.
+**Logic vs style.** Declarations and `bind` are headless logic - zero imposed styling, you own the markup. `chart`, `table`, `kpi`, `presentation`, `dropdown` render styled output you can use or hand-roll past.
 
-```js
-const topN = graphit.param('top_n', { label: 'Top N', default: 10, options: [5, 10, 20, 50] })
-```
+**Reuse a control.** Save a finished control as a template (`save_template`, or "Save as Template" in the UI) to drop on other dashboards - markup, styling, and wiring travel together. Keep its `<script>` inside the control's own element.
+
+**Registering from JavaScript instead.** `graphit.filter(id, options)` / `graphit.param(id, options)` still work and return a handle; calling either on a key you already declared adopts it. They are the escape hatch for keys you cannot write as markup, and a NEW undeclared one is refused at save. Both, plus the retrofit procedure, are in `state-contract.md`.
 
 ## Wiring a Control
 
-The registration renders nothing, so connect your own markup to the handle in three steps: set the element's initial value from `handle.get()`, call `handle.set(newValue)` in the change event, and pass `handle.subscribe(v => updateElement(v))` so the control restores its visual state on saved-view apply or page reload. The Complete Example below shows this end to end for a `<select>`.
+The declaration renders nothing, so connect your markup in three steps: initialize from `graphit.state.get(key)`, write back on change with `graphit.state.set(key, value)`, and subscribe so the control restores its look on saved-view apply or page reload. The Complete Example shows this end to end.
 
-`subscribe` fires the callback IMMEDIATELY at registration, then on every change, so init must be order-independent: a callback reaching a `const`/`let` declared further down throws at boot, and one uncaught throw kills the whole dashboard script - every chart spins forever with no error surfaced. Declare what the callback touches before you subscribe.
+`subscribe` fires the callback IMMEDIATELY, then on every change, so init must be order-independent: a callback reaching a `const`/`let` declared further down throws at boot, and one uncaught throw kills the whole dashboard script - every chart spins forever with no error surfaced. Declare what the callback touches before you subscribe.
 
 ## graphit.bind(el, options) - Reactive Data Binding
 
-Connects a data entity to filter dependencies so it re-resolves automatically on change. The entity owns the query: `el` sits inside the `[data-graphit-id]` wrapper whose `data-graphit-sql` carries the `:name` placeholders, and the call supplies only the values (`runtime.md`).
+Connects a data entity to state keys so it re-resolves automatically on change. The entity owns the query: `el` sits inside the `[data-graphit-id]` wrapper whose `data-graphit-sql` carries the `:name` placeholders, and the call supplies only the values (`runtime.md`).
 
 ```js
 graphit.bind(document.getElementById('revenue-chart'), {
@@ -81,35 +76,36 @@ Array length capped at 200 elements, max 50 param keys per resolve call.
 
 ## Saved Views
 
-Users can save the current filter/parameter state as a named view and restore it later. The platform snapshots all registered `graphit.filter` and `graphit.param` values automatically. Views survive page reloads (state is baked into the iframe on every render). A default view auto-applies on dashboard open with no flash.
+Users save the current state as a named view and restore it later. The platform snapshots every declared and registered key automatically, and views survive page reloads (state is baked into the iframe on every render). A default view auto-applies on dashboard open with no flash.
 
-The subscribe callback on each handle restores the control's visual state when a view is applied. This is why every control MUST include a `subscribe(v => ...)` that updates its appearance. A control registered without `graphit.filter`/`param` (a hand-rolled `<select>` on its own) will NOT persist to a view.
+The subscribe callback restores each control's visual state when a view is applied, so every control MUST have one. A control with neither a `data-graphit-state` wrapper nor a `graphit.filter`/`param` call - a bare hand-rolled `<select>` - is invisible to views: the user changes it, saves, and the view captures nothing.
 
 ## Complete Example
 
-One control, wired to one reactive chart. The `<select>` is your own markup; `bind()` re-resolves the chart whenever the filter changes.
+One declared control, wired to one reactive chart. The `<select>` is your own markup; `bind()` re-resolves the chart whenever the state changes.
 
 ```html
-<label>Region</label>
-<select id="region-select">
-  <option value="ALL">All Regions</option>
-  <option value="NA">North America</option>
-  <option value="EU">Europe</option>
-</select>
+<div data-graphit-state="region" data-graphit-state-label="Region"
+     data-graphit-field="REGION" data-graphit-state-default='"ALL"'>
+  <label>Region</label>
+  <select id="region-select">
+    <option value="ALL">All Regions</option>
+    <option value="NA">North America</option>
+    <option value="EU">Europe</option>
+  </select>
+</div>
 <div data-graphit-id="revenue-by-region" data-graphit-label="Revenue by Region"
      data-graphit-sql="SELECT month, SUM(revenue) AS revenue FROM sales WHERE (:region = 'ALL' OR region = :region) GROUP BY 1 ORDER BY 1"
      data-graphit-ds="SALES"></div>
 
 <script>
-  const region = graphit.filter('region', { label: 'Region', field: 'REGION', default: 'ALL' });
-
   const sel = document.getElementById('region-select');
-  sel.value = region.get();
-  sel.onchange = () => region.set(sel.value);
-  region.subscribe(v => { sel.value = v; });
+  sel.value = graphit.state.get('region');
+  sel.onchange = () => graphit.state.set('region', sel.value);
+  graphit.state.subscribe('region', v => { sel.value = v; });
 
   graphit.bind(document.getElementById('revenue-by-region'), {
-    params: () => ({ region: region.get() }),
+    params: () => ({ region: graphit.state.get('region') }),
     deps: ['region'],
     render: (result, el) => {
       graphit.graph(el, { type: 'area', data: result.data, x: 'month', y: 'revenue', valueFormat: 'currency' });
