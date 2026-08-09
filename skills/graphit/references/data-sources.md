@@ -41,17 +41,19 @@ A wide or raw source is sometimes the right call - row-level drill-down/export, 
 
 ## Creating data sources
 
-`graphit ds create` auto-chains: create -> poll until ready -> scan schema -> print verification link. To activate for KB use, either the user reviews and activates via the link on the platform, or - after you show them the scanned schema and they accept it - run `graphit ds verify <id> --accept-schema` to activate from the CLI.
+`graphit ds create` auto-chains: create -> poll until ready -> scan schema -> print verification link. Activating it for KB use is the `ds verify` step below.
 
 ```bash
 # Create with auto-scan (recommended)
-graphit ds create --name "MY_DS" --sql "SELECT ..." --connection <id>
+graphit ds create --name "MY_DS" --domain <DOMAIN> --sql "SELECT ..." --connection <id>
 
 # Create without auto-scan (for special cases)
-graphit ds create --name "MY_DS" --sql "SELECT ..." --skip-scan
+graphit ds create --name "MY_DS" --domain <DOMAIN> --sql "SELECT ..." --skip-scan
 ```
 
-**From a local file (Excel/CSV):** `graphit ds create --file <path>` uploads the file and creates one data source. Optional: `--name` (defaults to the file name), `--sheet <name>` (multi-sheet workbooks), `--domain <NAME>` (attach to an existing KB domain - create it first if needed). `--file` and `--sql` are mutually exclusive; same auto-scan + verification flow as above.
+**`--domain` is REQUIRED, in both modes.** It files the scanned table under an existing KB domain and decides who can see the source; there is no uncategorized fallback. `graphit kb list domains`, confirm the choice with the user, and `graphit kb create domain --name <NAME>` if none fits.
+
+**From a local file (Excel/CSV):** `graphit ds create --file <path> --domain <NAME>` uploads the file and creates one data source. Optional: `--name` (defaults to the file name), `--sheet <name>` (multi-sheet workbooks). `--file` and `--sql` are mutually exclusive; same flow as above.
 
 **Warehouse connection.** `--connection` names the warehouse a `--sql` source reads from. Add BigQuery with `graphit connector add bigquery-serviceaccount --key-file <path> [--project --dataset --location]` (org admin; project defaults from the key). The pipeline routes by connection type - the same `ds create` works for either warehouse.
 
@@ -59,7 +61,7 @@ For existing unverified sources, `graphit ds verify <id>` scans and shows the sc
 
 ## Refreshing data sources
 
-Data sources cache a snapshot of the warehouse query result. Refresh when you need current data. **File-upload sources can't be refreshed (no query to re-run) - update them by re-uploading with `graphit ds create --file <path>`.**
+Data sources cache a snapshot of the warehouse query result. Refresh when you need current data. **File-upload sources can't be refreshed - update them by re-uploading with `graphit ds create --file <path> --domain <NAME>`.**
 
 On BigQuery a refresh scans billed bytes, so keep the shape tight and prefer incremental/partition-pruned refresh over full re-scans; a per-connection scan cap (max bytes billed) fails an oversized query fast rather than running up a bill.
 
@@ -106,7 +108,7 @@ Only early-filter when an incremental source is slow for this reason; the defaul
 
 ## What needs write access
 
-Querying a source, listing sources, reading schema or refresh history, and an ordinary `graphit ds refresh` are reads - any member who can read that source's domain can run them, and a source in a domain they cannot read returns the same uniform 404 as one that does not exist. These need `data_source_write` in the source's domain: `ds create`, editing its SQL, `ds refresh-config`, a `--force` refresh or accepting a schema, `ds verify`, scanning, per-source governance settings, and deletion. Moving a source to another domain needs write in both the old and the new domain, and `ds create` must name a domain the caller can write to.
+Querying a source, listing sources, reading schema or refresh history, and an ordinary `graphit ds refresh` are reads - any member who can read that source's domain can run them, and a source in a domain they cannot read returns the same uniform 404 as one that does not exist. These need `data_source_write` in the source's domain: `ds create`, editing its SQL, `ds refresh-config`, a `--force` refresh or accepting a schema, `ds verify`, scanning, per-source governance settings, and deletion. Moving a source to another domain needs write in both the old and the new domain.
 
 Check `graphit status` for those domains before proposing a create or a config change. It is advisory - the server authorizes each operation when it runs, and a denial with `retryable: false` is a stop, not a retry (`operations.md`).
 

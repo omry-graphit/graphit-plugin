@@ -2,10 +2,10 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.260"
+skill_version: "0.2.270"
 ---
 
-<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 29,952. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-08-02. -->
+<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 30,592. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-08-02. Raised from 29,952 on 2026-08-07 (founder-directed): a domain is now an access boundary, so loop step 2 must say that picking one decides who ever sees the work - load-bearing before any reference load can be relied on. SIZING.md rules raises pay only for command-table growth; deliberate exception. -->
 
 # Graphit CLI
 
@@ -101,7 +101,7 @@ One loop serves both jobs. Each step names the reference to read when you need d
 
 1. Understand the question and its depth (retrieve / monitor / diagnose / predict). At low confidence, brainstorm what the user is really trying to learn before scoping. One clarifying question beats a wrong dashboard.
 2. Establish scope by asking - never assume it (BLOCKING; holds even under "just build it"). Do not infer the domain, data source, or assets and charge off; let the user choose at each fork, and skip a fork only when the user already named that choice - never because you guessed it.
-   - Domain. `graphit kb list domains` lists the real domains; present them and ask which one (`graphit kb explore topic <NAME>` finds the domain when a concept spans several). If it is empty (brand-new workspace), see references/onboarding.md; if none fits, offer to create one.
+   - Domain. This decides WHO WILL SEE the work: a shared domain is the team's; a private space is one person's and invisible to everyone else, admins included. Settle it BEFORE creating - it is not freely reversible (references/kb-structure.md). `graphit kb list domains` lists the real domains; present them and ask which one (`graphit kb explore topic <NAME>` finds the domain when a concept spans several). If it is empty (brand-new workspace), see references/onboarding.md; if none fits, offer to create one.
    - Data source. `graphit kb explore domain <NAME>` returns that domain's data sources plus their metrics, dimensions, and rules in one traversal (`graphit ds list` for the full list); present the sources, ask which one, or offer to create one if none fits.
    - Assets. Present the chosen source's metrics, dimensions, and rules as the working set and confirm it. If the user's wording doesn't match an asset, resolve it with `graphit kb search` (semantic, ranked by relevance) before assuming a mapping; for a cross-domain investigation, broaden across the whole KB. A 0-result search is not proof of absence (results are ranked and capped) - confirm a specific name with `kb get` first. Then proceed.
    Ask via the structured ask-user tool above, options pre-populated from what you listed. Read references/kb-discovery.md, references/kb-traversal.md, references/data-sources.md.
@@ -142,7 +142,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 |---|---|
 | a brand-new or empty workspace, nothing connected yet | onboarding.md |
 | scoping to a domain, data source, and assets | kb-discovery.md, kb-traversal.md, data-sources.md |
-| building or curating KB assets (the gate) | kb-structure.md, kb-actions.md, parameterized-metrics.md |
+| building or curating KB assets (the gate) | kb-structure.md, kb-scope.md, kb-actions.md, parameterized-metrics.md |
 | writing or validating a query | sql-reference.md, governance.md |
 | a user is confused about governance itself - what governed means, why a query was blocked, how it works | governance-explained.md |
 | designing and rendering the dashboard | dashboard-planning.md, chart-selection.md, chart-patterns.md, graphit-style.md, runtime.md, kpi.md, table.md |
@@ -155,7 +155,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.260 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.270 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -194,7 +194,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `kb update synonym <term>` - Update a synonym - `--canonical --type --description`
 - `kb update relationship <name>` - Update a relationship - `--description --primary-table --primary-column --related-table --related-column`
 - `kb update topic <name>` - Update a topic - `--description`
-- `kb delete <type> <name>` - Delete a KB entity (requires --yes flag) - `--yes`
+- `kb delete <type> <name>` - Delete a KB entity (requires --yes flag) - `--yes --force`
 
 **query** - Run SQL against a cached data source or a live warehouse (Snowflake / BigQuery). Check truncated before concluding
 - `query <sql>` - Run SQL against a cached data source or a live warehouse (Snowflake / BigQuery). Check truncated before concluding - `--ds --warehouse --connection --limit --override-rules --verbose --adhoc-reason --apply-conditional --skip-conditional --timeout`
@@ -209,7 +209,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `ds delete <id>` - Delete a data source - not available on the CLI, use the Sources Hub
 - `ds move <id>` - Move a data source between domains - not available on the CLI, use the Sources Hub
 - `ds list` - List data sources. Response carries count/total/truncated; below total = capped, raise --limit - `--limit`
-- `ds create` - Create a data source from a SQL query (--sql) or a local Excel/CSV file (--file) - `--sql --name --connection --schema --skip-scan --detect-tables --source-tables --file --domain --sheet`
+- `ds create` - Create a data source from a SQL query (--sql) or a local Excel/CSV file (--file). --domain is REQUIRED in both modes - every source lives in a KB domain - `--sql --name --connection --schema --skip-scan --detect-tables --source-tables --file --domain --sheet`
 - `ds refresh [ids...]` - Refresh data sources (use --all for all, or pass one or more IDs). On a breaking schema change a refresh is paused (status 'schema_changed') and the old data keeps serving; re-run with --force to accept the new schema. - `--all --no-wait --skip-empty --force`
 - `ds verify <id>` - Scan an unverified data source's schema and review it, and activate it. Warehouse/SQL sources print a verification link; add --accept-schema to accept the AI schema and activate from the CLI. File uploads activate on this command without --accept-schema, but NOT on create: `ds create --file` leaves them at pending_verification until you run this. Requires data_source_write in the source's domain. - `--force --accept-schema`
 - `ds update <id>` - Update a data source row cap - `--max-rows`

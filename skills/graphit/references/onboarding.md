@@ -23,7 +23,7 @@ Two ways in. Lead with the warehouse; offer the file as the lighter path.
 - Snowflake keypair from the CLI: `graphit connector add snowflake-keypair` needs `--account --user --key --warehouse --role --database` (all required), plus optional `--name` for a friendly label (it defaults to `Snowflake (<account>)`). It validates the connection before saving, so a success really did connect.
 - OAuth and GitHub connections are set up in the Graphit web app, not the CLI - name that handoff when it applies.
 
-**File (lighter).** For a quick start with no warehouse, `graphit ds create --file ./data.csv` uploads a CSV or Excel file and creates a data source directly - no connector needed.
+**File (lighter).** For a quick start with no warehouse, `graphit ds create --file ./data.csv --domain <NAME>` uploads a CSV or Excel file and creates a data source directly - no connector needed.
 
 Present the outcome: which connection is live, or the exact web-app / admin step the user has to finish.
 
@@ -33,10 +33,19 @@ Before creating anything, ask what business question the user wants to answer. T
 
 ## 3. Create the data source
 
-Explain that answering the question fast needs a cached data source over the connection, not repeated live-warehouse queries. Create it, then activate it:
+Explain that answering the question fast needs a cached data source over the connection, not repeated live-warehouse queries.
+
+**A domain comes first.** Every data source is created inside a KB domain - it is what makes the source findable and grantable, and there is no uncategorized fallback. A brand-new workspace has only the org-wide commons, so check with `graphit kb list domains` and, if the user's work deserves its own area, agree a name and create it before the source:
 
 ```bash
-graphit ds create --name "MY_DS" --sql "SELECT ..." --connection <id>
+graphit kb list domains
+graphit kb create domain --name MARKETING --description "Acquisition and spend"
+```
+
+Then create the source and activate it:
+
+```bash
+graphit ds create --name "MY_DS" --domain MARKETING --sql "SELECT ..." --connection <id>
 graphit ds verify <id> --accept-schema
 ```
 

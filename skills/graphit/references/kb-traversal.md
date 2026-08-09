@@ -37,11 +37,8 @@ Which `graphit kb` read command answers each question, and how to present the re
 ### "What topics does ARPU_D1 belong to?"
 `graphit kb explore metric ARPU_D1` - the response includes its topics, along with its tables, dimensions, and home domain.
 
-### "What's left uncategorized?"
-`graphit kb explore domain Uncategorized` - returns the tables with no home domain and their assets.
-
 ### "What domains do we have?" (enumerate names)
-`graphit kb list domains` - returns every domain with its description and asset count, plus an "Uncategorized" entry when tables have no domain. Report all of them, including empty ones. This enumerates domain NAMES; to see what is in one, explore it. Domain is not a searchable type, so `graphit kb search` will not surface domains.
+`graphit kb list domains` - returns every domain with its description and asset count. Report all of them, including empty ones. This enumerates domain NAMES; to see what is in one, explore it. Domain is not a searchable type, so `graphit kb search` will not surface domains.
 
 ## Presenting KB Results
 

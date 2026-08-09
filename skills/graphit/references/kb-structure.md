@@ -14,7 +14,7 @@ The KB is a labeled property graph: assets carry tags that place them in a tree,
 | synonym | Maps a business term to a canonical metric, dimension, or column |
 | table | Physical data location in the warehouse, with typed columns |
 | topic | Business-concept tag applied to assets (e.g., REVENUE, ACQUISITION) |
-| domain | High-level business area (e.g., MARKETING, SALES, PRODUCT) |
+| domain | High-level business area (e.g., MARKETING, SALES, PRODUCT), and the boundary that decides who can see what sits in it |
 | relationship | Documented JOIN pattern between two tables |
 | memory | Org-level context notes, always global scope |
 
@@ -41,6 +41,8 @@ Other placements layered on top:
 - **Cross-cutting domains**: synonyms can carry extra domains in `extra_domain_ids` for relevance beyond their home, without moving the asset in the tree.
 
 Domains are coarse and few (broad business areas); topics are finer and more numerous. A single domain like MARKETING typically spans topics such as ACQUISITION, ATTRIBUTION, and CAMPAIGN_PERFORMANCE.
+
+A domain is also the access boundary: it decides who can see what sits in it. Settle that with the user before creating anything - see kb-scope.md.
 
 ## Tree Rendering Order
 
