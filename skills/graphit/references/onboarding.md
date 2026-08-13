@@ -42,6 +42,14 @@ graphit kb list domains
 graphit kb create domain --name MARKETING --description "Acquisition and spend"
 ```
 
+**Read the table before you write its SQL.** You cannot author a source SELECT without knowing the columns, and guessing them wastes a round trip. Read them straight off the warehouse:
+
+```bash
+graphit metadata columns --connection <id> --schema <name> --table <name>
+```
+
+This needs no governed reference. An aggregate or `GROUP BY` against a warehouse table that is not yet in the knowledge base is a different matter, so use it for shape rather than probing with a query.
+
 Then create the source and activate it:
 
 ```bash
