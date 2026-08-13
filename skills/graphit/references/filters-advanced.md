@@ -14,7 +14,7 @@ graphit.cascade('#user-list', {
   column: 'USER_NAME',                  // distinct values of this column
   source: 'users_table',               // table name (or a subquery)
   dataSourceId: 'USERS_TABLE',
-  filters: () => ({ ORG: org.get() }),  // upstream constraints; empty values skipped
+  filters: () => ({ ORG: org.get() }),  // upstream constraints; null = all, [] = none
   deps: ['org'],                        // refetch when org changes
   selection: user,                      // optional: prune selected users no longer in this org
   render: (values, el, ctx) => {
@@ -24,7 +24,7 @@ graphit.cascade('#user-list', {
 })
 ```
 
-- `filters()` returns `{ COLUMN: value }`. A scalar makes `COLUMN = :p`; an array makes `COLUMN IN :p`. Empty values (`null`, `''`, `[]`) are skipped (no constraint), so an empty upstream means "no filter", not "match nothing".
+- `filters()` returns `{ COLUMN: value }`. A scalar makes `COLUMN = :p`; an array makes `COLUMN IN :p`. One contract everywhere: `null`, absent or `''` means ALL (no constraint), and `[]` means match NOTHING - an empty-array upstream settles the list empty without issuing a query.
 - `selection` (a filter handle) is auto-pruned to the surviving values when an upstream changes.
 - Returns `{ destroy() }`. Keep the result set small (default `LIMIT 1001`); these parameterized queries skip the result cache, so they hit DuckDB directly.
 - Faster for low-cardinality cascades: add `preload: true` to fetch the full distinct cross-product ONCE (cacheable, no params) and filter in-memory on every change - instant, zero per-change round-trips. Best when the column-by-upstream combinations are small (cap = `limit`, default 1001 tuples); above the cap it auto-falls-back to per-change server queries.

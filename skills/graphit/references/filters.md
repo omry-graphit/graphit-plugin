@@ -30,8 +30,6 @@ Every user-changeable control lives inside a wrapper naming its state key. The w
 
 A declared key is a live filter before any of your script runs. `graphit.state.get('country')` reads it, `bind()` depends on it, and a saved view restores it - with no `graphit.filter()` call anywhere.
 
-**Logic vs style.** Declarations and `bind` are headless logic - zero imposed styling, you own the markup. `chart`, `table`, `kpi`, `presentation`, `dropdown` render styled output you can use or hand-roll past.
-
 **Reuse a control.** Save a finished control as a template (`save_template`, or "Save as Template" in the UI) to drop on other dashboards - markup, styling, and wiring travel together. Keep its `<script>` inside the control's own element.
 
 **Registering from JavaScript instead.** `graphit.filter(id, options)` / `graphit.param(id, options)` still work and return a handle; calling either on a key you already declared adopts it. They are the escape hatch for keys you cannot write as markup, and a NEW undeclared one is refused at save. Both, plus the retrofit procedure, are in `state-contract.md`.
@@ -70,6 +68,8 @@ Use `:name` placeholders in SQL for safe server-side parameter binding. NEVER st
 | Multi-select | `WHERE country IN :countries` | `{countries: ['US', 'IL']}` (expands to safe `IN ($0, $1)`) |
 | Date range | `WHERE date BETWEEN :start_date AND :end_date` | `{start_date: '2026-01-01', end_date: '2026-06-01'}` |
 
+**All-selected.** Write "no filter" as `(:all_x = 1 OR col IN :x)` with integer `1`/`0` - the server reduces the clause away when the flag is `1`, so every all-selected state shares ONE cached statement. A string sentinel is not reduced.
+
 Do NOT name a param after a SQL keyword (`from`, `to`, `select`, `order`, `group`, and similar). The SQL template is parsed before values bind, so a reserved-word placeholder like `:from` fails with "SQL validation failed". Use names like `:start_date`, `:end_date`.
 
 Array length capped at 200 elements, max 50 param keys per resolve call.
@@ -95,7 +95,7 @@ One declared control, wired to one reactive chart. The `<select>` is your own ma
   </select>
 </div>
 <div data-graphit-id="revenue-by-region" data-graphit-label="Revenue by Region"
-     data-graphit-sql="SELECT month, SUM(revenue) AS revenue FROM sales WHERE (:region = 'ALL' OR region = :region) GROUP BY 1 ORDER BY 1"
+     data-graphit-sql="SELECT month, SUM(revenue) AS revenue FROM sales WHERE (:all_regions = 1 OR region = :region) GROUP BY 1 ORDER BY 1"
      data-graphit-ds="SALES"></div>
 
 <script>
@@ -105,7 +105,8 @@ One declared control, wired to one reactive chart. The `<select>` is your own ma
   graphit.state.subscribe('region', v => { sel.value = v; });
 
   graphit.bind(document.getElementById('revenue-by-region'), {
-    params: () => ({ region: graphit.state.get('region') }),
+    params: () => { const r = graphit.state.get('region');
+      return r === 'ALL' ? { all_regions: 1 } : { all_regions: 0, region: r }; },
     deps: ['region'],
     render: (result, el) => {
       graphit.graph(el, { type: 'area', data: result.data, x: 'month', y: 'revenue', valueFormat: 'currency' });
