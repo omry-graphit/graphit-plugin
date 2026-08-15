@@ -29,7 +29,7 @@ const result = await graphit.resolve({
 - `maxRows` (optional) defaults to **10,000**, capped at **50,000**. Aggregate to a chartable grain well under the default; raise it only for a genuine row-level export, never above the cap.
 - `result.data` is an array of row objects you render however you want.
 
-MUST: every resolve feeding a rendered graph, KPI, or table carries attribution - `target` (an element inside the entity wrapper), or `sourceEntityId` plus `targetEntityIds` when one result feeds several graphs. Attribution records the live filtered query behind that entity's details panel; unattributed, the panel shows `data-graphit-sql` as an unrun example, so a user changing a filter sees the SQL never move. Saving a page with filters or params and zero attributed resolves returns an `unattributed_resolves` warning. Queries feeding no visual (option lists, freshness probes) stay unattributed.
+MUST: every resolve feeding a rendered graph, KPI, or table carries attribution - `target` (an element inside the entity wrapper), or `sourceEntityId` plus `targetEntityIds` when one result feeds several graphs. Attribution records the live filtered query behind that entity's details panel; unattributed, the panel shows `data-graphit-sql` as an unrun example, so a user changing a filter sees the SQL never move. Saving a page with filters or params and zero attributed resolves returns an `unattributed_resolves` warning. Queries feeding page chrome (option lists, bounds probes, rankers) need no attribution, but belong on the primitives rather than hand-written SQL - see `filters-advanced.md`.
 
 CRITICAL: use KB reference syntax (`{{metric:NAME}}`, `{{dim:NAME}}`) inside the entity's `data-graphit-sql` whenever a KB asset exists - the server expands it at query time, producing the governed trust tier. Syntax and trust tiers: `governance.md`.
 
@@ -147,7 +147,7 @@ You have full creative freedom: draw with `type:'custom'` or inline SVG/CSS/HTML
 | `graphit.table(el, {data, columns?, columnFormats?})` | A styled HTML table; `columns` = row keys (select + order) | `table.md` |
 | `graphit.kpi(el, {value, compareValue?, sparkline?, ...})` | A KPI card: delta badge, sparkline | `kpi.md` |
 | `graphit.presentation(el)` | A full-screen slide deck builder | `presentations.md` |
-| `graphit.filter / param / dateRange / cascade / bind` | Headless interactivity (zero imposed markup) | `filters.md`, `filters-advanced.md` |
+| `graphit.filter / param / dateRange / cascade / dataBounds / rank / bind` | Headless interactivity (zero imposed markup) | `filters.md`, `filters-advanced.md` |
 
 **Standard `graphit.graph` types (set `config.type`):** `"bar"`, `"horizontal-bar"` (alias `"hbar"`), `"line"`, `"area"`, `"donut"`, `"pie"` (alias of `donut`), `"scatter"` (alias `"bubble"`), `"stacked-bar"` (alias `"stacked"`), `"heatmap"`, `"funnel"`, `"gauge"`, `"sparkline"`, plus `"custom"`. Full per-type config (axes, dual axis, `valueFormat`, the non-scaling percent rule, the custom `ctx` contract, hand-rolled shapes) lives in `chart-patterns.md`. Saved org templates register as types too.
 

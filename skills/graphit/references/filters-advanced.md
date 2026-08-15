@@ -12,13 +12,13 @@ const user = graphit.filter('user', { label: 'User', default: [] }) // multi-sel
 
 graphit.cascade('#user-list', {
   column: 'USER_NAME',                  // distinct values of this column
-  source: 'users_table',               // table name (or a subquery)
+  source: 'users_table',               // table name - an identifier, never SQL
   dataSourceId: 'USERS_TABLE',
   filters: () => ({ ORG: org.get() }),  // upstream constraints; null = all, [] = none
   deps: ['org'],                        // refetch when org changes
   selection: user,                      // optional: prune selected users no longer in this org
   render: (values, el, ctx) => {
-    // ctx = { loading, empty, error, hasUpstream } - build any markup you like
+    // ctx = { loading, empty, error, hasUpstream, counts } - build any markup you like
     el.innerHTML = values.map(v => `<label><input type="checkbox" value="${v}"> ${v}</label>`).join('')
   },
 })
@@ -26,8 +26,38 @@ graphit.cascade('#user-list', {
 
 - `filters()` returns `{ COLUMN: value }`. A scalar makes `COLUMN = :p`; an array makes `COLUMN IN :p`. One contract everywhere: `null`, absent or `''` means ALL (no constraint), and `[]` means match NOTHING - an empty-array upstream settles the list empty without issuing a query.
 - `selection` (a filter handle) is auto-pruned to the surviving values when an upstream changes.
-- Returns `{ destroy() }`. Keep the result set small (default `LIMIT 1001`); these parameterized queries skip the result cache, so they hit DuckDB directly.
+- Returns `{ destroy(), search(term) }`. Keep the result set small (default `LIMIT 1001`); these parameterized queries skip the result cache, so they hit DuckDB directly.
+- `withCounts: true` adds a per-value row count, delivered as `ctx.counts` alongside `values` (same order).
+- Type-ahead: call the handle's `search('ber')` to narrow server-side; it is debounced with the normal refetch and matches literally, so `100%` finds `100%`. Clearing it (`search('')`) restores the full list.
 - Faster for low-cardinality cascades: add `preload: true` to fetch the full distinct cross-product ONCE (cacheable, no params) and filter in-memory on every change - instant, zero per-change round-trips. Best when the column-by-upstream combinations are small (cap = `limit`, default 1001 tuples); above the cap it auto-falls-back to per-change server queries.
+
+## graphit.dataBounds(options) - A Column's Real Min/Max
+
+For a date picker that tracks the data instead of a literal frozen at authoring time. Never bake a `max="2026-07-15"` into markup - the source moves and the user gets locked out of fresh rows.
+
+```js
+const b = await graphit.dataBounds({ column: 'EVENT_DATE', source: 'sales', dataSourceId: 'SALES_DS' })
+input.min = b.min
+input.max = b.max
+```
+
+- Returns `{ min, max, dataMax, today }`. Use `max` as the picker ceiling: it is `max(dataMax, today)`, so a source lagging a few days never locks the user out of today. `dataMax` is the raw last row, for a "data through {dataMax}" caption.
+- Non-date columns return their true min/max with no ceiling applied.
+
+## graphit.rank(options) - Top-N Values
+
+Top values by a measure, shaped to drop straight into an array filter or an `IN :param` binding.
+
+```js
+const top = await graphit.rank({
+  column: 'COUNTRY', source: 'sales', dataSourceId: 'SALES_DS',
+  by: '{{metric:REVENUE}}',            // governed measure, or SUM(REVENUE) / COUNT(*)
+  limit: 10,
+  filters: { REGION: region.get() },   // optional, same contract as cascade
+})
+```
+
+- Returns a plain array of values. Prefer a `{{metric:NAME}}` reference so the ranking uses the org's definition; the bare aggregate form accepts SUM, COUNT, AVG, MIN, MAX over one column.
 
 ## graphit.dateRange(id, options) - Date Presets
 

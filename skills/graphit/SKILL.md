@@ -2,10 +2,10 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.310"
+skill_version: "0.2.314"
 ---
 
-<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 30,592. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-08-02. Raised from 29,952 on 2026-08-07 (founder-directed): a domain is now an access boundary, so loop step 2 must say that picking one decides who ever sees the work - load-bearing before any reference load can be relied on. SIZING.md rules raises pay only for command-table growth; deliberate exception. -->
+<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 31,232. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-08-02. Raised from 29,952 on 2026-08-07 (founder-directed): a domain is now an access boundary, so loop step 2 must say that picking one decides who ever sees the work - load-bearing before any reference load can be relied on. Raised from 30,592 on 2026-08-13 (founder-directed): the living-context MUST bullet - explore placements answer path + pre-create fork. SIZING.md rules raises pay only for command-table growth; both raises are deliberate exceptions. -->
 
 # Graphit CLI
 
@@ -42,6 +42,7 @@ Two interlocking jobs: use the knowledge base (investigate, then build the dashb
 - Govern first: if the dashboard needs a business measure the KB lacks, create the governed metric or dimension before building (the gate).
 - Mutating a shared dashboard needs an active edit session - catch one with `graphit dashboard edit <id>` (acquires the session, starts a draft, opens it in the browser in edit mode). Edits land in that draft until `graphit dashboard publish <id>` makes them live, or `graphit dashboard release <id> --yes` discards them. Gated: 409 if someone else is editing, 423 if locked, 403 if view-only. Private dashboards need no session - edit directly.
 - Update in place: when the user points at an existing dashboard, find it with `dashboard list` and edit that one (edit-session gate first if shared); ask if several match - never `dashboard create` a duplicate because matching was unclear.
+- Living context: when the user asks about a measure, `kb explore metric` it - the response's `presented_on` lists dashboards already presenting it (always ones the caller can access); offer the jump. Before `dashboard create` for a described need, check the domain explore's `presented_on`: on overlap ask extend vs new; when the user explicitly asked for a new dashboard, note the overlap in one line and build. An empty block is not proof of absence - only governed `{{metric:}}`/`{{dim:}}` usage is indexed.
 - Confirm destructive actions (deleting a KB asset or a dashboard) with the user before running them.
 - Honor the canvas render contracts: the `percent` format only appends `%` (it does not multiply by 100), so multiply 0-1 ratios in SQL (`AVG(x) * 100.0 ... AS x_pct`); `graphit.table` formats per column via `columnFormats`; and each resolving container wraps in `class="gh-loading"` with the baked overlay (`gh-loading-overlay`, `gh-loading-spin`, `@keyframes gh-spin`) so first paint shows a spinner until resolves settle (detail in references/runtime.md and chart-patterns.md).
 
@@ -155,7 +156,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.310 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.314 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 

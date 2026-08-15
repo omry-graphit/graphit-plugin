@@ -101,6 +101,7 @@ Adapt fields per type. Rules: content, constraints, apply-on, plus `enforced` (E
   - **CAMPAIGN_NAME** - `campaign_name` (categorical)
 - **Rules:** **EXCLUDE_ORGANIC** (filters organic installs)
 - **Domain:** MARKETING
+- **Presented on:** **Marketing Command Center** (3 graphs) - offer to open or extend
 ~~~
 
-For domain exploration, show Domain > Table > Asset hierarchy as a tree. For table exploration, list the table's columns first (`NAME - type - description`), then the metrics, dimensions, and rules defined on it.
+For domain exploration, show Domain > Table > Asset hierarchy as a tree, then the `presented_on` dashboards. For table exploration, list the table's columns first (`NAME - type - description`), then the metrics, dimensions, and rules defined on it.
