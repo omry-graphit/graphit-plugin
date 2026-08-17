@@ -8,7 +8,7 @@ What a Save Refuses | Declare Kind and Default Together | `graphit.filter()` as 
 
 ## What a Save Refuses
 
-Two shapes, both about state the platform cannot see without running your JavaScript:
+Two shapes, both about state the platform cannot see without running your JavaScript (a save can also be refused for undeclared query composition - see `runtime.md`):
 
 | Refused | Shape |
 |---------|-------|
@@ -48,6 +48,8 @@ So declare BOTH in markup whenever the call passes options:
 
 Either repair is legal: put the kind and default in the markup, or drop the declaration's claim and let the call own the key. An explicit `kind="param"` alone does NOT fix a missing default.
 
+**Three kinds.** `filter` (the default), `param`, and `date_range` - whose default is a JSON object rather than a scalar (`filters-advanced.md`). Kind and value must agree: a `date_range` wrapper holding a bare string is refused, and so is a `filter` or `param` wrapper holding `{start, end}`.
+
 ## graphit.filter(id, options) as the Escape Hatch
 
 The API keeps working, it is just no longer the default. Use it for keys you cannot write as markup: a key computed at runtime, or state a template registers.
@@ -65,7 +67,7 @@ Handle API: `handle.get()`, `handle.set(value)` (triggers subscribers and bound 
 
 **Commit point.** Capture reads your registered handles, never the DOM. On a staged page (edit several controls, then press Apply), write to the handle only when the user commits - a control that writes on every keystroke saves a half-typed view. Mark the committed key with `data-graphit-state-commit="applied"` so a reader knows which key is the applied one; it is metadata, nothing branches on it.
 
-**Restore order.** Applying a saved view sets ALL keys before anything refetches, so a dependent list never runs against a half-restored page. Cascades must MERGE with restored sibling values, not force-overwrite them.
+**Restore order.** Applying a saved view sets ALL keys before anything refetches, so a dependent list never runs against a half-restored page. Cascades must MERGE with restored sibling values, not force-overwrite them. Four author-side patterns make a restore land, and a page missing them looks fine until someone applies a view. Guard the side effect, not the subscription: `subscribe` fires IMMEDIATELY, so a boot flag (`if (booted) refresh()`) stops registration querying before init finishes. An echo guard keeps a control's own write from returning as a change and re-entering the handler. Every registered key needs a subscriber that REPAINTS its control - capture without repaint saves correctly and restores nothing the user can see. And leave the coalescing alone: the platform already collapses one apply into a single re-query.
 
 ## Retrofitting an Existing Dashboard
 

@@ -76,6 +76,31 @@ Act on `entity_sql_warnings` before reporting success. A parameterized template 
 placeholders; save-time validation binds them before checking, so a warning is a real SQL problem,
 not the placeholders.
 
+## Promoting a composed query to entity-owned
+
+The same move in the other direction, for a query that started runtime-composed (`runtimeComposed: true`
+on the call, its vocabulary declared in `data-graphit-vocab` on the entity) and has since stabilized into
+one statement. Everything above still applies - the hard rules, the four signals, the reasons to stop.
+
+1. **Confirm it really is one statement now.** Read every branch that builds the SQL. If any input still
+   changes the SELECT list, the FROM or the GROUP BY, it is not promotable, and the declaration is the
+   correct permanent end state. Stop and say so.
+2. **Lift the stabilized statement onto the entity** as `data-graphit-sql` / `data-graphit-ds`, keeping
+   `:name` placeholders for everything the filters supply - never the values one run happened to use -
+   and keeping every `{{metric:}}` / `{{dim:}}` token exactly as written. Those tokens are what carry
+   lineage once the query lives on the entity; lift a raw-expression statement and step 4 strips the
+   closure off an entity that references nothing.
+3. **Prove equivalence on the four signals above,** per filter state, exactly as for a legacy migration.
+4. **Only then strip the declaration,** in this order: delete `sql` and `dataSourceId` from the call,
+   delete `runtimeComposed: true`, and last remove `data-graphit-vocab` from the entity. Keep
+   `sourceEntityId`. The order is not cosmetic: a call that still carries `sql` + `dataSourceId` but
+   has lost its marker reads as UNDECLARED inline SQL, which is the one shape a save refuses. Drop
+   the pair first and the marker becomes inert; drop the marker first and you have introduced the
+   defect. Remove the closure last, once the entity's own tokens are what lineage reads.
+5. **Save a named version.**
+
+Stop at any step and the closure stays. A declared composed query is a first-class end state, not debt.
+
 ## When to stop
 
 Stop, save nothing, and report the branch when:

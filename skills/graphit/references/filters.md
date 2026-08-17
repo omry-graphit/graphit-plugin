@@ -23,10 +23,10 @@ Every user-changeable control lives inside a wrapper naming its state key. The w
 | Attribute | Required | Value |
 |-----------|----------|-------|
 | `data-graphit-state` | yes | state key: lowercase letters, digits, `_`; starts with a letter or `_` |
-| `data-graphit-state-kind` | no (default `filter`) | `filter` or `param` - exactly these, lowercase |
+| `data-graphit-state-kind` | no (default `filter`) | `filter`, `param` or `date_range` - exactly these, lowercase |
 | `data-graphit-state-label` | no | display name, used by the saved-view UI |
 | `data-graphit-field` | no | KB field name (metadata) |
-| `data-graphit-state-default` | no (default `null`) | strict JSON, a scalar or an array of scalars - never an expression |
+| `data-graphit-state-default` | no (default `null`) | strict JSON matching the kind: a scalar or scalar array, an object for `date_range` - never an expression |
 
 A declared key is a live filter before any of your script runs. `graphit.state.get('country')` reads it, `bind()` depends on it, and a saved view restores it - with no `graphit.filter()` call anywhere.
 
@@ -115,4 +115,4 @@ One declared control, wired to one reactive chart. The `<select>` is your own ma
 </script>
 ```
 
-For dependent dropdowns (an "only relevant values" list that narrows as an upstream filter changes) and date-preset pickers, see `filters-advanced.md`.
+Dependent dropdowns, date-preset pickers and the `date_range` kind: `filters-advanced.md`.

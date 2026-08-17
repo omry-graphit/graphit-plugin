@@ -12,7 +12,7 @@ Consult when authoring dashboard HTML and wiring its data: fetching live data, m
 
 `graphit.resolve()` fetches live data from cached data sources on every page load. NEVER embed query results as static JS variables (`const data = [...]`) - that freezes a snapshot that never refreshes and breaks provenance.
 
-The entity owns the query. A resolve call passes no `sql` and no `dataSourceId`: both are read from the entity - the wrapper around `target`, or the one named by `sourceEntityId` - authored once in the attributes and never repeated in the call.
+The entity owns the query. A resolve call passes no `sql` and no `dataSourceId`: both are read from the entity, authored once in the attributes and never repeated in the call. The one exception declares itself - second tier, below.
 
 ```js
 const result = await graphit.resolve({
@@ -22,14 +22,13 @@ const result = await graphit.resolve({
 // Returns: { columns: string[], data: object[], rowCount: number, truncated: boolean }
 ```
 
-- `target` (CSS selector or element) does two jobs: locates the entity whose `data-graphit-sql` / `data-graphit-ds` this call runs, and shows a blur/spinner overlay while loading, removed on completion.
+- `target` (CSS selector or element) does two jobs: it finds the query by walking UP from that element to the nearest `[data-graphit-id]` ancestor-or-self, and shows a blur/spinner overlay while loading, removed on completion. It MUST be the entity wrapper or sit INSIDE it - a container that WRAPS the entity walks up to nothing, so the call rejects before any request is sent: the graph never loads, any spinner in it never clears, and the error reaches the browser console only. For a container holding entities, pass `sourceEntityId`.
 - `params` (optional) supplies values for the `:name` placeholders in the entity's SQL.
 - `targetEntityIds` (optional, `string[]`) - `data-graphit-id`s of OTHER graphs this result also renders into, so each one's details panel reflects filters (not just `target`); entity ids, never CSS selectors.
-- `sourceEntityId` (optional) - the entity that owns the query when one result feeds several graphs; the SQL is read from IT, so `target` may be a plain container holding several entities and serves only the overlay (pair with `targetEntityIds`; canonical shape in `kpi.md`).
-- `maxRows` (optional) defaults to **10,000**, capped at **50,000**. Aggregate to a chartable grain well under the default; raise it only for a genuine row-level export, never above the cap.
-- `result.data` is an array of row objects you render however you want.
+- `sourceEntityId` (optional) - names the entity that owns the query, found document-wide instead of by walking up; it is what makes a `target` that WRAPS entities legal, and there it serves only the overlay (pair with `targetEntityIds`; canonical shape in `kpi.md`).
+- `maxRows` (optional) defaults to **10,000**, cap **50,000**. Aggregate well under the default; raise it only for a genuine row-level export.
 
-MUST: every resolve feeding a rendered graph, KPI, or table carries attribution - `target` (an element inside the entity wrapper), or `sourceEntityId` plus `targetEntityIds` when one result feeds several graphs. Attribution records the live filtered query behind that entity's details panel; unattributed, the panel shows `data-graphit-sql` as an unrun example, so a user changing a filter sees the SQL never move. Saving a page with filters or params and zero attributed resolves returns an `unattributed_resolves` warning. Queries feeding page chrome (option lists, bounds probes, rankers) need no attribution, but belong on the primitives rather than hand-written SQL - see `filters-advanced.md`.
+MUST: every resolve feeding a rendered graph, KPI, or table carries attribution - `target` (the entity wrapper or an element inside it), or `sourceEntityId` plus `targetEntityIds` when one result feeds several graphs. Attribution records the live filtered query behind that entity's details panel; unattributed, the panel shows `data-graphit-sql` as an unrun example, so a user changing a filter sees the SQL never move. Saving a page with filters or params and zero attributed resolves returns an `unattributed_resolves` warning. Queries feeding page chrome need no attribution and no entity, but belong on the primitives - `graphit.cascade` for option lists, `graphit.dataBounds` for a column's min/max, `graphit.rank` for top-N (`filters-advanced.md`) - never hand-written entity-less SQL.
 
 CRITICAL: use KB reference syntax (`{{metric:NAME}}`, `{{dim:NAME}}`) inside the entity's `data-graphit-sql` whenever a KB asset exists - the server expands it at query time, producing the governed trust tier. Syntax and trust tiers: `governance.md`.
 
@@ -61,7 +60,7 @@ KB asset references are derived automatically from `{{metric:X}}` / `{{dim:X}}` 
 **JavaScript may populate an entity, never create one.** Every entity - including on hidden tabs, collapsed panels, and lazily-shown views - exists as static markup in the HTML you save; JavaScript fills its chart host, wires listeners, and toggles visibility. Nothing server-side runs your JavaScript, so a card built at render time (`host.innerHTML = charts.map(...)`) does not exist for governance, lineage, the KB graph, `list-entities`, or a later `get-entity`. A save whose `data-graphit-id`s are reachable only by running your JavaScript is REFUSED and the error names them. A dynamic **query** is supported - the attribute carries the canonical template; a dynamic **entity** is not.
 
 - **Declare statically, execute lazily.** A hidden card must not resolve on load - resolve a tab's entities when it first becomes visible, or a 3-tab dashboard turns 8 concurrent queries into 22 on first paint.
-- **One source of truth.** The entity element owns `data-graphit-sql` and `data-graphit-ds`: the resolve/bind call reads them from the entity rather than repeating them, and a JS config array may keep rendering behavior (type, colors, height) but must never restate the chart list.
+- **One source of truth.** A JS config array may keep rendering behavior (type, colors, height) but must never restate the chart list.
 - **Never write `data-graphit-id=` in script** (selectors included) - the gate reads it as a phantom entity and refuses the save; match via `el.dataset.graphitId`.
 
 **SQL must be complete and executable.** This attribute is the query that runs, and the platform runs it again when a user opens the details panel. NEVER abbreviate, truncate, or leave an ellipsis (`FROM ...`, `SELECT ...`, three dots). Use the real DS table name and only columns that exist in the DS - never an invented summary column, a CTE alias, a JS variable name, or prose. If the query uses a CTE, store the full WITH query. Where the query is filtered, store the parameterized template with its `:name` placeholders - never a frozen variant with one date range baked in, which is the drift this contract removes. The panel's **Current query** is the server's record of what actually ran; never copy that resolved SQL back into this attribute.
@@ -69,7 +68,20 @@ KB asset references are derived automatically from `{{metric:X}}` / `{{dim:X}}` 
 - **Wrong:** `data-graphit-sql="SELECT INSTALL_TIME, ROIAP_D0 FROM UA_DS"` when the DS has no `ROIAP_D0` column (the chart computes it via CASE) - the details panel errors.
 - **Right:** `data-graphit-sql="SELECT INSTALL_TIME, SUM(CASE WHEN SENIORITY=0 THEN TOTAL_IAP END)/NULLIF(SUM(COST),0) AS ROIAP_D0 FROM UA_DS GROUP BY 1"` - the same derivation the chart runs.
 
-When the entity is filtered, `graphit.bind(el, { params, deps, render })` supplies the values - it derives SQL and data source from the bound entity the same way a resolve does. Older dashboards pass `sql` and `dataSourceId` in the call itself; that still executes and is not a defect to fix, so move a query onto its entity only when asked to.
+A filtered entity uses `graphit.bind(el, { params, deps, render })` (`filters.md`); it reads SQL and data source from the entity like a resolve.
+
+**The second tier: a composed query declares itself.** When the SELECT list is built from the user's choices there is no one stored statement. That is legal, and it declares - the call marks itself and names its owner (a `target` does not attribute a declared call); the owner stays a full entity, its `data-graphit-sql` a representative statement, and adds `data-graphit-vocab`, a COMMA-separated closure of the governed names that SQL may touch:
+
+```html
+<div data-graphit-id="explorer" data-graphit-label="Metric Explorer" data-graphit-ds="UA_DS"
+     data-graphit-sql="SELECT day, {{metric:ROAS}} AS roas FROM UA_DS GROUP BY 1"
+     data-graphit-vocab="metric:REV*,metric:ROAS,dim:COUNTRY"></div>
+```
+```js
+graphit.resolve({ sql: buildSql(picked), dataSourceId: "UA_DS", runtimeComposed: true, sourceEntityId: "explorer" });
+```
+
+`metric:NAME` / `dim:NAME`, UPPER_SNAKE_CASE, one optional trailing `*` per family; a space instead of a comma is one malformed entry. Declare the family, not today's SQL - but every name must exist (an unknown name, a wildcard matching nothing, or a bare `metric:*` refuses), and wildcards alone add no lineage. Undeclared inline SQL is invisible to lineage and governance; a save that ADDS one is refused, and existing ones are not a defect to fix - move a query onto its entity only when asked (`migration.md`).
 
 **Label equals the visible title.** `data-graphit-label` MUST match the card's visible heading exactly - users find their chart by that label in @ mention dropdowns and entity panels, and a mismatch means they cannot find it.
 
@@ -118,7 +130,7 @@ A resolve query following these shapes serves from a semantic cache in roughly 1
 
 - `COUNT(DISTINCT x)`, window functions, HAVING, QUALIFY.
 - `OR` or `NOT` in WHERE.
-- Ratio metrics (`SUM(a)/NULLIF(SUM(b),0)`) - compute client-side or use two resolves. To display a ratio as a percent, multiply by 100 in SQL (`* 100.0 ... AS x_pct`): the `"percent"` format only appends `%`, it does not scale, so a 0-to-1 ratio would otherwise show as `0.42%`, not `42%`.
+- Ratio metrics (`SUM(a)/NULLIF(SUM(b),0)`) - compute client-side or use two resolves; to show one as a percent, multiply by 100 in SQL (the format does not scale - `chart-patterns.md`).
 - `CURRENT_DATE`-relative predicates.
 - Top-N with the aggregate only in ORDER BY.
 
@@ -126,15 +138,13 @@ A resolve query following these shapes serves from a semantic cache in roughly 1
 
 ## Rate-limit budget
 
-`graphit.resolve()` is rate-limited to 120 requests per minute per user per dashboard. Each call counts as one. Design for that budget:
+`graphit.resolve()` is rate-limited per user per dashboard: 360 requests a minute, 180 of them cold executions (a cache hit is not one). Design for that budget:
 
 - **Single refresh function.** Put all queries in ONE `Promise.all` inside one `refresh()` so they share a time window. NEVER scatter `graphit.resolve()` across independent event handlers or timeouts - that turns one user action into several bursts.
-- **Count queries per interaction.** 6 charts is 6 requests per filter change, about 20 changes per minute of budget; 12 charts is about 10. With 10 or more charts and 3 or more filters, debounce filter changes (300ms).
+- **Count queries per interaction.** 6 charts is 6 cold executions per filter change, about 30 changes a minute of budget; 12 charts is about 15. With 10 or more charts and 3 or more filters, debounce filter changes (300ms).
 - **Reuse trend data for KPIs.** If you already fetch a weekly time series, derive the KPI total and its sparkline from that result in JS instead of a separate aggregate query. Anchor the extra graphs it feeds with `targetEntityIds` per the attribution rule above. Canonical KPI-row example: `kpi.md`.
 - **Avoid redundant refreshes.** If a filter affects only some charts, split into targeted refresh functions (`refreshKPIs()`, `refreshCharts()`).
 - **No polling.** NEVER use `setInterval(refresh, ...)`. Data sources update on their own schedule; a polling dashboard burns the entire budget.
-
-If you hit the limit, the API returns a "Too many requests" error with a retry-after hint.
 
 ## Helper index
 

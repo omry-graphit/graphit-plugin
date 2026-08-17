@@ -74,6 +74,15 @@ Handle:
 
 A `dateRange` registration persists to saved views exactly like a `filter`/`param`, and its `subscribe` callback restores the picker's visual state on view apply or reload (same rule as the core controls in `filters.md`).
 
+Declare it in markup like any other control, with `kind="date_range"` and a JSON OBJECT default - not the scalar a `filter` takes:
+
+```html
+<div data-graphit-state="date_range" data-graphit-state-kind="date_range"
+     data-graphit-state-default='{"preset":"last_30_days"}'></div>
+```
+
+At least one of `start` / `end` / `preset`, each a string or null, max 64 chars; `{"start":"2026-01-01","end":"2026-06-30"}` is the custom-range form. Kind and value must agree both ways - a `date_range` wrapper holding a bare string is refused, and so is a `filter`/`param` wrapper holding `{start, end}`. A saved view stores the same object, so nothing has to infer a range's shape from its text.
+
 Relative presets auto-recompute on reload (a saved "last_7_days" always means the last 7 days from today). The 11 preset ids - also available via `graphit.datePresets` (`[{id,label}]`) and `graphit.datePreset(id)` (`{start,end}`): today, yesterday, last_7_days, last_30_days, this_month, last_month, this_quarter, last_quarter, ytd, last_90_days, last_12_months.
 
 Bind a chart to the range with two scalar params and a `BETWEEN`. The entity owns the query - its `data-graphit-sql` holds the `BETWEEN :start_date AND :end_date` template and the call passes only the values:
