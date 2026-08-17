@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.314"
+skill_version: "0.2.315"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 31,232. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-08-02. Raised from 29,952 on 2026-08-07 (founder-directed): a domain is now an access boundary, so loop step 2 must say that picking one decides who ever sees the work - load-bearing before any reference load can be relied on. Raised from 30,592 on 2026-08-13 (founder-directed): the living-context MUST bullet - explore placements answer path + pre-create fork. SIZING.md rules raises pay only for command-table growth; both raises are deliberate exceptions. -->
@@ -156,7 +156,7 @@ Read the one that matches what you are doing now. Do not preload them. Exact com
 
 ## Commands
 
-Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.314 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
+Graphit is one CLI, but how you invoke it depends on your environment. On Claude Code the plugin provides a `graphit` wrapper, so `graphit <command>` runs the current CLI. On Codex, Cursor, a terminal, or CI there is no `graphit` wrapper - invoke the CLI explicitly with `npx -y @graphit/cli@0.2.315 <command>` (a stamped version, kept current by the build; pin an exact version for a reproducible run). The table below is generated from the CLI itself. For exact flags, run `graphit <command> --help` - never guess a flag.
 
 <!-- COMMANDS:START -->
 
@@ -232,7 +232,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `dashboard delete <id>` - Delete a custom dashboard (requires --yes) - `--yes`
 
 **connector** - Connection management. OAuth and GitHub connections are set up in the Graphit web app.
-- `connector list` - List active connections (Snowflake + BigQuery)
+- `connector list` - List active connections (Snowflake, BigQuery, Slack)
 - `connector add snowflake-keypair` - Add Snowflake via keypair auth - `--account --user --key --name --warehouse --role --database`
 - `connector add bigquery-serviceaccount` - Add BigQuery via a service-account key (org admin only) - `--key-file --project --dataset --location --name --max-bytes-billed`
 - `connector test <id>` - Test a connection
