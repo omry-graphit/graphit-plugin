@@ -77,7 +77,7 @@ deck.slide({
   html: `
     <h2>Live Data</h2>
     <div data-graphit-id="spend-chart" data-graphit-label="Ad Spend"
-         data-graphit-sql="SELECT {{dim:MEDIA_SOURCE_DIMENSION}} AS source, {{metric:TOTAL_AD_SPEND}} AS spend FROM MARKETING_UA_DS GROUP BY 1 ORDER BY spend DESC LIMIT 6"
+         data-graphit-sql="SELECT {{ Dimension('campaign__media_source') }} AS source, {{ Metric('total_ad_spend') }} AS spend FROM MARKETING_UA_DS GROUP BY 1 ORDER BY spend DESC LIMIT 6"
          data-graphit-ds="MARKETING_UA_DS">
       <div id="chart1" class="gh-loading">
         <div class="gh-loading-overlay"><svg class="gh-loading-spin" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#e5e5e5" stroke-width="2.5"/><path d="M12 2a10 10 0 0 1 10 10" stroke="#4DB6AC" stroke-width="2.5" stroke-linecap="round"/></svg></div>

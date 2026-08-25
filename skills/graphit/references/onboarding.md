@@ -1,6 +1,6 @@
 # First Run: From an Empty Workspace to a First Dashboard
 
-Load this when the user is signed in but the workspace is empty - `graphit kb list domains` (and `graphit ds list`) come back with nothing. That means no data is connected yet. Onboarding IS the job here, not a blocker: walk the user through it one step at a time, surfacing each result. This flow self-limits - once a data source and KB assets exist, `kb list domains` is no longer empty and you land in the normal loop instead.
+Load this when the user is signed in but visible groups/models and `graphit ds list` are empty. Onboarding is the job, not a blocker: walk through it one step at a time and surface each result. Once a source and semantic assets exist, return to the normal loop.
 
 ## The arc
 
@@ -35,11 +35,12 @@ Before creating anything, ask what business question the user wants to answer. T
 
 Explain that answering the question fast needs a cached data source over the connection, not repeated live-warehouse queries.
 
-**A domain comes first.** Every data source is created inside a KB domain - it is what makes the source findable and grantable, and there is no uncategorized fallback. A brand-new workspace has only the org-wide commons, so check with `graphit kb list domains` and, if the user's work deserves its own area, agree a name and create it before the source:
+**Scope comes first.** A semantic group organizes assets, while data-source `--domain` takes the uppercase policy key returned by `graphit status` or a group's `domain_keys`. A brand-new workspace starts with org commons. Agree the audience and group before creating the source:
 
 ```bash
-graphit kb list domains
-graphit kb create domain --name MARKETING --description "Acquisition and spend"
+graphit kb list group
+graphit status --json
+graphit kb create group --name marketing --description "Acquisition and spend"
 ```
 
 **Read the table before you write its SQL.** You cannot author a source SELECT without knowing the columns, and guessing them wastes a round trip. Read them straight off the warehouse:

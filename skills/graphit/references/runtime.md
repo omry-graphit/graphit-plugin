@@ -30,7 +30,7 @@ const result = await graphit.resolve({
 
 MUST: every resolve feeding a rendered graph, KPI, or table carries attribution - `target` (the entity wrapper or an element inside it), or `sourceEntityId` plus `targetEntityIds` when one result feeds several graphs. Attribution records the live filtered query behind that entity's details panel; unattributed, the panel shows `data-graphit-sql` as an unrun example, so a user changing a filter sees the SQL never move. Saving a page with filters or params and zero attributed resolves returns an `unattributed_resolves` warning. Queries feeding page chrome need no attribution and no entity, but belong on the primitives - `graphit.cascade` for option lists, `graphit.dataBounds` for a column's min/max, `graphit.rank` for top-N (`filters-advanced.md`) - never hand-written entity-less SQL.
 
-CRITICAL: use KB reference syntax (`{{metric:NAME}}`, `{{dim:NAME}}`) inside the entity's `data-graphit-sql` whenever a KB asset exists - the server expands it at query time, producing the governed trust tier. Syntax and trust tiers: `governance.md`.
+CRITICAL: use `{{ Metric('name') }}`, `{{ Dimension('entity__name') }}`, or Graphit's `{{ Measure('name') }}` extension inside `data-graphit-sql` whenever the semantic asset exists. The server expands it into the governed tier. See `governance.md`.
 
 Error handling: `graphit.resolve()` rejects on timeout (120s), bad SQL, or an invalid data source ID. Wrap calls in try/catch and show a user-visible error in the target element on failure. Verify the SQL returns data via the CLI before embedding it.
 
@@ -41,7 +41,7 @@ Every visible element - chart, KPI card, table, text section - must be wrapped s
 ```html
 <div data-graphit-id="revenue-trend"
      data-graphit-label="Revenue Trend"
-     data-graphit-sql="SELECT {{dim:REGION}} AS region, {{metric:REVENUE}} AS revenue FROM ORDERS_DS GROUP BY region"
+     data-graphit-sql="SELECT {{ Dimension('order__region') }} AS region, {{ Metric('revenue') }} AS revenue FROM ORDERS_DS GROUP BY region"
      data-graphit-ds="ORDERS_DS">
   <!-- chart, KPI, or table content here -->
 </div>
@@ -55,7 +55,7 @@ Every visible element - chart, KPI card, table, text section - must be wrapped s
 | `data-graphit-ds` | Data source name (same as the FROM table) or id | `"ORDERS_DS"` |
 | `data-graphit-state` | Not an entity attribute - a SIBLING wrapper around a user-changeable control, naming the state key saved views capture (`filters.md`) | `"country"` |
 
-KB asset references are derived automatically from `{{metric:X}}` / `{{dim:X}}` in the SQL; the governance compiler resolves these and shows KB asset chips in the details panel. Missing any one attribute breaks the entity; missing the wrapper makes the element invisible to the platform.
+Semantic references are derived automatically from the final grammar; the compiler resolves them and shows asset chips in the details panel. Missing any one attribute breaks the entity; missing the wrapper makes the element invisible to the platform.
 
 **JavaScript may populate an entity, never create one.** Every entity - including on hidden tabs, collapsed panels, and lazily-shown views - exists as static markup in the HTML you save; JavaScript fills its chart host, wires listeners, and toggles visibility. Nothing server-side runs your JavaScript, so a card built at render time (`host.innerHTML = charts.map(...)`) does not exist for governance, lineage, the KB graph, `list-entities`, or a later `get-entity`. A save whose `data-graphit-id`s are reachable only by running your JavaScript is REFUSED and the error names them. A dynamic **query** is supported - the attribute carries the canonical template; a dynamic **entity** is not.
 
@@ -74,14 +74,14 @@ A filtered entity uses `graphit.bind(el, { params, deps, render })` (`filters.md
 
 ```html
 <div data-graphit-id="explorer" data-graphit-label="Metric Explorer" data-graphit-ds="UA_DS"
-     data-graphit-sql="SELECT day, {{metric:ROAS}} AS roas FROM UA_DS GROUP BY 1"
-     data-graphit-vocab="metric:REV*,metric:ROAS,dim:COUNTRY"></div>
+     data-graphit-sql="SELECT day, {{ Metric('roas') }} AS roas FROM UA_DS GROUP BY 1"
+     data-graphit-vocab="metric:revenue,metric:roas,dimension:campaign__country"></div>
 ```
 ```js
 graphit.resolve({ sql: buildSql(picked), dataSourceId: "UA_DS", runtimeComposed: true, sourceEntityId: "explorer" });
 ```
 
-`metric:NAME` / `dim:NAME`, UPPER_SNAKE_CASE, one optional trailing `*` per family; a space instead of a comma is one malformed entry. Declare the family, not today's SQL - but every name must exist (an unknown name, a wildcard matching nothing, or a bare `metric:*` refuses), and wildcards alone add no lineage. Undeclared inline SQL is invisible to lineage and governance; a save that ADDS one is refused, and existing ones are not a defect to fix - move a query onto its entity only when asked (`migration.md`).
+Use comma-separated lowercase declarations such as `metric:revenue`, `dimension:order__region`, and `measure:order_total`. Every declared name must exist; unknown names and wildcards refuse. Undeclared inline SQL is invisible to lineage and governance. Existing runtime-composed queries are first-class, not debt; migrate query ownership only when asked (`migration.md`).
 
 **Label equals the visible title.** `data-graphit-label` MUST match the card's visible heading exactly - users find their chart by that label in @ mention dropdowns and entity panels, and a mismatch means they cannot find it.
 

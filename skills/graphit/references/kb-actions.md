@@ -1,97 +1,44 @@
-# KB Actions (Execute)
+# KB Actions
 
-The execute side of KB work: run approved create / update / delete through the `graphit kb` commands. The plan side - what a domain or topic is, why an asset sits where it does - lives in `kb-structure.md`.
+Load when an approved gap must be authored or an existing semantic asset changed.
 
-Create only after the user approves the gap plan below. Names are stored UPPER_SNAKE_CASE. Run `graphit kb create <type> --help` for the exact flag spelling - this file teaches the recipes and policy, the CLI owns the syntax.
+## Approval gate
 
-## Gap Plan (present before creating anything)
+Before writing, present the missing concept, proposed root, exact definition, group/access scope, and verification state. Do not write until the user approves.
 
-When the KB-readiness gate finds the dashboard needs assets that do not exist, present a compact plan and get one approval before any write. Show, per missing asset: name, type, formula or expression, the table and topics it lands on, and any rule that applies. Then ask once.
+## Authoring contract
 
-~~~
-**KB gap - 3 assets missing for this Marketing dashboard:**
+- Create semantic models, metrics, groups, and retained rules from JSON.
+- Use exactly one of `--file` or `--json`.
+- Names are lowercase snake case; reserve `__` for qualified dimensions.
+- Entities, dimensions, and measures mutate only through semantic-model update.
+- A supplied nested list replaces the stored list whole. Read first and include every sibling that must remain.
+- Explicit `meta` replaces author metadata whole. Preserve family, axes, topics, and other author fields.
+- Use dedicated verify/unverify actions. Never patch metadata merely to change verification.
 
-| Asset | Type | Definition | Table | Topics |
-|---|---|---|---|---|
-| **ROAS_D7** | metric | `SUM(revenue_d7) / NULLIF(SUM(cost), 0)` | MARKETING_UA | ATTRIBUTION |
-| **CPI** | metric | `SUM(cost) / NULLIF(SUM(installs), 0)` | MARKETING_UA | ACQUISITION |
-| **MEDIA_SOURCE** | dimension | `media_source` | MARKETING_UA | ACQUISITION |
+Read `semantic-authoring.md` for model/metric shapes and `metric-families.md` for concrete variants.
 
-Rule to apply: **EXCLUDE_ORGANIC** already exists and will filter these.
-Create these so the dashboard runs on governed references? (Approve / adjust.)
-~~~
+## Rules
 
-Present the plan, then stop. Do not create until the user approves.
+Rules remain Graphit objects. Create them from JSON with body/constraints plus `apply_on` targets. Final targets are model, entity, dimension, metric, or group identities. A rule without targets is refused.
 
-## Create
+Constraints keep their five semantics: required predicate, forbidden column, required filter, required aggregation, and value restriction. Use declared semantic identities and typed values.
 
-| Asset | Command shape |
-|---|---|
-| Metric | `graphit kb create metric --name X --sql "<expr>" --table T` (optional `--topics "A,B"`, `--default-dimensions "D1,D2"`, `--parameters`/`--parameters-file` for templates, `--skip-validate`) |
-| Dimension | `graphit kb create dimension --name X --expr "<expr>" --table T` (type auto-inferred; override with `--type` / `--output-type`; `--skip-validate`) |
-| Rule | `graphit kb create rule --name X --sql "<text>" --table T` (optional `--constraint`, `--apply-on`, `--topics`, `--skip-validate`) |
-| Synonym | `graphit kb create synonym --term X --canonical Y --type metric` |
-| Domain | `graphit kb create domain --name X` (optional `--color "#4DB6AC"`) |
-| Topic | `graphit kb create topic --name X` |
-| Relationship | `graphit kb create relationship --name X --primary-table T --primary-column C --related-table T2 --related-column C2` |
+## Update
 
-## Enforceable Rule Flags
+1. Read the target through the current principal.
+2. Preserve complete nested and metadata structures.
+3. Apply the smallest patch.
+4. Re-read immediately.
+5. Verify/unverify separately when intended.
+6. Inspect receipts; a degraded write may have landed and must not be retried blindly.
 
-A plain rule is documentation. To make it enforced server-side at query time, pass typed constraints on `graphit kb create rule` / `graphit kb update rule`:
+## Delete
 
-- `--constraint <spec...>` - one or more typed constraints, each written `type:value`. Types: `required_where:"<predicate>"`, `forbidden_column:<col>`, `required_filter:<col>`, `required_aggregation:<col>`, `value_restriction:<col>:<in|not_in>:<v1,v2>`. On update the supplied list REPLACES the rule's existing constraints.
+Confirm with the user and inspect usage first. The server checks known definition dependencies, not every canvas reference. A green guard is not exhaustive impact proof.
 
-What each constraint type does at query time, plus the override flow, lives in `governance.md`. Example: a rule that always scopes verified purchases -
+## Permissions
 
-```bash
-graphit kb create rule --name FILTER_VERIFIED_PURCHASES --sql "Only count verified purchases" --table ORDERS --constraint required_where:"is_verified = true"
-```
+Read access is the ceiling for writes. `kb_write` comes from the effective policy key. Group lifecycle is admin-only. Hidden and missing targets return the same absence.
 
-## Rule Targeting - what a rule governs
-
-Every rule must apply to at least one asset; a targetless rule is rejected. `--table` is required, and without `--apply-on` the rule governs that **whole table** - which cascades to every metric and dimension on it (it fires on any query touching the table). To narrow instead, pass `--apply-on metric:NAME` / `--apply-on dimension:NAME` so the rule applies only when that asset is used. The two are mutually exclusive: never mix a table target with metric/dimension targets on one rule. To govern several tables, list each: `--apply-on table:A table:B`.
-
-```bash
-# Whole table - cascades to every metric/dimension on ORDERS
-graphit kb create rule --name ORDERS_ACTIVE_ONLY --sql "Exclude cancelled orders" --table ORDERS
-# Narrowed - applies only when the ARPU metric is used
-graphit kb create rule --name ARPU_TRIM --sql "Cap ARPU outliers" --table USERS --apply-on metric:ARPU
-```
-
-## Pre-Creation Validation
-
-Metric, dimension, and rule creates validate the formula against real data before writing; the response carries a `validation` object (status `pass` / `skipped` / `fail`). Surface it to the user - per-type result templates are in `kb-traversal.md`. A `fail` returns HTTP 422 and the asset is NOT created: show the error and failing SQL, fix the formula, retry. Validation is skipped (asset still created) for `${PARAM:X}` templates, constraint-based rules, and tables with no ready data source. Pass `--skip-validate` to bypass it on bulk creates.
-
-## Update and Delete
-
-- Update a field: `graphit kb update <type> NAME --<field> value` (e.g. `--sql`, `--expr`, `--description`, `--table`).
-- Delete: `graphit kb delete <type> NAME --yes`. Deleting a parameterized parent cascades to all its children - confirm the blast radius first (see `parameterized-metrics.md`).
-
-## Lists REPLACE - read before you write
-
-`--topics`, `--secondary-tables`, `--default-dimensions`, and `--constraint` REPLACE the existing list, they do not append. To change one value, read the current list first (`graphit kb get metric NAME`), then write the full intended list: add a topic with `--topics "EXISTING1,EXISTING2,NEW"`; remove one by writing the list minus that value.
-
-Reference a **metric or dimension** onto another table with `graphit kb update metric NAME --secondary-tables "OTHER_TABLE"` (also dimension). This is a read-only pointer marked `*` in the tree; every referenced column must exist on the target. For **rules**, govern several tables by listing them in `--apply-on` (`--apply-on table:A table:B`), not `--secondary-tables`. Topics are horizontal - one topic can tag assets across many domains (see `kb-structure.md`).
-
-## Domain home (set on the table, cascades)
-
-Domain is set on the TABLE, never per asset, and cascades to every asset on it (model in `kb-structure.md`). To re-home a whole table at once: `graphit kb update table NAME --domain MARKETING`. Change it once on the table, never asset by asset.
-
-## Who can write what
-
-Reads are open to every member; writes are scoped by the caller's data access profile. Check `graphit status` before presenting a gap plan, so the plan is one they can execute.
-
-| Write | Needs |
-|---|---|
-| Metric, dimension, rule, synonym, relationship, table | `kb_write` in the asset's domain |
-| Moving an asset or table to another domain | `kb_write` in BOTH domains - the one it leaves and the one it enters |
-| Domain and topic create / update / delete | Org admin; a profile never grants it |
-| Template create / update / delete | Org admin, OR `kb_write` in any one domain - never a per-template or per-domain grant |
-
-Every member can read and use templates. Status is advisory; a denial with `retryable: false` is a stop, not a retry (`operations.md`).
-
-To find what exists and how it connects, use the read recipes in `kb-traversal.md`.
-
-## UI-Only (no CLI command)
-
-Platform-UI state, not KB data the CLI changes: view mode (Tree / By Topic / By Table / Flat), filter dropdowns, expand / collapse, drag-drop onto a topic, and a synonym's cross-cutting domains (extra relevance beyond its home domain has no CLI flag yet).
+Group `access` is stored dbt metadata; it does not grant Graphit visibility.

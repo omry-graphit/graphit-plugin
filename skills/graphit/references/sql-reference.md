@@ -1,6 +1,6 @@
 # SQL Reference
 
-Consult when writing queries. Data source queries (`graphit query --ds`) always run DuckDB. Warehouse queries (`graphit query --warehouse`) run the connected warehouse - Snowflake or BigQuery - and the dialect follows the connection type; governance parses your SQL in that dialect. You MUST use the correct dialect. To read a table's columns, use `graphit kb explore table <NAME>` - never `DESCRIBE`/DDL (`graphit query` runs SELECT only).
+Consult when writing queries. Data-source queries run DuckDB. Warehouse queries run the connected Snowflake or BigQuery dialect. Governance parses the same dialect. Read physical columns through metadata discovery or semantic-model physical detail; never use DDL through the SELECT-only query surface.
 
 ## DuckDB vs Snowflake Translation
 
@@ -138,22 +138,20 @@ The canvas `percent` format only appends `%` (it does not multiply by 100), so m
 
 ## Presenting Query Results
 
-After every `graphit query`, present results grounded in the KB. Always show which KB assets were used - this is what makes governed queries valuable.
-
-**When using KB reference syntax** (`{{metric:X}}`, `{{dim:X}}`), show all five sections:
+After every query, show all five sections below. Use `--verbose` to obtain the resolved SQL. Executable SQL uses semantic references; narration uses backticked exact asset names so Graphit can render clickable KB pills.
 
 ~~~
-**KB Assets:** dimension **CAMPAIGN_CATEGORY**, metric **TOTAL_INSTALLS**, metric **CPI**, table **MARKETING_UA_DS**
+**KB Assets:** dimension `campaign__category`, metrics `total_installs` and `cpi`, semantic model `marketing_ua`
 
 **Query:**
 ```sql
 SELECT
-    {{dim:CAMPAIGN_CATEGORY}} AS category,
-    {{metric:TOTAL_INSTALLS}} AS installs,
-    {{metric:CPI}} AS cpi
+    {{ Dimension('campaign__category') }} AS category,
+    {{ Metric('total_installs') }} AS installs,
+    {{ Metric('cpi') }} AS cpi
 FROM MARKETING_UA_DS
 WHERE ACTIVITY_TIME >= '2026-01-01'
-GROUP BY {{dim:CAMPAIGN_CATEGORY}}
+GROUP BY {{ Dimension('campaign__category') }}
 ORDER BY installs DESC
 ```
 
@@ -179,17 +177,9 @@ ORDER BY installs DESC
 | Retargeting | 12,300 | $1.24 |
 | Connected TV | 3,100 | $2.80 |
 
-**Governance:** governed - 3 KB refs, 2 rules enforced (**EXCLUDE_ORGANIC**, **MIN_SPEND**). Max rows: 1,000.
+**Governance:** governed - 3 semantic refs; 2 rules enforced (`exclude_organic`, `min_spend`). Max rows: 1,000.
 ~~~
 
-**When using inline SQL** (no `{{metric:X}}`), present it the same way (query + results + governance), but the footer states the ad-hoc tier and offers the governed rewrite:
+For inline SQL, use the same sections but state the ad-hoc tier and offer a governed rewrite, for example: **Governance:** ad-hoc - 0 semantic refs. Consider `{{ Metric('total_spend') }}`. Author a supported root definition first when needed; provide an ad-hoc reason only when nothing governed fits.
 
-~~~
-**Governance:** ad-hoc - 0 KB refs. Consider using `{{metric:TOTAL_SPEND}}` for governed tier.
-~~~
-
-Any ad-hoc query on the CLI is withheld until you justify it (full rules in governance.md): prefer a `{{metric:X}}` / `{{dim:X}}` rewrite, creating the metric or dimension first if it is missing, and pass `--adhoc-reason` only when nothing governed fits.
-
-**Always use `--verbose`** to get the resolved SQL; if the user didn't pass it, re-run with it.
-
-Zero rows: explain what you checked and hypothesize why (wrong date range, filter too strict, table empty).
+For zero rows, explain the checks performed and likely cause, such as date range, filter, or empty source.

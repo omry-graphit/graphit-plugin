@@ -51,13 +51,13 @@ Top values by a measure, shaped to drop straight into an array filter or an `IN 
 ```js
 const top = await graphit.rank({
   column: 'COUNTRY', source: 'sales', dataSourceId: 'SALES_DS',
-  by: '{{metric:REVENUE}}',            // governed measure, or SUM(REVENUE) / COUNT(*)
+  by: "{{ Metric('revenue') }}",       // governed metric, or a bare aggregate
   limit: 10,
   filters: { REGION: region.get() },   // optional, same contract as cascade
 })
 ```
 
-- Returns a plain array of values. Prefer a `{{metric:NAME}}` reference so the ranking uses the org's definition; the bare aggregate form accepts SUM, COUNT, AVG, MIN, MAX over one column.
+- Returns a plain array of values. Prefer `{{ Metric('name') }}` so ranking uses the org's definition; a bare aggregate accepts SUM, COUNT, AVG, MIN, or MAX over one column.
 
 ## graphit.dateRange(id, options) - Date Presets
 

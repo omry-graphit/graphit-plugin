@@ -42,7 +42,7 @@ name the exact branch you could not compare. That is a successful outcome, not a
 3. **Lift the complete template onto the owner.** The whole statement in `data-graphit-sql`, the data
    source in `data-graphit-ds`. Complete means executable and parameterized:
    - Keep every `:named` placeholder. Do not bake current filter values in.
-   - Keep `{{metric:NAME}}` / `{{dim:NAME}}` references as they are.
+   - Keep final `Metric`, qualified `Dimension`, and `Measure` references intact.
    - No ellipsis, no abbreviation, real table names, full WITH clause.
 4. **Preserve the rest exactly.** `params`, `deps`, the `render` callback, any branch that picks
    different SQL, and `sourceEntityId` / `targetEntityIds` attribution all stay as they were.
@@ -87,7 +87,7 @@ one statement. Everything above still applies - the hard rules, the four signals
    correct permanent end state. Stop and say so.
 2. **Lift the stabilized statement onto the entity** as `data-graphit-sql` / `data-graphit-ds`, keeping
    `:name` placeholders for everything the filters supply - never the values one run happened to use -
-   and keeping every `{{metric:}}` / `{{dim:}}` token exactly as written. Those tokens are what carry
+   and keeping every final semantic token exactly as written. Those tokens carry
    lineage once the query lives on the entity; lift a raw-expression statement and step 4 strips the
    closure off an entity that references nothing.
 3. **Prove equivalence on the four signals above,** per filter state, exactly as for a legacy migration.
