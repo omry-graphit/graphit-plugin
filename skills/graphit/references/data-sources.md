@@ -12,6 +12,8 @@ Load when selecting or creating the cached source a semantic model uses.
 
 A group is semantic placement. Data-source creation still accepts `--domain`; pass the uppercase policy key returned by status or the group's `domain_keys`.
 
+Separately cached sources cannot be joined at query time. A cross-source question needs a combined source created from the ORIGINAL warehouse relations (never from cached source names), or an explicitly approved live query.
+
 ## Source SQL
 
 - Select only needed columns and rows.
@@ -22,11 +24,32 @@ A group is semantic placement. Data-source creation still accepts `--domain`; pa
 - Make grain and refresh mode explicit.
 - Use merge key and watermark only when the source supports them.
 
+## Shape Decides Speed
+
+A source's shape - set at creation - decides whether every dashboard on it feels instant. Filter changes answer from a cached, pre-aggregated result only when the source is small and already aggregated to the queried grain; a raw or very wide source re-scans on every filter change and cannot be fixed later in dashboard SQL.
+
+| Lever | Build it right | Anti-pattern |
+|---|---|---|
+| Grain | `GROUP BY` to the grain dashboards chart | One row per raw event |
+| Columns | Only what dashboards use | Hundreds of columns "just in case" |
+| Cardinality | Low-card dimensions in the base; ad/campaign names in a separate drill-down | Thousands-of-values dimensions in the base grain |
+| Size | A few-thousand-row typical aggregation | A raw, monolithic, very wide source |
+
+This is advisory: when you see a slow shape (raw passthrough, `SELECT *` wide, high-cardinality grain), state the trade-off and OFFER the pre-aggregated alternative - then build whichever the user chooses. A wide/raw source is legitimate for row-level drill-down, genuinely-all-used columns, or staging. Never refuse or lecture.
+
 ## Creation
 
 Confirm connector, relation/query, policy key, grain, refresh mode, and cost. Read columns through metadata rather than probing with ad-hoc SQL.
 
+Before creating, run one small approved warehouse validation against the same connection: relations reachable, joins compile with a small limit, the join does not multiply the declared grain. That read is part of the approved data-source operation - it does not authorize unrelated live exploration.
+
 Create with automatic scan unless there is a specific reason not to. Creation may be asynchronous; report `creating` honestly and poll status rather than claiming readiness.
+
+Edit in place when changing columns, filters, joins, or date coverage for the same purpose - editing preserves the source id, graph bindings, semantic-model binding, schedules, and history. Create a separate source only for a different purpose or connection.
+
+## Zero Rows and Nulls
+
+On an empty or suspiciously-null result: check the selected source and dialect, verify column names/joins/filters, then remove one constraint at a time to find the emptying condition. Confirm the data exists with a small targeted query before concluding absence - and never silently switch to the live warehouse after an empty cached result. An all-null metric is not validated; stop before building on it.
 
 ## Access and safety
 

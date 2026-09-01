@@ -49,6 +49,15 @@ NEVER use `->>`  in Snowflake or `:field::STRING` in DuckDB.
 - Snowflake does NOT support `FILTER (WHERE)` - use `CASE WHEN` instead
 - `COUNT_IF` MUST receive a boolean expression, not a raw INT column. Use `COUNT_IF(is_active = 1)`, not `COUNT_IF(is_active)`
 - String matching: prefer `ILIKE` (case-insensitive) over `LIKE`
+- No `DISTINCT ON` (use `ROW_NUMBER()`); no negative array indices
+- Geospatial: `ST_MAKEPOINT(lon, lat)` - lon FIRST; `ST_DISTANCE` returns meters
+
+## Null / Join Safety
+
+- `COUNT(column)` drops nulls; `COUNT(*)` does not
+- Never `NOT IN` on nullable values (one null matches nothing); use `NOT EXISTS`
+- One-to-many joins multiply measures unless the many side is pre-aggregated
+- DuckDB JSON array check: `json_array_length(...)`, never `->0 IS NOT NULL`
 
 ## BigQuery Standard SQL Notes
 

@@ -54,7 +54,23 @@ Only these shapes are served by the shipping fragment path:
 
 Metric-level and per-input filters must resolve through declared semantic identities. Bare strings where an input object is required are refused.
 
-Cumulative, conversion, shifted inputs, time-spine joins, and null-fill are unavailable until Project #289. Use a supported decomposition or clearly labeled free SQL; do not create an unusable governed definition.
+Cumulative, conversion, shifted inputs, time-spine joins, and null-fill are not yet supported. Use a supported decomposition or clearly labeled free SQL; do not create an unusable governed definition.
+
+## Aggregation safety
+
+| Class | Across dimensions | Across time | Examples |
+|---|---|---|---|
+| Fully additive | Sum | Sum | revenue, clicks, units |
+| Semi-additive | Sum | Last/period-end snapshot | cash, MRR, headcount |
+| Non-additive | Recompute | Recompute | rates, ratios, distinct counts |
+
+Never sum or average a rate/ratio - recompute from additive components at the requested grain, guard zero denominators, and examine mix shift before interpreting rollups.
+
+Measure `agg` accepts: sum, count, count_distinct, average, min, max, median, percentile, sum_boolean. A simple metric references a declared measure, never a raw column; a ratio references numerator/denominator metrics, never measures directly; every identifier in a derived expression must match an input name or alias exactly.
+
+## Plan ordering
+
+When authoring several definitions, sequence prerequisites first: group, then data sources, then semantic models with nested components, then simple metrics, then ratio/derived metrics that reference them, then rules after their targets exist. Execute one item at a time; do not start the next before the current receipt is terminal.
 
 ## Verification
 

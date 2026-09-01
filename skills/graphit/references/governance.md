@@ -12,7 +12,7 @@ Load when writing a governed query, explaining a refusal, or reporting provenanc
 
 Legacy token grammar is refused. Keep references inside complete executable SQL and canvas `data-graphit-sql`.
 
-The governed fragment path serves simple, ratio, and derived metrics. Cumulative, conversion, shifted, time-spine, and null-fill shapes remain unavailable until Project #289. Use a supported decomposition or explicitly labeled free SQL.
+The governed fragment path serves simple, ratio, and derived metrics. Cumulative, conversion, shifted, time-spine, and null-fill shapes are not yet supported. Use a supported decomposition or explicitly labeled free SQL.
 
 ## Trust tiers
 
