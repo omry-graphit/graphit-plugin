@@ -74,7 +74,7 @@ TLS connections are verified against Node's bundled CA certificates, which alrea
 | `graphit query` | Run a governed SQL query against your data |
 | `graphit ds` | Data sources: list, create, refresh, verify, update cached sources |
 | `graphit dashboard` | Custom dashboards: list, create, get, update HTML or a single entity, export to PNG/PDF, delete |
-| `graphit connector` | Connections: list, add (Snowflake key pair, Snowflake OAuth, GitHub), test, remove |
+| `graphit connector` | Connections: list, add, and test. Removal is admin-only in the Sources Hub; the CLI verb explains the handoff but does not delete. |
 | `graphit governance` | Query governance: inspect and set the enforcement mode |
 | `graphit setup` | Install the Graphit skill into your AI coding assistant |
 

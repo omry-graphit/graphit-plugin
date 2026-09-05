@@ -17,7 +17,7 @@ When ambiguous, propose 2-3 options and ask the user. Do not guess.
 
 ## Full Chart Type Table
 
-`graphit.graph()` renders the **standard** types below and throws an `unknown type` error on anything that is not a standard type, a saved template, or `'custom'`. The iframe still lets you draw anything: pass `type:'custom'` with a `draw(ctx)` function (responsive + themed, see `chart-patterns.md`) or hand-roll inline SVG/CSS. The **hand-rolled** shapes below are drawn that way, never passed as a standard type name. "Standard" and "hand-rolled" describe only which draw path you use, not platform status: both become equally first-class - same 3-dot menu, data source, and provenance - once wrapped in `data-graphit-*`, so a graph you draw is never a lesser citizen.
+`graphit.graph()` renders the **standard** types below and throws an `unknown type` error on anything that is not a standard type or `'custom'`. The iframe still lets you draw anything: pass `type:'custom'` with a `draw(ctx)` function (responsive + themed, see `chart-patterns.md`) or hand-roll inline SVG/CSS. The **hand-rolled** shapes below are drawn that way, never passed as a standard type name. "Standard" and "hand-rolled" describe only which draw path you use, not platform status: both become equally first-class - same 3-dot menu, data source, and provenance - once wrapped in `data-graphit-*`, so a graph you draw is never a lesser citizen.
 
 | Data shape | Chart type | Render with | Columns |
 |---|---|---|---|

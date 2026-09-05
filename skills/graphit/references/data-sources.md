@@ -4,13 +4,15 @@ Load when selecting or creating the cached source a semantic model uses.
 
 ## Routing
 
-1. Read the semantic model's declared data-source binding.
+1. Read the semantic model's declared data-source binding and physical `model` table name.
 2. Prefer that cached source for speed, governance, and repeatability.
 3. Use metadata discovery when physical columns are unknown.
 4. Query live warehouse only when no cached source covers the question and the user approves.
 5. Never infer a source from a similarly named model.
 
-A group is semantic placement. Data-source creation still accepts `--domain`; pass the uppercase policy key returned by status or the group's `domain_keys`.
+`--ds` selects the cached source by its returned name, full id, or unique id prefix. It does not make an arbitrary semantic-model name a SQL table. In SQL, use the physical table name read from the bound model's `model`; do not guess it from the source's display name or a second model's `name`.
+
+A group is semantic placement. Data-source creation accepts `--domain`; pass the uppercase policy key returned by status or the group's `domain_keys`. The alias `--domain Private` selects the caller's own workspace; read `kb-scope.md` for its distinct KB group input.
 
 Separately cached sources cannot be joined at query time. A cross-source question needs a combined source created from the ORIGINAL warehouse relations (never from cached source names), or an explicitly approved live query.
 
@@ -43,7 +45,9 @@ Confirm connector, relation/query, policy key, grain, refresh mode, and cost. Re
 
 Before creating, run one small approved warehouse validation against the same connection: relations reachable, joins compile with a small limit, the join does not multiply the declared grain. That read is part of the approved data-source operation - it does not authorize unrelated live exploration.
 
-Create with automatic scan unless there is a specific reason not to. Creation may be asynchronous; report `creating` honestly and poll status rather than claiming readiness.
+Create with automatic scan unless there is a specific reason not to. The scan creates or updates the source's bound semantic model in its selected scope; `ds verify` runs that scan when needed. Read the resulting model and extend it instead of hand-creating another one over the source. Creation may be asynchronous; report `creating` honestly and poll status rather than claiming readiness.
+
+Review the scanned schema before accepting a warehouse/SQL source with `ds verify --accept-schema`. File uploads also require `ds verify`, without that flag. Confirm the returned source is ready and verified before reporting activation; scan completion alone is not activation.
 
 Edit in place when changing columns, filters, joins, or date coverage for the same purpose - editing preserves the source id, graph bindings, semantic-model binding, schedules, and history. Create a separate source only for a different purpose or connection.
 

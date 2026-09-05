@@ -30,7 +30,7 @@ Every user-changeable control lives inside a wrapper naming its state key. The w
 
 A declared key is a live filter before any of your script runs. `graphit.state.get('country')` reads it, `bind()` depends on it, and a saved view restores it - with no `graphit.filter()` call anywhere.
 
-**Reuse a control.** Save a finished control as a template (`save_template`, or "Save as Template" in the UI) to drop on other dashboards - markup, styling, and wiring travel together. Keep its `<script>` inside the control's own element.
+**Reuse a control.** A control is page markup and a template cannot declare state, so copy the wrapper and its `<script>` between dashboards; `templates.md` says what a template can carry.
 
 **Registering from JavaScript instead.** `graphit.filter(id, options)` / `graphit.param(id, options)` still work and return a handle; calling either on a key you already declared adopts it. They are the escape hatch for keys you cannot write as markup, and a NEW undeclared one is refused at save. Both, plus the retrofit procedure, are in `state-contract.md`.
 

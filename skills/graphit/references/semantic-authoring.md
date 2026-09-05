@@ -32,13 +32,15 @@ flags, cache keys, or compiler implementation details.
 
 A semantic model owns:
 
-- lowercase name and physical model/binding
+- lowercase semantic `name` and physical SQL table name in `model`
 - group placement
 - primary grain/entity
 - entities for joins
 - dimensions for grouping/filtering
 - measures for aggregation input
 - defaults such as aggregation time dimension
+
+`model` names the physical SQL relation; matching a cached source's name does not bind it. The cached-source binding is the server-owned `meta.graphit.data_source.ds_id`, written by the source scan. For a cached source, extend its scanned model through update; a hand-authored create starts unbound. Do not put a binding into author metadata. Read `data-sources.md` for scan/verify and SQL routing.
 
 Measure-bearing models need a valid aggregation time dimension. Primary/unique entity claims require grain evidence; never guess uniqueness. Time-aware shapes require the platform time-spine prerequisite.
 

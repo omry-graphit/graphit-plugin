@@ -25,7 +25,7 @@ Fix it by wrapping the control (`filters.md` has the attribute table) and saving
 
 - Dashboards that already register at runtime. The rule stops the set of undeclared keys from GROWING; an existing violation keeps saving unrelated edits, and a partial fix always passes.
 - Dynamic keys - `graphit.filter(someVariable)` or a template literal. A key the platform cannot read lexically is never gated.
-- State a saved template registers. Template code is not in your stored HTML.
+- State inside a template fragment: a template cannot declare state (`templates.md`).
 - Reading state: `graphit.state.get('k')` on a key someone else declared.
 
 ## Declare Kind and Default Together
@@ -52,7 +52,7 @@ Either repair is legal: put the kind and default in the markup, or drop the decl
 
 ## graphit.filter(id, options) as the Escape Hatch
 
-The API keeps working, it is just no longer the default. Use it for keys you cannot write as markup: a key computed at runtime, or state a template registers.
+The API keeps working, it is just no longer the default. Use it for keys you cannot write as markup: a key computed at runtime.
 
 ```js
 const country = graphit.filter('country', { label: 'Country', field: 'COUNTRY', default: 'US' })

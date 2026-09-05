@@ -66,11 +66,7 @@ graphit.graph("#chart", { type: "custom", draw: (ctx) => r.data.map(function (ro
 
 ## Saved templates
 
-Templates are reusable chart components saved to the org's KB. At dashboard load, the SDK fetches the org's template bundle and registers them alongside built-in types.
-
-**Usage:** `graphit.TEMPLATE_NAME(el, {data, value: 'revenue', label: 'Revenue'})` or via `graphit.graph(el, {type: 'TEMPLATE_NAME', ...})`.
-
-Templates are org-specific - they exist only when users have saved them. The agent's context provider lists available templates each turn. Use `list_templates()` to discover them and `get_template(name)` to read the render code.
+A saved template is an HTML fragment the canvas expands into a host entity, not a graph type - see `templates.md`.
 
 ## Color tokens
 

@@ -9,6 +9,8 @@ Load when deciding who may see or change semantic work.
 
 Never invent the key when the server returned it.
 
+For private work, `status` reports `special_scopes.private_workspace` and its read/write capability, not the raw group key. Read the caller's visible scanner-created semantic model and reuse its exact lowercase `group` in KB create/update JSON. The display label `Private` and the data-source `--domain Private` alias are not KB group names; do not create a group for the synthetic private workspace or derive a suffix yourself.
+
 ## Visibility
 
 - Org commons is a synthetic shared scope.
@@ -23,3 +25,5 @@ Never invent the key when the server returned it.
 Read access is the ceiling. A user also needs `kb_write` for the affected key; group lifecycle is admin-only. Moving an asset requires authority over current and destination scopes.
 
 Before authoring confirm audience, group, policy key, shared/private scope, and write capability. Never name concealed groups, assets, targets, or counts.
+
+On create, an omitted or null `group` places a model or metric in org commons; on update, omitting it preserves placement and explicit null moves it to org commons. For private work, if no readable model supplies the exact group, stop before writing rather than guessing or falling back to org commons. Re-read the asset and confirm its returned group matches the approved scope.

@@ -4,6 +4,8 @@ Load when an approved gap must be authored or an existing semantic asset changed
 
 ## Approval gate
 
+For a cached data source, first read its visible scanner-created semantic model and confirm `meta.graphit.data_source.ds_id` matches the source. Add approved entities, dimensions, or measures by updating that model. If no bound model is visible, follow the scan/verify flow in `data-sources.md`; creating a second model does not bind it.
+
 Before writing, present the missing concept, proposed root, exact definition, group/access scope, and verification state. Do not write until the user approves.
 
 ## Authoring contract
@@ -15,6 +17,8 @@ Before writing, present the missing concept, proposed root, exact definition, gr
 - A supplied nested list replaces the stored list whole. Read first and include every sibling that must remain.
 - Explicit `meta` replaces author metadata whole. Preserve family, axes, topics, and other author fields.
 - Use dedicated verify/unverify actions. Never patch metadata merely to change verification.
+
+When create is refused because a model already binds that physical table, read the visible model named in the refusal and propose the needed update. Do not retry with another name or scope. If the response names no readable model, report the refusal without guessing or exposing a hidden target.
 
 Read `semantic-authoring.md` for model/metric shapes and `metric-families.md` for concrete variants.
 

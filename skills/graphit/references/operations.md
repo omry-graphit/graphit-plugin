@@ -38,7 +38,7 @@ The CLI enforces the same permission model as the platform. Three codes:
 
 | Code | Meaning | What to tell the user |
 |---|---|---|
-| 403 | Your org role or data access profile does not allow this | Every signed-in member can use the CLI. This action needs more than the caller has: connector create/delete needs org owner or admin, and data source or knowledge-base writes are limited to the domains an admin granted on their data access profile. |
+| 403 | Your org role or data access profile does not allow this | All members may use the CLI. Owners/admins create connectors; admins delete them in Sources Hub. DS/KB writes need admin-granted domains. |
 | 404 | Not found, or no access | A permission 404 is uniform across a resource that does not exist, one the caller cannot see, and another org's id - deliberately indistinguishable, to prevent id enumeration (some older routes still name the missing entity). Never assume the thing is gone or tell the user it was deleted. |
 | 423 | Shared dashboard needs an active editing session | Catch one from the CLI: `graphit dashboard edit <id>` acquires the session and starts a draft; make the edits, then `graphit dashboard publish <id>` to go live (or `graphit dashboard release <id> --yes` to abandon). 409 = someone else is editing; 423 = locked; 403 = view-only. Private dashboards need no session. |
 
