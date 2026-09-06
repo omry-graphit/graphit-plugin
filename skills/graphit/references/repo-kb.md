@@ -21,9 +21,11 @@ Run `graphit kb repo show` first.
 - `manual` with no binding: initialize. Scaffold `.graphit/` per `repo-preparation.md`,
   run `graphit kb repo verify --path . --allow-dirty` (a `local_only` plan, never
   applyable; an uncommitted `.graphit/` is refused without the flag), fix findings until
-  the verdict passes, commit on a branch, open the PR with the user's own tooling. Then tell an org admin to bind (`graphit kb repo bind --connection <id>
-  --repo <owner/name> --branch main`), link reviewers (`kb repo link-identity`) and mint
-  the CI tokens (below). Those are admin actions you never run yourself.
+  the verdict passes, commit on a branch, open the PR with the user's own tooling. Then tell an org admin to bind (`graphit kb repo bind --repo <owner/name> --branch main`;
+  the connection resolves from the repository; on `connection_ambiguous` pass
+  `--connection <id>` from `graphit connector list`'s `id` column, never the card's token
+  fingerprint), link reviewers (`kb repo link-identity`) and mint the CI tokens
+  (below). Those are admin actions you never run yourself.
 
 ## A Data Source through a PR
 
@@ -34,9 +36,10 @@ Run `graphit kb repo show` first.
 3. Branch, commit, open the PR with the user's tooling and report the PR link. CI verifies
    the PR head and applies the merged commit; you never merge or apply.
 
-A `.sql` change through a PR rebuilds the source with the same `ds_id`; a deleted file
-tombstones it; removing a source something still references refuses at plan time
-(`removal_referenced`).
+A `.sql` change through a PR rebuilds the source with the same `ds_id`. A deleted file
+tombstones it from the second apply on; the first apply keeps the source as `noop` with
+the warning `ds_first_apply_retained` naming the file to commit. Removing a source
+something still references refuses at plan time (`removal_referenced`).
 
 ## Both sides
 
@@ -63,10 +66,14 @@ Typed `{code, message}`; read the code, never the prose.
 | `binding_incomplete`, `local_only`, `config_revision_moved` | bind first; apply reads the provider, not an upload; reload the binding and verify again |
 | `plan_stale`, `tree_mismatch`, `action_digest_mismatch`, `plan_not_found`, `verdict_failed` | the plan no longer matches the org or the tree: verify again and apply the fresh plan |
 | `apply_in_progress`, `migration_in_progress` | an apply or a migration holds the lease: wait, never cancel |
-| `not_on_base_branch`, `not_descendant_of_last_import`, `pr_head_mismatch`, `pull_request_not_found`, `pull_request_list_unavailable` | wrong commit or PR: use the merged SHA on the bound branch |
-| `approvals_unavailable`, `no_head_bound_approvals`, `identity_unlinked`, `identity_unverified`, `member_removed`, `approver_closure_uncovered`, `write_closure_uncovered` | a linked approver holding every written domain must approve the current head; an admin links identities |
+| `not_on_base_branch`, `not_descendant_of_last_import`, `pr_head_mismatch` | wrong commit: use the merged SHA on the bound branch |
+| `pull_request_not_found`, `pull_request_list_unavailable` | no PR resolved for that commit, or the index is still warming: pass `--pr <id>` naming the merged PR; if unavailable, retry later |
+| `approvals_unavailable`, `no_head_bound_approvals`, `approval_head_binding_unprovable`, `identity_unlinked`, `identity_unverified`, `member_removed`, `approver_closure_uncovered`, `write_closure_uncovered` | a linked approver holding every written domain must approve the current head; an approval not provably bound to the head does not count - re-approve the head; an admin links identities |
 | `certificate_not_applyable`, `migration_requires_plan`, `migration_requires_commit`, `migration_mode_invalid`, `approved_sha_missing`, `approved_sha_mismatch` | migration only: the pre-delete `--kind migration` verify is a certificate; after the delete a fresh `--kind migration` verify yields the plan for `apply --plan <id>`; the SHA must match `bind --approved-sha` |
 | `token_invalid`, `token_revoked`, `token_scope`, `token_repo_mismatch` | CI token: mint a fresh one, use the right scope, mint for this repository |
+
+Operation status `failed_retryable`: retry once, then report. `refused` or a `fail`
+verdict: never retry, never route around it.
 
 ## Refusals inside the app
 
@@ -76,11 +83,6 @@ pull request, not a direct write". A Data Source refusal says "create it by addi
 its SQL in", "change its refresh contract in" or "remove it by deleting"
 `datasources/{name}.sql` "and open a pull request". Private sandboxes and operational verbs
 (refresh, rebuild, pause) stay direct. The fix is the file and a PR, never a workaround.
-
-## Failures
-
-Operation status `failed_retryable`: retry once, then report. `refused` or a `fail`
-verdict: never retry; report the finding and its next step. Never route around a refusal.
 
 ## Truthful receipts
 
@@ -96,6 +98,7 @@ shell traces; `--token` is the interactive form). On the PR, with the `kb:verify
 `graphit kb repo verify --sha $HEAD --pr $PR` (verify and status only), a required check on
 the bound branch. On merge, with the `kb:apply` token: `graphit kb repo apply --sha
 $MERGED_SHA`, which re-verifies the merged commit (a squash changes the SHA) and applies.
-Tokens: `graphit kb repo token mint --scope kb:verify|kb:apply` (admin, shown once, `gkb.`
+Flagless interactive `verify` plans the bound branch head and echoes the commit; CI always
+passes `--sha`. Tokens: `graphit kb repo token mint --scope kb:verify|kb:apply` (admin, shown once, `gkb.`
 prefix), `token list`, `token revoke <id>`. The token is CI's authority to call; the PR's
 head-bound approvers still hold the write closure, and a token never stands in for them.

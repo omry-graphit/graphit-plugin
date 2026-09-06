@@ -2,10 +2,10 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.348"
+skill_version: "0.2.349"
 ---
 
-<!-- SIZE EXEMPTION (SKILL.md): standard hard limit 12,288 chars, exempted ceiling 32,000. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers, scripts/generate-commands-doc.mjs) - needed every turn, cannot defer to a reference. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Reviewed 2026-08-02. Raised from 29,952 on 2026-08-07 (founder-directed): a domain is now an access boundary, so loop step 2 must say that picking one decides who ever sees the work - load-bearing before any reference load can be relied on. Raised from 30,592 on 2026-08-13 (founder-directed): the living-context MUST bullet - explore placements answer path + pre-create fork. SIZING.md rules raises pay only for command-table growth; both raises are deliberate exceptions. Raised from 31,232 on 2026-08-16: the generated table gained `dashboard check` and its flags - table growth, the sanctioned kind - plus that verb's one router row. -->
+<!-- SIZE EXEMPTION (SKILL.md): hard limit 12,288 chars, exempted ceiling 32,000. Reviewed 2026-09-06. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers; cli/scripts/generate-commands-doc.mjs) - needed every turn, not deferrable. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Raises pay only for command-table growth; each is recorded in docs/knowledge/prompt-engineering/sizing/SIZING.md, prose changes in docs/workflow/prompt-changes/INDEX.md. -->
 
 # Graphit CLI
 
@@ -92,7 +92,7 @@ Soft narration is what "just build it" drops. These hard stops hold even then: c
 ### Handoffs, failure, truthful reporting
 
 - Name the handoffs. Some actions live on the platform, not the CLI: visiting a data source's verification link, deleting a source from the Sources Hub. Say when a step hands control back to the user, and move between building the dashboard and building the knowledge base through the gate.
-- Keep local files ephemeral. Any file you create - scratch HTML, an export, throwaway SQL - goes in one `./.graphit/` working dir, never scattered in the repo. When the work is done, offer to remove it. Mechanics: operations.md.
+- Keep scratch files together. In repository-owned workflows, `.graphit/` holds durable KB definitions: never ignore or delete it as scratch. Read repo-preparation.md before authoring those files; other local artifacts follow operations.md.
 - On failure: retry once if it looks transient (timeout, rate limit); on a real error (missing column, permission, validation) stop, say what failed and the next step, never a bare "something went wrong".
 - Report truthfully: what worked, what did not, what you are unsure of. If only part succeeded, say which part and why the rest did not. Done means the answer is delivered and every dashboard element resolves on real data with no entity_sql_warnings.
 
@@ -142,6 +142,7 @@ Load only the relevant reference. Check `graphit <command> --help` for flags.
 
 | Situation | Read |
 |---|---|
+| preparing a repository-owned KB from repository docs | repo-preparation.md |
 | a brand-new or empty workspace, nothing connected yet | onboarding.md |
 | scoping to a domain, data source, and assets | kb-discovery.md, kb-traversal.md, data-sources.md |
 | a repository-owned (`manual`) org: verify, CI tokens, Data Sources via PR | references/repo-kb.md |
@@ -162,25 +163,25 @@ Load only the relevant reference. Check `graphit <command> --help` for flags.
 
 ## Commands
 
-Claude Code supplies the `graphit` wrapper. On Codex, Cursor, terminals and CI, use `npx -y @graphit/cli@0.2.348 <command>`; pin a version for reproducibility. The table is generated from the CLI; check command help for exact flags.
+Claude Code supplies the `graphit` wrapper. On Codex, Cursor, terminals and CI, use `npx -y @graphit/cli@0.2.349 <command>`; pin a version for reproducibility. The table is generated from the CLI; check command help for exact flags.
 
 <!-- COMMANDS:START -->
 
-_Generated from the CLI by `npm run gen:commands` - do not hand-edit between the markers. Run `graphit <cmd> --help` for exact flag values and descriptions._
+_Generated by `npm run gen:commands`; do not hand-edit between the markers._
 
 **auth** - Authentication commands
 - `auth login` - Log in to Graphit via browser
 - `auth status` - Show current authentication status
 - `auth logout` - Log out and clear stored credentials
 
-**status** - Show your effective permissions per domain (advisory; the server re-authorizes every operation)
+**status**
 - `status` - Show your effective permissions per domain (advisory; the server re-authorizes every operation)
 
 **kb** - dbt-native Knowledge Base - semantic models with nested components, concrete metrics/families, groups, and retained rules
-- `kb repo verify` - Compute the plan for a .graphit/ tree: identity + access, their semantic layer through provenance, validity + completeness, and the KB/DS/dashboard actions. Any refusal exits 2 (a CI check fails). --sha pulls the commit from the bound provider (CI); --path uploads a local checkout and yields a local-only plan that can never be applied - `--sha --pr --path --allow-dirty --kind --token --poll-interval-ms --timeout-ms`
+- `kb repo verify` - Plan a .graphit/ tree: identity + access, semantic layer via provenance, validity + completeness, KB/DS/dashboard actions. Any refusal exits 2 (CI fails). --sha pulls that commit from the bound provider (CI); --path uploads a checkout for a local-only plan that can never be applied; neither plans the bound branch head - `--sha --pr --path --allow-dirty --kind --token --poll-interval-ms --timeout-ms`
 - `kb repo show` - Show the repository binding: ownership mode, bound repository, branch, connection, last applied commit
 - `kb repo mode <mode>` - Set KB ownership (org admin): managed = direct writes; manual = the repository owns shared KB assets and Data Source definitions (changes via pull request). A non-empty managed KB refuses manual
-- `kb repo bind` - Bind the owning repository to a provider connection (org admin); the connection must name that repository - `--connection --repo --branch --approved-sha`
+- `kb repo bind` - Bind the owning repository (org admin); --repo resolves the provider connection naming it unless several healthy ones match - `--connection --repo --branch --approved-sha`
 - `kb repo identities` - List git identities (org admin): linked, unlinked, and accounts the last plans could not link
 - `kb repo link-identity <provider> <account> <member-email>` - Link a provider account (login or account id) to the member with that email (org admin)
 - `kb repo unlink-identity <provider> <account>` - Unlink a provider account from its member (org admin); leaves a tombstone the silent email match cannot cross
@@ -211,7 +212,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `kb verify <noun> <name>` - Verify a Knowledge Base asset
 - `kb unverify <noun> <name>` - Unverify a Knowledge Base asset
 
-**query** - Run SQL against a cached data source or a live warehouse (Snowflake / BigQuery). Check truncated before concluding
+**query**
 - `query <sql>` - Run SQL against a cached data source or a live warehouse (Snowflake / BigQuery). Check truncated before concluding - `--ds --warehouse --connection --limit --override-rules --verbose --adhoc-reason --apply-conditional --skip-conditional --timeout`
 
 **metadata** - Warehouse metadata (Snowflake schemas / BigQuery datasets)
@@ -247,7 +248,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 - `dashboard delete <id>` - Delete a custom dashboard (requires --yes) - `--yes`
 
 **connector** - Connection management. OAuth and GitHub connections are set up in the Graphit web app.
-- `connector list` - List active connections (Snowflake, BigQuery, Slack)
+- `connector list` - List connections (Snowflake, BigQuery, Slack, GitHub/Bitbucket)
 - `connector add snowflake-keypair` - Add Snowflake via keypair auth - `--account --user --key --name --warehouse --role --database`
 - `connector add bigquery-serviceaccount` - Add BigQuery via a service-account key (org admin only) - `--key-file --project --dataset --location --name --max-bytes-billed`
 - `connector test <id>` - Test a connection
@@ -263,7 +264,7 @@ _Generated from the CLI by `npm run gen:commands` - do not hand-edit between the
 **plugin** - Inspect Graphit assistant plugin status
 - `plugin status` - Check plugin/package/skill version health - `--json --quiet --skip-network --repair`
 
-**setup** - Install legacy copied Graphit assistant files for Cursor or fallback setups
+**setup**
 - `setup` - Install legacy copied Graphit assistant files for Cursor or fallback setups - `--editor --project --update --legacy-copy --remove-legacy-copies --dry-run`
 
 <!-- COMMANDS:END -->

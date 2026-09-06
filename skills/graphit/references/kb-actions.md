@@ -26,6 +26,8 @@ Read `semantic-authoring.md` for model/metric shapes and `metric-families.md` fo
 
 Rules remain Graphit objects. Create them from JSON with body/constraints plus `apply_on` targets. Final targets are model, entity, dimension, metric, or group identities. A rule without targets is refused.
 
+Target grammar, live and in a repository tree alike: `model:`, `entity:` and `group:` names are lowercase snake; `metric:` and `dimension:` names are UPPER (`metric:REVENUE_USD`). In a `.graphit/rules/*.rule.yml` file every target must name something the tree declares, including assets the same sync creates; a bare model name or the model's fully qualified `DATABASE.SCHEMA.TABLE` relation also resolves. `table:` targets are retired - target the semantic model. A rule's dbt-style `groups:` key is not imported; placement comes from `apply_on`.
+
 Constraints keep their five semantics: required predicate, forbidden column, required filter, required aggregation, and value restriction. Use declared semantic identities and typed values.
 
 ## Update

@@ -58,6 +58,6 @@ Commands write only the result payload to stdout; all decoration (progress, tabl
 
 ## Working artifacts
 
-Keep every local file you create in one place: a `./.graphit/` directory in the working dir (distinct from the `~/.graphit/` credential store). Scratch HTML written before `graphit dashboard update-html <id> --file`, output redirected from `graphit dashboard get-html`, exported PNG/PDF, throwaway SQL - all under `.graphit/`, never scattered across the user's repo. `graphit dashboard export` already defaults its output there (no `--output` needed) and drops a self-ignoring `.gitignore`, so the dir is never committed.
+For ordinary dashboard work, keep scratch HTML, exports and throwaway SQL together in `./.graphit/` (distinct from `~/.graphit/` credentials). Exception: in a repository-owned KB workflow that directory is durable, committed source. Load repo-preparation.md and keep scratch exports elsewhere; never make the definition tree self-ignoring.
 
-These are ephemeral. The platform dashboard is the source of truth and the durable artifact; anything local re-materializes on demand (`graphit dashboard get-html <id>` for the HTML, `graphit dashboard export <id> --format png|pdf` for a rendered image). When you finish a piece of work, offer to remove `.graphit/` - nothing of value is lost. Keep it a soft suggestion, not a forced step.
+Dashboard scratch is ephemeral and can be regenerated through the CLI. Offer cleanup only for artifacts known to be scratch. Never offer to remove a repository-owned `.graphit/` tree or an existing directory whose contents you have not classified.
