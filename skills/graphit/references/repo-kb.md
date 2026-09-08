@@ -66,14 +66,14 @@ Typed `{code, message}`; read the code, never the prose.
 | `binding_incomplete`, `local_only`, `config_revision_moved` | bind first; apply reads the provider, not an upload; reload the binding and verify again |
 | `plan_stale`, `tree_mismatch`, `action_digest_mismatch`, `plan_not_found`, `verdict_failed` | the plan no longer matches the org or the tree: verify again and apply the fresh plan |
 | `apply_in_progress`, `migration_in_progress` | an apply or a migration holds the lease: wait, never cancel |
-| `not_on_base_branch`, `not_descendant_of_last_import`, `pr_head_mismatch` | wrong commit: use the merged SHA on the bound branch |
+| `not_on_base_branch`, `not_descendant_of_last_import`, `pr_head_mismatch`, `pull_request_not_merged`, `merged_commit_mismatch`, `pr_base_branch_mismatch` | verify the PR head; apply only its merged commit on the bound branch |
 | `pull_request_not_found`, `pull_request_list_unavailable` | no PR resolved for that commit, or the index is still warming: pass `--pr <id>` naming the merged PR; if unavailable, retry later |
-| `approvals_unavailable`, `no_head_bound_approvals`, `approval_head_binding_unprovable`, `identity_unlinked`, `identity_unverified`, `member_removed`, `approver_closure_uncovered`, `write_closure_uncovered` | a linked approver holding every written domain must approve the current head; an approval not provably bound to the head does not count - re-approve the head; an admin links identities |
+| `approvals_unavailable`, `no_head_bound_approvals`, `approval_head_binding_unprovable`, `identity_unlinked`, `identity_unverified`, `member_removed`, `approver_closure_uncovered`, `write_closure_uncovered` | check native PR approval, reviewer linkage and current Graphit permissions; incomplete or moved provider evidence refuses. Fix the cause, then verify again |
 | `certificate_not_applyable`, `migration_requires_plan`, `migration_requires_commit`, `migration_mode_invalid`, `approved_sha_missing`, `approved_sha_mismatch` | migration only: the pre-delete `--kind migration` verify is a certificate; after the delete a fresh `--kind migration` verify yields the plan for `apply --plan <id>`; the SHA must match `bind --approved-sha` |
 | `token_invalid`, `token_revoked`, `token_scope`, `token_repo_mismatch` | CI token: mint a fresh one, use the right scope, mint for this repository |
 
 Operation status `failed_retryable`: retry once, then report. `refused` or a `fail`
-verdict: never retry, never route around it.
+verdict: never retry unchanged or route around it.
 
 ## Refusals inside the app
 
@@ -92,13 +92,13 @@ quote the operation id, the plan id and the verdict. Queued or timed out is not 
 
 ## CI in one paragraph
 
-Two jobs, two tokens, one pinned CLI version. The job exports the token as `GRAPHIT_TOKEN`
-in its environment, never as a `--token` argument (argv is visible in process listings and
-shell traces; `--token` is the interactive form). On the PR, with the `kb:verify` token:
-`graphit kb repo verify --sha $HEAD --pr $PR` (verify and status only), a required check on
-the bound branch. On merge, with the `kb:apply` token: `graphit kb repo apply --sha
-$MERGED_SHA`, which re-verifies the merged commit (a squash changes the SHA) and applies.
-Flagless interactive `verify` plans the bound branch head and echoes the commit; CI always
-passes `--sha`. Tokens: `graphit kb repo token mint --scope kb:verify|kb:apply` (admin, shown once, `gkb.`
-prefix), `token list`, `token revoke <id>`. The token is CI's authority to call; the PR's
-head-bound approvers still hold the write closure, and a token never stands in for them.
+Two jobs, two tokens, one pinned CLI version. Export `GRAPHIT_TOKEN` in the job
+environment, never as `--token` in argv or shell traces. The required PR check uses
+`kb:verify`: `graphit kb repo verify --sha $HEAD --pr $PR` (verify/status only).
+After the customer merges, the protected `kb:apply` job runs
+`graphit kb repo apply --sha $MERGED_SHA`. Both check native reviewers' current
+Graphit permissions; the merger is audit context. Apply revalidates the actual
+merged commit, including squash merges. CI always passes `--sha`; flagless
+interactive verify resolves and reports the bound branch head. Admin commands:
+`graphit kb repo token mint --scope kb:verify|kb:apply` (shown once, `gkb.` prefix),
+`token list`, `token revoke <id>`. Tokens authorize calls, never replace reviewers.

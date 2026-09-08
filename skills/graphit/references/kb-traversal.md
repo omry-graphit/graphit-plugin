@@ -6,7 +6,7 @@ Load when investigating semantic reach or presenting KB results.
 
 | Need | Read |
 |---|---|
-| Inventory roots | list semantic-model, metric, group, or rule |
+| Inventory roots | list semantic-model, metric, group, or rule; enable `summary` for metric candidates |
 | Full root definition | get |
 | Collapsed hierarchy | tree |
 | Ranked discovery | search |
@@ -15,7 +15,7 @@ Load when investigating semantic reach or presenting KB results.
 | Semantic neighborhood | explore semantic-model, metric, or group |
 | Dashboard/rule impact | usage |
 
-`list metric` is flat. Families collapse in tree/search/family views.
+`list metric` is flat. Families collapse in tree/search/family views. Metric summaries are candidates, not full definitions: use `get` for semantics and model/source binding before reuse. Continue with `next_cursor` while `truncated` is true; a partial page does not establish absence. Omitting `summary` preserves the existing full-definition listing.
 
 ## Investigations
 

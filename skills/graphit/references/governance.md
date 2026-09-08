@@ -8,7 +8,7 @@ Load when writing a governed query, explaining a refusal, or reporting provenanc
 |---|---|
 | `{{ Metric('revenue') }}` | Reusable metric |
 | `{{ Dimension('order__channel') }}` | Qualified grouping/filter field |
-| `{{ Measure('order_total') }}` | Graphit's model-owned measure extension |
+| `{{ Measure('order_total') }}` / `{{ Measure('order__order_total') }}` | Graphit's model-owned measure extension; the bare form resolves only when the name is unique across shared models, the `entity__name` form pins the owning model like a Dimension path |
 
 Legacy token grammar is refused. Keep references inside complete executable SQL and canvas `data-graphit-sql`.
 

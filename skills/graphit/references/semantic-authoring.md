@@ -4,7 +4,7 @@ Load when creating or changing semantic models or metrics.
 
 ## Syntax boundary
 
-Graphit accepts the MetricFlow 0.211 execution shape: semantic models contain
+Graphit accepts the supported MetricFlow execution shape: semantic models contain
 entities, dimensions, and measures; metrics are top-level objects with `type`
 and `type_params`. Do not emit newer measureless/Fusion authoring syntax, dbt
 project YAML, Jinja, `ref()` expressions, or source declarations on this
@@ -70,9 +70,24 @@ Never sum or average a rate/ratio - recompute from additive components at the re
 
 Measure `agg` accepts: sum, count, count_distinct, average, min, max, median, percentile, sum_boolean. A simple metric references a declared measure, never a raw column; a ratio references numerator/denominator metrics, never measures directly; every identifier in a derived expression must match an input name or alias exactly.
 
+Measure identity is group/model/measure, never a bare name. A metric's measure reference resolves inside the metric's own group first, then across shared models; a private workspace model's measures are reachable only by metrics placed in that private workspace. If the same measure name exists on two shared models with different definitions and the metric sits in neither group, the write is refused naming both models - place the metric in the group of the model it reads. Identical re-declarations across models are fine; a model may not re-declare a same-group measure with a different definition. Always give a metric a group.
+
 ## Plan ordering
 
-When authoring several definitions, sequence prerequisites first: group, then data sources, then semantic models with nested components, then simple metrics, then ratio/derived metrics that reference them, then rules after their targets exist. Execute one item at a time; do not start the next before the current receipt is terminal.
+Follow the staged research in `kb-discovery.md` first: agree the group, inspect existing assets and cross-group matches, then show the user the reuse-or-build recommendation. Before creating an approved missing measure or metric input, discover visible candidates in the agreed group and model scope. Use compact metric discovery as described in `kb-discovery.md`; a summary nominates a candidate, it does not establish equivalence. Follow continuation metadata before concluding there is a gap; ranked search or an incomplete page is not proof of absence.
+
+Read each plausible metric's full definition and its reached semantic models. Compare the resolved model/source binding, grain and time dimension, measure expression and aggregation parameters, metric-level and per-input filters, units/scale, verification state, ownership, and applicable rules. Similar names or identical SQL alone are insufficient. Use the existing path resolution above; never inspect hidden definitions or copy a private definition into a shared scope to make it reusable.
+
+| Finding | Action |
+|---|---|
+| Equivalent accessible metric input | Reference that metric's exact name; create no new measure or simple metric for that input |
+| Equivalent model-owned measure, but no suitable metric | Reuse the measure and create only the missing simple metric |
+| Different grain, filters, scale, binding or applicable policy | Keep the definitions separate; ask if the intended business meaning is unclear |
+| Repository-owned definition needs a change | Follow the repository authoring workflow; do not create a direct-write replacement to bypass ownership |
+
+A ratio still references numerator/denominator metric objects. For example, a verified total-matches metric can serve several ratios at the same grain; a country-filtered matches metric is not an interchangeable denominator for all countries. Being referenced or ending in `_num`/`_den` does not make an existing metric disposable.
+
+After discovery, author only the approved missing prerequisites: group, data sources, semantic models with nested components, simple metrics, ratio/derived metrics, then rules after their targets exist. Execute one item at a time; do not start the next before the current receipt is terminal.
 
 ## Verification
 
