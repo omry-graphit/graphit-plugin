@@ -2,7 +2,7 @@
 
 Load this when the concern is the Graphit CLI or plugin itself, not the analysis: the session-start check, a health check, a permission error (403/404/423), the output contract, or local working artifacts. Skip it on every healthy build or query turn.
 
-Depth that lives elsewhere: installing, updating, or repairing Graphit -> references/install-update.md. Reporting a failure or a partial result -> references/reporting.md.
+Depth that lives elsewhere: installing, updating, or repairing Graphit -> references/install-update.md. Reporting a failure or a partial result -> references/reporting.md. Sharing/publication refused with `private_dashboard_dependencies` or `dashboard_sharing_unverified` -> read references/sharing-recovery.md for visible blockers and authorized recovery.
 
 Governance itself is enforced server-side by the query gateway: a governed query is rejected by the platform, not the CLI, so never claim to have blocked a query locally. The one local guard is a session tripwire - until this skill attests at session start (below), the CLI declines commands that change org state or that assert a governance decision (`--adhoc-reason`, `--override-rules`, `--skip-conditional`). That guard is about this session, never about the query itself, and dropping those flags does not skip governance - the server still decides.
 

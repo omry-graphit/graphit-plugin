@@ -49,7 +49,7 @@ Create with automatic scan unless there is a specific reason not to. The scan cr
 
 Review the scanned schema before accepting a warehouse/SQL source with `ds verify --accept-schema`. File uploads also require `ds verify`, without that flag. Confirm the returned source is ready and verified before reporting activation; scan completion alone is not activation.
 
-Edit in place when changing columns, filters, joins, or date coverage for the same purpose - editing preserves the source id, graph bindings, semantic-model binding, schedules, and history. Create a separate source only for a different purpose or connection.
+Edit in place with `ds edit-sql <id> --sql "..."` when changing columns, filters, joins, or date coverage for the same purpose - editing preserves the source id, graph bindings, semantic-model binding, schedules, and history. The new SQL is compiled against the warehouse before anything is saved; a column change pauses the source in `schema_drift` until `ds verify --accept-schema` accepts the new schema, so report that state rather than readiness. `--expected-version` is optional and a stale value is refused without changing anything. File-upload sources cannot be edited by SQL - re-upload the file. Create a separate source only for a different purpose or connection.
 
 ## Zero Rows and Nulls
 
@@ -61,6 +61,7 @@ On an empty or suspiciously-null result: check the selected source and dialect, 
 - Reading does not imply authority over connector, SQL, or refresh settings.
 - Visibility and masking cover agent, canvas, render, export, and report paths.
 - Private names and columns remain concealed.
-- Delete/move stay in the Sources Hub where cascades are visible.
+- Delete stays in the Sources Hub where cascades are visible.
+- There is no source move on any surface. A source lives in the `group` of the semantic model bound to it, so `kb update semantic-model <name>` with a new `group` moves the source; a source with no bound model yet keeps the domain it was created with.
 
 For refresh modes, history, incremental tuning, and reconciliation, load `data-source-refresh.md`.

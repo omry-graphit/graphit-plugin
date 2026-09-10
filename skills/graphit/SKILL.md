@@ -2,10 +2,10 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.352"
+skill_version: "0.2.355"
 ---
 
-<!-- SIZE EXEMPTION (SKILL.md): hard limit 12,288 chars, exempted ceiling 33,280. Reviewed 2026-09-09. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers; cli/scripts/generate-commands-doc.mjs) - needed every turn, not deferrable. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Raises pay only for command-table growth; each is recorded in docs/knowledge/prompt-engineering/sizing/SIZING.md, prose changes in docs/workflow/prompt-changes/INDEX.md. -->
+<!-- SIZE EXEMPTION (SKILL.md): hard limit 12,288 chars, exempted ceiling 34,048. Reviewed 2026-09-10. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers; cli/scripts/generate-commands-doc.mjs) - needed every turn, not deferrable. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Raises pay only for command-table growth; each is recorded in docs/knowledge/prompt-engineering/sizing/SIZING.md, prose changes in docs/workflow/prompt-changes/INDEX.md. -->
 
 # Graphit CLI
 
@@ -109,7 +109,7 @@ One loop serves both jobs. Each step names the reference to read when you need d
 3. KB-readiness gate (BLOCKING). Confirm the semantic models, nested components, metrics, groups, and rules required by the question exist and are verified. If anything is missing, show a gap table, get approval, then author supported definitions and verify them. Read references/semantic-authoring.md, references/metric-families.md, references/kb-structure.md, references/kb-scope.md, and references/kb-actions.md.
 4. Investigate. Prefer governed references: `{{ Metric('name') }}`, `{{ Dimension('entity__name') }}`, and Graphit's `{{ Measure('name') }}` extension. Validate before relying on results and label ad-hoc SQL honestly.
 5. Deliver. A quick query result for a one-off; a designed HTML dashboard for anything recurring or shared; or a written report artifact - insight digest, analysis one-pager, postmortem - when narrative should lead. Build and show one section at a time, not one finished deliverable at the end. Pull only the reference for the move you are making:
-   - Frame and plan the dashboard (or report artifact): references/dashboard-planning.md.
+   - Before any new dashboard: references/dashboard-create.md; plan: references/dashboard-planning.md.
    - Choose the chart: references/chart-selection.md, references/chart-patterns.md.
    - Lay out and style the HTML: references/graphit-style.md.
    - Resolve live data and render: references/runtime.md.
@@ -151,19 +151,20 @@ Load only the relevant reference. Check `graphit <command> --help` for flags.
 | data-source refresh modes, incremental settings, or reconciliation | data-source-refresh.md |
 | writing or validating a query | sql-reference.md, governance.md |
 | a user is confused about governance itself - what governed means, why a query was blocked, how it works | governance-explained.md |
-| designing and rendering the dashboard | dashboard-planning.md, chart-selection.md, chart-patterns.md, graphit-style.md, runtime.md, kpi.md, table.md |
+| creating, designing and rendering a dashboard | dashboard-create.md, dashboard-planning.md, chart-selection.md, chart-patterns.md, graphit-style.md, runtime.md, kpi.md, table.md |
 | adding interactivity (filters, parameters, saved views) | filters.md, filters-advanced.md, state-contract.md |
 | reusing a chart across dashboards as a template, or expanding one on a host | templates.md |
 | building a slide deck | presentations.md |
 | moving an existing dashboard's queries onto its entities, or explaining a legacy-query save warning | migration.md |
 | checking a dashboard against the write contract without saving - pre-flighting an edit, or an alignment sweep | alignment.md |
-| the CLI or plugin itself (health, permission errors, local working artifacts) | operations.md |
+| CLI/plugin health, permission errors, local artifacts | operations.md |
+| Sharing/publish blocked | sharing-recovery.md |
 | installing, updating, or repairing Graphit itself | install-update.md |
 | reporting a failure or a partial result | reporting.md |
 
 ## Commands
 
-Claude Code supplies the `graphit` wrapper. On Codex, Cursor, terminals and CI, use `npx -y @graphit/cli@0.2.352 <command>`; pin a version for reproducibility. The table is generated from the CLI; check command help for exact flags.
+Claude Code supplies the `graphit` wrapper. On Codex, Cursor, terminals and CI, use `npx -y @graphit/cli@0.2.355 <command>`; pin a version for reproducibility. The table is generated from the CLI; check command help for exact flags.
 
 <!-- COMMANDS:START -->
 
@@ -226,12 +227,13 @@ _Generated by `npm run gen:commands`; do not hand-edit between the markers._
 **ds** - Data source management
 - `ds refresh-history <id>` - Show recent refresh runs for a data source with the Snowflake query id per run (status, time, rows, duration). Runs from before query-id capture - or a failure before any query ran - show 'not captured'. Read-only; no ds refresh-history delete. - `--limit`
 - `ds delete <id>` - Delete a data source - not available on the CLI, use the Sources Hub
-- `ds move <id>` - Move a data source between domains - not available on the CLI, use the Sources Hub
-- `ds list` - List data sources. Response carries count/total/truncated; below total = capped, raise --limit - `--limit`
+- `ds move <id>` - Not a command anywhere: a source lives in its bound semantic model's group; kb update semantic-model moves it
+- `ds list` - List data sources. Rows carry domain, created_at and created_by. Response carries count/total/truncated; below total = capped, raise --limit - `--limit`
 - `ds create` - Create a data source from SQL or a local Excel/CSV file. --domain is REQUIRED in both modes and takes an uppercase access-policy key, not a semantic group name - `--sql --name --connection --schema --skip-scan --detect-tables --source-tables --file --domain --sheet`
 - `ds refresh [ids...]` - Refresh data sources (use --all for all, or pass one or more IDs). On a breaking schema change a refresh is paused (status 'schema_changed') and the old data keeps serving; re-run with --force to accept the new schema. - `--all --no-wait --skip-empty --force`
 - `ds verify <id>` - Scan an unverified data source's schema and review it, and activate it. Warehouse/SQL sources print a verification link; add --accept-schema to accept the AI schema and activate from the CLI. File uploads activate on this command without --accept-schema, but NOT on create: `ds create --file` leaves them at pending_verification until you run this. Requires data_source_write in the source's domain. - `--force --accept-schema`
 - `ds update <id>` - Update a data source row cap - `--max-rows`
+- `ds edit-sql <id>` - Replace an existing data source's Source SQL in place - it keeps its id, graph bindings, semantic model, schedule and history, so use this instead of creating a `_V2` source when only columns, filters, joins or date coverage change. Compiled against the warehouse before saving; a column change pauses in schema_drift until `ds verify`. File-upload sources are refused. - `--sql --expected-version`
 - `ds refresh-config <id>` - Configure a data source's refresh mode (full or incremental/watermark) and settings. Sets the complete incremental config each call - omitted flags reset to server defaults (e.g. omitting --table-lookback clears existing lookback windows). - `--mode --watermark-column --watermark-type --merge-key --merge-window --table-lookback --reconciliation`
 
 **dashboard** - Custom dashboard management
@@ -244,13 +246,14 @@ _Generated by `npm run gen:commands`; do not hand-edit between the markers._
 - `dashboard move <id>` - Move a dashboard within one space, or return it to root. This changes only navigation metadata and needs no canvas edit session. Its placement in other spaces, content and sharing stay unchanged. Use sharing operations separately to grant access. - `--space --team --revision --folder`
 - `dashboard list` - List custom dashboards. --view takes mine, shared, editable, all (default). mine is what you created and so own - exactly one owner per dashboard, so mine is how teammates split migration work with no overlap. editable adds dashboards others own that you can change. Every row carries permission owner/editor/viewer. - `--view --team`
 - `dashboard create` - Create a new custom dashboard - `--name`
+- `dashboard share <id>` - Share an owned dashboard. Org requires admin/owner; Team requires membership. An optional folder path shares and files atomically; invalid paths reject both. - `--space --team --folder-path`
 - `dashboard get <id>` - Get dashboard details - `--html`
 - `dashboard check <id>` - Check a dashboard against the canvas write contract without saving. No flags = audit the stored page's standing debt; --file/--stdin = dry-run a proposed document and report the exact save verdict, without burning a version. Exits 1 when a save would be refused. - `--file --stdin`
 - `dashboard update-html <id>` - Replace dashboard HTML content - `--file --stdin --label`
 - `dashboard update-entity <id> <entityId>` - Update a single entity's inner HTML without replacing the full page - `--file --stdin --title --label`
 - `dashboard get-html <id>` - Get the current HTML content of a dashboard
 - `dashboard list-entities <id>` - List the entities on a dashboard (id, label, KB refs, data source)
-- `dashboard get-entity <id> <entityId>` - Get a single entity's structured context (label, SQL, KB refs, data source, HTML). Use --with-data to also execute the governed query and return resolved data inline - that envelope carries truncated (false = complete) and executed_row_count when capped. Use --image for a local PNG of the graph (as last viewed) to Read - `--with-data --max-rows --params --image --raw`
+- `dashboard get-entity <id> <entityId>` - Get entity context. Includes label, SQL, KB refs, data source and HTML. Use --with-data to also execute the governed query and return resolved data inline - that envelope carries truncated (false = complete) and executed_row_count when capped. Use --image for a local PNG of the graph (as last viewed) to Read - `--with-data --max-rows --params --image --raw`
 - `dashboard export <id>` - Export dashboard as PNG or PDF - `--format --output`
 - `dashboard edit <id>` - Enter edit mode on a shared dashboard: catch the editing session + start a draft, then open it in your browser. Gated (409) if someone else is editing, (423) if locked, (403) if view-only. Private dashboards need no session - edit directly. - `--no-open`
 - `dashboard publish <id>` - Publish your draft edits on a shared dashboard (makes them live) and release the editing session
