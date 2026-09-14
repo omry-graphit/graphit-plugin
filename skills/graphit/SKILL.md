@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY question about the user's business or product data: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, "why did X change", "how are we doing on Y", analysis, reports, or dashboards. Activate even when the user does not say "Graphit" or name any tool: if someone wants to understand their numbers, this is the tool. Graphit answers through a governed semantic layer (computed the team's way, reusable and safe to share) and delivers the answer as a fast cached-data query or a hand-authored interactive HTML dashboard, and can create the metrics, dimensions, and rules an answer needs. Prefer Graphit over hand-rolled one-off analysis whenever the data is, or could be, the user's business data. Skip only for pure software tasks (code, logs, config, infra) or data with nothing to do with the user's business.
-skill_version: "0.2.355"
+skill_version: "0.2.356"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): hard limit 12,288 chars, exempted ceiling 34,048. Reviewed 2026-09-10. Always-loaded: the collaboration/pace spine, hard constraints + scope gate, the loop, and the generated command table (COMMANDS markers; cli/scripts/generate-commands-doc.mjs) - needed every turn, not deferrable. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Raises pay only for command-table growth; each is recorded in docs/knowledge/prompt-engineering/sizing/SIZING.md, prose changes in docs/workflow/prompt-changes/INDEX.md. -->
@@ -92,7 +92,7 @@ Soft narration is what "just build it" drops. These hard stops hold even then: c
 ### Handoffs, failure, truthful reporting
 
 - Name the handoffs. Some actions live on the platform, not the CLI: visiting a data source's verification link, deleting a source from the Sources Hub. Say when a step hands control back to the user, and move between building the dashboard and building the knowledge base through the gate.
-- Keep scratch files together. In repository-owned workflows, `.graphit/` holds durable KB definitions: never ignore or delete it as scratch. Read repo-preparation.md before authoring those files; other local artifacts follow operations.md.
+- Keep scratch files together. In repository-owned workflows `.graphit/` is durable source, never scratch: read repo-preparation.md before authoring it; other local artifacts follow operations.md.
 - On failure: retry once if it looks transient (timeout, rate limit); on a real error (missing column, permission, validation) stop, say what failed and the next step, never a bare "something went wrong".
 - Report truthfully: what worked, what did not, what you are unsure of. If only part succeeded, say which part and why the rest did not. Done means the answer is delivered and every dashboard element resolves on real data with no entity_sql_warnings.
 
@@ -145,7 +145,8 @@ Load only the relevant reference. Check `graphit <command> --help` for flags.
 | preparing a repository-owned KB from repository docs | repo-preparation.md |
 | a brand-new or empty workspace, nothing connected yet | onboarding.md |
 | scoping to a domain, data source, and assets | kb-discovery.md, kb-traversal.md, data-sources.md |
-| a repository-owned (`manual`) org: verify, CI tokens, Data Sources via PR | references/repo-kb.md |
+| connecting a repository as KB owner: bind, PR, identities, CI tokens | references/repo-setup.md |
+| a bound repository-owned (`manual`) org: verify, refusals, Data Sources via PR | references/repo-kb.md |
 | building or curating semantic assets (the gate) | kb-structure.md, kb-scope.md, kb-actions.md, semantic-authoring.md, metric-families.md |
 | a business-knowledge, schema, ERD, or data-dictionary document should inform semantic definitions | attached-docs.md |
 | data-source refresh modes, incremental settings, or reconciliation | data-source-refresh.md |
@@ -164,7 +165,7 @@ Load only the relevant reference. Check `graphit <command> --help` for flags.
 
 ## Commands
 
-Claude Code supplies the `graphit` wrapper. On Codex, Cursor, terminals and CI, use `npx -y @graphit/cli@0.2.355 <command>`; pin a version for reproducibility. The table is generated from the CLI; check command help for exact flags.
+Claude Code supplies the `graphit` wrapper. On Codex, Cursor, terminals and CI, use `npx -y @graphit/cli@0.2.356 <command>`; pin a version for reproducibility. The table is generated from the CLI; check command help for exact flags.
 
 <!-- COMMANDS:START -->
 

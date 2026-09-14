@@ -1,6 +1,6 @@
 # First Run: From an Empty Workspace to a First Dashboard
 
-Load this when the user is signed in but visible groups/models and `graphit ds list` are empty. Onboarding is the job, not a blocker: walk through it one step at a time and surface each result. Once a source and semantic assets exist, return to the normal loop.
+Load this when the user is signed in but visible groups/models and `graphit ds list` are empty. If a repository is to own the Knowledge Base instead, that first run is `repo-setup.md`. Onboarding is the job, not a blocker: walk through it one step at a time and surface each result. Once a source and semantic assets exist, return to the normal loop.
 
 ## The arc
 

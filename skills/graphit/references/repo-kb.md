@@ -2,7 +2,9 @@
 
 Load when: `graphit kb repo show` reports `ownership_mode: manual` or `migrating`, a
 `.graphit/` tree exists, a shared KB or Data Source change was refused as repository-owned,
-or the user asks to set up, verify or sync the repository. A `managed` org never loads this.
+or the user asks to verify or sync the repository. Connecting a repository for the first
+time (no binding, no PR, no CI tokens, no import yet) is `repo-setup.md`, step by step;
+this reference is the contract once it is bound. A `managed` org never loads this.
 
 ## Contract
 
@@ -18,14 +20,11 @@ Run `graphit kb repo show` first.
 
 - `managed`: this reference does not apply. Use the ordinary KB and Data Source verbs.
 - `manual` with a bound repository: the procedures below.
-- `manual` with no binding: initialize. Scaffold `.graphit/` per `repo-preparation.md`,
-  run `graphit kb repo verify --path . --allow-dirty` (a `local_only` plan, never
-  applyable; an uncommitted `.graphit/` is refused without the flag), fix findings until
-  the verdict passes, commit on a branch, open the PR with the user's own tooling. Then tell an org admin to bind (`graphit kb repo bind --repo <owner/name> --branch main`;
-  the connection resolves from the repository; on `connection_ambiguous` pass
-  `--connection <id>` from `graphit connector list`'s `id` column, never the card's token
-  fingerprint), link reviewers (`kb repo link-identity`) and mint the CI tokens
-  (below). Those are admin actions you never run yourself.
+- `manual` with no binding, or bound with `last_imported_sha` null: follow `repo-setup.md`
+  state by state. It scaffolds per `repo-preparation.md`, verifies with
+  `graphit kb repo verify --path . --allow-dirty`, and hands each admin step over one at a
+  time (`graphit kb repo bind`, `kb repo link-identity`, `kb repo token mint`); you never
+  run those yourself.
 
 ## A Data Source through a PR
 
@@ -68,11 +67,14 @@ Typed `{code, message}`; read the code, never the prose.
 | `apply_in_progress`, `migration_in_progress` | an apply or a migration holds the lease: wait, never cancel |
 | `not_on_base_branch`, `not_descendant_of_last_import`, `pr_head_mismatch`, `pull_request_not_merged`, `merged_commit_mismatch`, `pr_base_branch_mismatch` | verify the PR head; apply only its merged commit on the bound branch |
 | `pull_request_not_found`, `pull_request_list_unavailable` | no PR resolved for that commit, or the index is still warming: pass `--pr <id>` naming the merged PR; if unavailable, retry later |
-| `approvals_unavailable`, `no_head_bound_approvals`, `approval_head_binding_unprovable`, `identity_unlinked`, `identity_unverified`, `member_removed`, `approver_closure_uncovered`, `write_closure_uncovered` | check native PR approval, reviewer linkage and current Graphit permissions; incomplete or moved provider evidence refuses. Fix the cause, then verify again |
+| `identity_unlinked`, `member_removed`, `pr_author_unavailable`, `provider_identity_mismatch`, `author_closure_uncovered`, `write_closure_uncovered` | the PR author must be a linked, current member whose KB write covers every touched group; reviewers are the provider's process. Fix the link or the permission, then verify again |
+| `premerge_verification_required`, `pr_base_moved`, `pr_base_stale`, `pr_target_mismatch`, `pr_source_repository_unproven` | the PR must be open, from a branch in the bound repository, targeting the bound branch, its destination unchanged since verify; update it and verify again |
+| `migration_required` | routine sync on a `managed` org: switch to `manual` first (repo-setup.md, state 0) |
 | `certificate_not_applyable`, `migration_requires_plan`, `migration_requires_commit`, `migration_mode_invalid`, `approved_sha_missing`, `approved_sha_mismatch` | migration only: the pre-delete `--kind migration` verify is a certificate; after the delete a fresh `--kind migration` verify yields the plan for `apply --plan <id>`; the SHA must match `bind --approved-sha` |
 | `token_invalid`, `token_revoked`, `token_scope`, `token_repo_mismatch` | CI token: mint a fresh one, use the right scope, mint for this repository |
 
-Operation status `failed_retryable`: retry once, then report. `refused` or a `fail`
+Operation status `failed_retryable`: retry once, then report. `component_rejected`: the
+write contract refused one asset; fix its file and verify again. `refused` or a `fail`
 verdict: never retry unchanged or route around it.
 
 ## Refusals inside the app
@@ -90,15 +92,12 @@ Report drafted, verified (local-only or provider), PR opened, merged and applied
 distinct states. Claim an apply only when you saw the operation reach terminal `succeeded`;
 quote the operation id, the plan id and the verdict. Queued or timed out is not done.
 
-## CI in one paragraph
+## CI
 
-Two jobs, two tokens, one pinned CLI version. Export `GRAPHIT_TOKEN` in the job
-environment, never as `--token` in argv or shell traces. The required PR check uses
-`kb:verify`: `graphit kb repo verify --sha $HEAD --pr $PR` (verify/status only).
-After the customer merges, the protected `kb:apply` job runs
-`graphit kb repo apply --sha $MERGED_SHA`. Both check native reviewers' current
-Graphit permissions; the merger is audit context. Apply revalidates the actual
-merged commit, including squash merges. CI always passes `--sha`; flagless
-interactive verify resolves and reports the bound branch head. Admin commands:
-`graphit kb repo token mint --scope kb:verify|kb:apply` (shown once, `gkb.` prefix),
-`token list`, `token revoke <id>`. Tokens authorize calls, never replace reviewers.
+The two jobs, the token recipe and the provider differences live in `repo-setup.md`. Both
+jobs authorize on the PR author alone: a linked, current member whose KB write covers every
+touched group; reviewers and the merger are the provider's process.
+Apply revalidates the actual merged commit, including squash merges. CI always passes
+`--sha`; flagless interactive verify resolves and reports the bound branch head. Tokens
+(`graphit kb repo token mint`, `token list`, `token revoke <id>`) authorize calls, never
+replace reviewers.
