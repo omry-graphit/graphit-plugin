@@ -35,3 +35,13 @@ Search the KB genuinely, explain why visible definitions do not fit, and prefer 
 ## Reporting
 
 Report tier, semantic references, row cap, visible rules that changed the query, and any refusal or override. Read the receipt rather than inferring. A blocked or partial result is not success.
+
+## Numeric rollup authorization
+
+Org admins only, and never required. Every prepared data source carries the platform default numeric contract, so prepared rollups may answer governed queries with nothing installed. The server measures each exact query against the source before serving it, renews that evidence on its own after data refreshes and expiry, and sends anything outside the contract down the ordinary path. Acceleration is silent; never claim a result came from a rollup.
+
+- `governance numeric show --source <id>` - the contract in force plus the query families, schema fingerprint and compiler/runtime versions an override must name. Acceleration is on only while `status` is `active`; a revoked record still says `platform_default: true`, so read `status` and `revision`, never that flag.
+- `governance numeric revoke --source <id> --revision <n>` - switch acceleration off for one source; `n` is the revision `show` returned (0 for the platform default). Serving stops at the next request. There is no un-revoke: only a later `grant` quoting the revoked revision turns acceleration back on, so confirm with the admin before running it.
+- `governance numeric grant --source <id> --file override.json` - replace the default for one source with tighter bounds. Body: `expected_revision`, `schema_fingerprint`, `compiler_version`, `runtime_version`, `query_families` (only families listed by `show`), `mode` (`exact` or `scoped_float`), `allowed_finalizers`, `absolute_error_limit` and `relative_error_limit` (required for `scoped_float`; both caps are enforced independently), `evidence_ttl_seconds`, `expires_at`, `reason`.
+
+Never invent error limits for the admin: report what `show` returns and let them decide whether an override is wanted at all.
