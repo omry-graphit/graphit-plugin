@@ -48,3 +48,5 @@ Confirm with the user and inspect usage first. The server checks known definitio
 Read access is the ceiling for writes. `kb_write` comes from the effective policy key. Group lifecycle is admin-only. Hidden and missing targets return the same absence.
 
 Group `access` is stored dbt metadata; it does not grant Graphit visibility.
+
+Column visibility is part of a model's physical facts, and hidden means masked as NULL in every query - dashboards, exports and the AI alike, not only the AI. Hiding a column is a write in the model's group; making a column visible that the PII detector hid takes the creator of the bound data source or an org admin and is recorded with who set it. Use `kb column-visibility` only to correct a false positive, such as a token-balance, app-version or ad-network id column caught by a name or value pattern, never to expose real personal data. The override survives re-scans; in a repository-owned group the command refuses, so declare the column's visibility in the repository instead.
