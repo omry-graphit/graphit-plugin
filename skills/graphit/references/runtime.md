@@ -68,7 +68,7 @@ Semantic references are derived automatically from the final grammar; the compil
 - **Wrong:** `data-graphit-sql="SELECT INSTALL_TIME, ROIAP_D0 FROM UA_DS"` when the DS has no `ROIAP_D0` column (the chart computes it via CASE) - the details panel errors.
 - **Right:** `data-graphit-sql="SELECT INSTALL_TIME, SUM(CASE WHEN SENIORITY=0 THEN TOTAL_IAP END)/NULLIF(SUM(COST),0) AS ROIAP_D0 FROM UA_DS GROUP BY 1"` - the same derivation the chart runs.
 
-A filtered entity uses `graphit.bind(el, { params, deps, render })` (`filters.md`); it reads SQL and data source from the entity like a resolve.
+Use `graphit.bind` for filtered entities (`filters.md`). For typed parameters or named SQL variants, read `query-contract.md`.
 
 **The second tier: a composed query declares itself.** When the SELECT list is built from the user's choices there is no one stored statement. That is legal, and it declares - the call marks itself and names its owner (a `target` does not attribute a declared call); the owner stays a full entity, its `data-graphit-sql` a representative statement, and adds `data-graphit-vocab`, a COMMA-separated closure of the governed names that SQL may touch:
 
@@ -85,7 +85,7 @@ Use comma-separated lowercase declarations such as `metric:revenue`, `dimension:
 
 **Label equals the visible title.** `data-graphit-label` MUST match the card's visible heading exactly - users find their chart by that label in @ mention dropdowns and entity panels, and a mismatch means they cannot find it.
 
-**Editing one existing entity.** Edit surgically: `graphit dashboard list-entities <id>` lists every entity (id, label, KB refs, data source) to find the right `data-graphit-id`; `graphit dashboard get-entity <id> <entityId>` returns just that entity's inner HTML - the exact fragment `graphit dashboard update-entity <id> <entityId>` accepts - which you change and write back. Use full-page `get-html` / `update-html` only when restructuring the layout.
+**Editing one existing entity.** Edit surgically: `graphit dashboard list-entities <id>` lists every entity (id, label, KB refs, data source) to find the right `data-graphit-id`; `graphit dashboard get-entity <id> <entityId>` returns just that entity's inner HTML - the exact fragment `graphit dashboard update-entity <id> <entityId>` accepts - which you change and write back. Use full-page `get-html` / `update-html` for anything outside that fragment: layout, page script, or wrapper attributes such as `data-graphit-sql`.
 
 **Name every version.** Always pass `--label "<what changed>"` on every `update-html` / `update-entity` (e.g. `--label "Added revenue KPI row"`) - it names the version in the dashboard's history so edits stay traceable. Keep it short; no secrets or SQL dumps.
 

@@ -47,7 +47,7 @@ Connects a data entity to state keys so it re-resolves automatically on change. 
 ```js
 graphit.bind(document.getElementById('revenue-chart'), {
   params: () => ({ country: graphit.state.get('country') }),
-  deps: ['country'],      // state keys that trigger re-resolve (inferred from params if omitted)
+  deps: ['country'],      // state keys that trigger re-resolve; required when params call graphit.state.get
   render: (result, el) => {
     graphit.graph(el, { type: 'line', data: result.data, x: 'date', y: 'revenue' });
   }
@@ -72,7 +72,7 @@ Use `:name` placeholders in SQL for safe server-side parameter binding. NEVER st
 
 Do NOT name a param after a SQL keyword (`from`, `to`, `select`, `order`, `group`, and similar). The SQL template is parsed before values bind, so a reserved-word placeholder like `:from` fails with "SQL validation failed". Use names like `:start_date`, `:end_date`.
 
-Array length capped at 200 elements, max 50 param keys per resolve call.
+Params: 50 keys, arrays of 200 items, 8,192 bytes serialized. For typed value schemas or named SQL variants, read `query-contract.md`.
 
 ## Saved Views
 

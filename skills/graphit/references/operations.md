@@ -1,6 +1,6 @@
 # CLI Operations and Health
 
-Load this when the concern is the Graphit CLI or plugin itself, not the analysis: the session-start check, a health check, a permission error (403/404/423), the output contract, or local working artifacts. Skip it on every healthy build or query turn.
+Load for CLI/plugin concerns: session start, health, permission errors (403/404/423), output or local artifacts. Skip on healthy build/query turns.
 
 Depth that lives elsewhere: installing, updating, or repairing Graphit -> references/install-update.md. Reporting a failure or a partial result -> references/reporting.md. Sharing/publication refused with `private_dashboard_dependencies` or `dashboard_sharing_unverified` -> read references/sharing-recovery.md for visible blockers and authorized recovery.
 
@@ -8,21 +8,18 @@ Governance itself is enforced server-side by the query gateway: a governed query
 
 ## Session start
 
-Before anything else, two calls in this order:
+Start once per session with `graphit plugin status --skill-ack --json`: it attests skill use and returns version state plus `auth` (`logged_in`, `email`). Reuse an established result across workflow transitions; chain no other startup calls. Attestation is best-effort: do not loop on failure, but surface it if a later command is BLOCKED.
 
-1. `graphit plugin status --skill-ack` - the session attestation: it records that this skill is driving the session. Best-effort - if it errors, continue without retrying. Do raise it if a later command comes back BLOCKED: a failed attestation is the one cause that block cannot fix by itself.
-2. `graphit plugin status --json` - returns the version state and an `auth` block (`logged_in`, `email`).
+When a request is present, skip the greeting and put the signed-in identity in the first useful result line. With no request, greet. Apply this version/auth 2x2 in either case:
 
-Those two are the whole startup check - chain nothing else. Read whether an update is available and whether the session is live, then greet and act on the 2x2:
-
-- Current + signed in: "Hi {auth.email}, what can we do today?" - proceed.
+- Current + signed in: proceed with the request; otherwise "Hi {auth.email}, what can we do today?"
 - Current + signed out: "Let's get you signed in," then run `graphit auth login` for them, once. It opens a browser and blocks on a localhost callback (~2 min) and cannot complete in a non-interactive, headless, or sandboxed context - if it fails or cannot run, fall back to telling the user to run it themselves; never loop. Re-check, then proceed.
-- Update available + signed in: "Hi {auth.email} - a new version is out. Update first?" Any gap counts (major, minor, or patch). On yes, update, then proceed.
+- Update available + signed in: "A new version is out. Update first?" Any gap counts (major, minor, or patch). On yes, update, then proceed.
 - Update available + signed out: "You're not signed in and there's a new version. Update first, then sign in?" Update, then sign in, then proceed.
 
 Updates are always a one-tap ask, never silent; auto sign-in only when the version is current. Never report ready off the version check alone - readiness means a live session. Update mechanics (which command, custom prefixes, plugin vs binary) live in references/install-update.md.
 
-Staleness is judged on the `--json` call only: if THAT call errors with "command not found" / "unknown command", the CLI is too old - show `CLI: {version} (outdated)` and update with `npm install -g @graphit/cli@latest` first. An "unknown option" error from the attestation call means only that this CLI predates it; that is not a staleness signal and needs no action.
+If the combined call rejects `--skill-ack` as an unknown option, recover version/auth evidence once with `graphit plugin status --json`; that option failure alone is not staleness. A status call failing with "command not found" / "unknown command" means the CLI is too old: report that (include a version only if known) and offer the update via references/install-update.md. Network/auth failures are not version evidence. Do not report ready without live auth.
 
 ## Health gate
 

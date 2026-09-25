@@ -74,7 +74,7 @@ Measure identity is group/model/measure, never a bare name. A metric's measure r
 
 ## Plan ordering
 
-Follow the staged research in `kb-discovery.md` first: agree the group, inspect existing assets and cross-group matches, then show the user the reuse-or-build recommendation. Before creating an approved missing measure or metric input, discover visible candidates in the agreed group and model scope. Use compact metric discovery as described in `kb-discovery.md`; a summary nominates a candidate, it does not establish equivalence. Follow continuation metadata before concluding there is a gap; ranked search or an incomplete page is not proof of absence.
+Explore authors no definitions. Private first Build creates a metric only on "keep": use the scanner model's exact private group (`kb-scope.md`), with no group-agreement or shared-reuse approval round. The comparisons below still apply. In Share, follow `kb-discovery.md`: agree the group, inspect assets/cross-group matches and present reuse-or-build. Before missing inputs, discover visible candidates in the target group/model. Summaries only nominate candidates; follow continuation metadata before declaring a gap. Ranked search or an incomplete page is not proof of absence.
 
 Read each plausible metric's full definition and its reached semantic models. Compare the resolved model/source binding, grain and time dimension, measure expression and aggregation parameters, metric-level and per-input filters, units/scale, verification state, ownership, and applicable rules. Similar names or identical SQL alone are insufficient. Use the existing path resolution above; never inspect hidden definitions or copy a private definition into a shared scope to make it reusable.
 

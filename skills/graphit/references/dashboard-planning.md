@@ -82,13 +82,13 @@ Pair lagging + leading: revenue (lagging) needs retention (leading). Replace van
 
 ## Asking Good Questions
 
-Purpose before data. The first response should mirror the user's intent and ask ONE narrowing question - never start querying immediately.
+For a vague business request, mirror the intent and ask one narrowing question. When meaning and intent are clear, proceed; the entry's opening choice is the only placement-routing question.
 
 **Batch related questions** - ask multiple things at once instead of sequential single questions. Each option should lead to a different path, not variations of the same thing.
 
 **Use open questions for exploration** - "What business decision will this dashboard support?" beats presenting a restrictive multiple-choice.
 
-**Clarification triggers:**
+**Clarify only when the request and inspected definitions leave meaning unresolved:**
 - User says "revenue" - ask: bookings, ARR, or GAAP recognized?
 - User says "conversion" - ask: what's the start and end event?
 - User says "active users" - ask: what defines active? (logged in? performed action? within what window?)

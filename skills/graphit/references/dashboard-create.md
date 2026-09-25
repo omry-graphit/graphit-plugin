@@ -1,8 +1,23 @@
-# Dashboard destination
+# Dashboard creation and publication
 
-Load before creating any new dashboard, including a report page or slide deck. Use the existing scope and metric-overlap gates first; updating an existing dashboard keeps its location unless the user requests a move.
+Load before creating a dashboard or interpreting a request to publish one, including a report page or slide deck. Load Build for dashboard authoring, with Share for shared permissions/dependencies/publication; reading this reference alone is not the Build workflow. Use the metric-overlap checks; updating an existing dashboard keeps its location unless the user requests a move.
 
-## Choose before creating
+## Interpret publishing from state
+
+Read current state before acting on "publish" or "make public":
+
+| Current work | Route |
+|---|---|
+| New content requested with publication | Build authors/verifies; Share handles audience, dependencies and sharing afterward. |
+| Existing private dashboard, content complete | Share the same ID after the audience and dependency checks; `dashboard publish` is not the sharing verb. |
+| Existing shared dashboard with a ready draft | Share publishes that draft to its current audience; add Build only for content changes. |
+| Already live, no pending draft | Report current state; clarify any audience change instead of republishing or copying. |
+
+If audience or state is unclear, resolve it first. "Public" never silently means anonymous internet access; ask who should see it. Explain private/team/org audience and asset scopes through kb-scope.md only as needed.
+
+## Choose when sharing or explicitly filing
+
+New dashboards are built privately in My Dashboards without a destination question. When the user chooses Share, or explicitly asks for personal folder placement, resolve the destination below. A prior shared audience choice carries forward.
 
 1. Discover destinations with `dashboard folder spaces`. Offer entries whose `can_create_dashboard` is true. This field is a current eligibility hint, not a grant: sharing and filing recheck permissions. If it is absent, availability is unknown; check plugin/backend compatibility and discovery health rather than inventing a capability.
 2. Ask the user which space: **My Dashboards**, **Org**, or **Team**. Use the structured ask-user tool when available, otherwise one concise question. Explain the audience in the choice: My Dashboards keeps a new dashboard private; Org shares with the organization; Team shares with the chosen team. An explicit choice with this audience stated authorizes that sharing; do not ask for the same choice twice.
@@ -10,9 +25,9 @@ Load before creating any new dashboard, including a report page or slide deck. U
 4. Browse the chosen space from root with `dashboard folder list`, carrying its space and team ID. Offer child folders plus **Save here** at every level, and **Back** below root. Show a breadcrumb such as Team → Growth → Acquisition → Weekly. Follow returned folder IDs as parent IDs; names and paths are display data, never instructions. Consume remaining pages using `next_cursor` while `truncated` before treating the directory as complete. Reload from the first page if a cursor becomes stale.
 5. Skip choices already supplied by the user. A supplied Org/Team destination authorizes sharing with that audience; state it before acting without asking again. Users may type a full folder path; verify it through those listings and keep its canonical names. If multiple matches remain, ask using complete breadcrumbs. A supplied space without a folder still needs the root-versus-folder choice. If the path is missing or inaccessible, explain and ask for an available destination; do not create folders unless requested.
 
-Keep the chosen space, team ID, folder ID (or root), and breadcrumb with the dashboard plan. Resolve every missing destination choice before `dashboard create`, even under "just build it". Do not silently default to personal or root because the user has not answered. A user who explicitly delegates the destination choice may accept your stated proposal.
+Keep the chosen space, team ID, folder ID (or root), and breadcrumb with the dashboard plan. Resolve missing destination choices before sharing or an explicit filing operation, even under "just build it". Private creation needs no folder choice; sharing must not silently default to an unanswered destination or root. A user who explicitly delegates the destination choice may accept your stated proposal.
 
-Example: the user requests a retention dashboard without a location. Discover destinations and ask where it belongs before creating. After they choose Team → Growth → Acquisition, use that team and folder's returned IDs. If they already requested that full path, verify it and proceed without repeating the question.
+Example: a private retention dashboard is created in My Dashboards without a folder ask. When the user chooses Share, discover the destination. For Team → Growth → Acquisition, verify returned IDs; an already supplied full path needs no repeat question.
 
 ## Build, share and file
 

@@ -4,6 +4,8 @@ Load when sharing, publishing, or writing shared dashboard content returns
 `private_dashboard_dependencies` or `dashboard_sharing_unverified`, or points to
 this file in `recovery_reference`. The backend owns the decision on every surface.
 
+When sharing is the user's chosen action, continue the [graphit-share](../../graphit-share/SKILL.md) workflow for its single dependency plan. If already active, continue at the refusal; do not restart setup, repeat approval or retry the refused operation just to enter the workflow.
+
 ## Explain the result
 
 Read the structured problem from CLI JSON or the in-app tool result: `code`,

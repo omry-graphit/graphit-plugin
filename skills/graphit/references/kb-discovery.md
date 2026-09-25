@@ -2,7 +2,9 @@
 
 Load before querying, authoring, or building a dashboard.
 
-## Group-first discovery
+For Explore and Private first Build, make focused discovery for the current question or private artifact; inspect promising definitions without a group/audience interview or shared-reuse approval round. Exact private placement comes from kb-scope.md. The staged agreement below applies to shared authoring, including Build paired with Share. Semantic comparison, permissions and completeness rules apply in every intent.
+
+## Group-first discovery in Share
 
 1. Read visible groups and effective status. Present the groups related to the question and agree on the starting group and audience with the user; carry forward a choice they already made.
 2. Investigate that group in stages. First inventory its relevant models, metrics, dimensions, measures, entities, families and rules; then read the definitions needed to understand what already exists. Use bounded discovery and continuation rather than loading every full definition at once.

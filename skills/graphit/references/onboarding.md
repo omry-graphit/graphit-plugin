@@ -7,7 +7,7 @@ Load this when the user is signed in but visible groups/models and `graphit ds l
 1. Connect a source.
 2. Ask what they want to investigate.
 3. Create the data source for it.
-4. Create the KB assets it needs.
+4. Apply the selected intent's semantic work.
 5. Offer a dashboard.
 6. On the first dashboard, show what they got for free.
 
@@ -29,19 +29,13 @@ Present the outcome: which connection is live, or the exact web-app / admin step
 
 ## 2. Ask what to investigate
 
-Before creating anything, ask what business question the user wants to answer. The goal drives which data source and which KB assets you build - don't create assets in a vacuum. One structured question is enough to start.
+Use the business question already supplied. Ask one structured question only if the goal is still unclear; do not repeat the entry's opening choice. The goal determines the source and any requested artifacts.
 
 ## 3. Create the data source
 
 Explain that answering the question fast needs a cached data source over the connection, not repeated live-warehouse queries.
 
-**Scope comes first.** A semantic group organizes assets, while data-source `--domain` takes the uppercase policy key returned by `graphit status` or a group's `domain_keys`. A brand-new workspace starts with org commons. Agree the audience and group before creating the source:
-
-```bash
-graphit kb list group
-graphit status --json
-graphit kb create group --name marketing --description "Acquisition and spend"
-```
+**Use the selected intent.** Explore scratch work and Private first Build create sources with `--domain Private`, without a group interview or group creation. In Share, agree audience/group and use the uppercase policy key returned by `graphit status` or `domain_keys`; `kb-scope.md` owns exact placement and permissions. Create a shared group only when authorized. An empty workspace does not imply org commons.
 
 **Read the table before you write its SQL.** You cannot author a source SELECT without knowing the columns, and guessing them wastes a round trip. Read them straight off the warehouse:
 
@@ -51,10 +45,10 @@ graphit metadata columns --connection <id> --schema <name> --table <name>
 
 This needs no governed reference. An aggregate or `GROUP BY` against a warehouse table that is not yet in the knowledge base is a different matter, so use it for shape rather than probing with a query.
 
-Then create the source and activate it:
+For private work, create the source and activate it (Share uses the agreed policy key):
 
 ```bash
-graphit ds create --name "MY_DS" --domain MARKETING --sql "SELECT ..." --connection <id>
+graphit ds create --name "MY_DS" --domain Private --sql "SELECT ..." --connection <id>
 graphit ds verify <id> --accept-schema
 ```
 
@@ -62,7 +56,7 @@ Shape it for the question - grain, only the columns dashboards use, low cardinal
 
 ## 4. Create the KB assets
 
-Explain that governed answers need KB assets - the metrics, dimensions, and rules the question implies. This is the readiness gate, narrated as first-run teaching, never skipped. Show a short gap list (what is missing, the proposed definition), get approval, then create and verify (see kb-structure.md, kb-actions.md).
+The scan supplies the bound model. Explore answers without authoring definitions; Private first Build uses it and keeps a private metric only on request. Share applies the readiness gate: show missing prerequisites and proposed definitions, obtain required approval, then create and verify via kb-structure.md and kb-actions.md. Onboarding does not override the selected workflow.
 
 ## 5. Offer a dashboard
 
