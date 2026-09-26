@@ -50,11 +50,21 @@ const shouldRepair = args.has("--repair") || args.has("--auto-repair");
 const isPreflight = args.has("--preflight");
 const hookIndex = process.argv.indexOf("--hook");
 const hookEvent = hookIndex >= 0 ? process.argv[hookIndex + 1] : null;
-const pluginRoot =
+const pluginRootFromEnv =
   process.env.CLAUDE_PLUGIN_ROOT ??
   process.env.CODEX_PLUGIN_ROOT ??
-  process.env.GRAPHIT_PLUGIN_ROOT ??
-  dirname(dirname(fileURLToPath(import.meta.url)));
+  process.env.GRAPHIT_PLUGIN_ROOT;
+const pluginRoot = pluginRootFromEnv ?? dirname(dirname(fileURLToPath(import.meta.url)));
+// Issue #994: a plugin root variable means this run inspects the bundle an
+// assistant loaded (hooks get CLAUDE_PLUGIN_ROOT, the bin/graphit wrapper exports
+// GRAPHIT_PLUGIN_ROOT). That bundle's CLI already tracks npm latest through npx, so
+// a newer release means the BUNDLE is behind. Without one, this run inspects the
+// npm package it ships in - a CLI launched without the plugin, i.e. a global install.
+const inspectsPluginBundle = pluginRootFromEnv !== undefined;
+const PLUGIN_UPDATE_STEPS =
+  "In Claude Code run `/plugin marketplace update graphit-plugin`, then `/plugin update graphit@graphit-plugin`, " +
+  "then restart Claude Code (asking to update Graphit runs the same steps via `/graphit:update`). " +
+  "In Codex, update the Graphit plugin through its plugin manager.";
 // Project #246: the version cache must be shared between this SessionStart hook
 // and the bin/graphit wrapper (agent Bash tool). CLAUDE_PLUGIN_DATA is set
 // per-plugin/per-context by Claude Code and is NOT guaranteed identical across
@@ -629,10 +639,23 @@ async function collectStatus() {
   const marketplace = bundleInfo.marketplace;
   const marketplacePlugin = bundleInfo.marketplacePlugin;
 
+  // Issue #994: only the npm package (and the repo's cli/ dir) carries package.json
+  // and the npm-shaped marketplace.json that sync:version stamps. A bundle installed
+  // from the git marketplace ships that repo's own catalog (source "./", no
+  // metadata) by design, so the catalog checks are publisher checks - CI gates them
+  // (`check:version`, `sync-plugin-marketplace.sh verify`) - and a customer who hits
+  // real drift needs a plugin update, not a publish step.
+  const isPackageLayout = existsSync(join(pluginRoot, "package.json"));
+  const driftRemediation = isPackageLayout
+    ? "Run `npm run sync:version` before publishing @graphit/cli."
+    : `This installed Graphit plugin bundle is inconsistent. Update or reinstall it: ${PLUGIN_UPDATE_STEPS}`;
+
   const versionChecks = [
     [".claude-plugin/plugin.json", claudePlugin?.version],
     [".codex-plugin/plugin.json", codexPlugin?.version],
-    [".claude-plugin/marketplace.json metadata", marketplace?.metadata?.version],
+    ...(isPackageLayout
+      ? [[".claude-plugin/marketplace.json metadata", marketplace?.metadata?.version]]
+      : []),
     [".claude-plugin/marketplace.json plugin", marketplacePlugin?.version],
     ["skills/graphit/VERSION.json", tryReadJson(join(pluginRoot, "skills", "graphit", "VERSION.json"))?.version],
     ["skills/graphit/SKILL.md", readFrontmatterVersion(join(pluginRoot, "skills", "graphit", "SKILL.md"))],
@@ -646,39 +669,47 @@ async function collectStatus() {
       findings.push({
         type: "metadata-drift",
         message: `${label} is ${version ?? "missing"}, expected ${currentVersion}`,
-        remediation: "Run `npm run sync:version` before publishing @graphit/cli.",
+        remediation: driftRemediation,
       });
     }
     metadata.push({ label, version: version ?? null });
   }
 
   const marketplaceSource = marketplacePlugin?.source;
-  const sourceMatches =
-    marketplaceSource?.source === "npm" &&
-    marketplaceSource.package === packageName &&
-    marketplaceSource.version === currentVersion;
   metadata.push({
     label: ".claude-plugin/marketplace.json source",
     version: marketplaceSource?.version ?? null,
     source: marketplaceSource ?? null,
   });
-  if (!isPreflight && !sourceMatches) {
+  const sourceMatches =
+    marketplaceSource?.source === "npm" &&
+    marketplaceSource.package === packageName &&
+    marketplaceSource.version === currentVersion;
+  if (!isPreflight && isPackageLayout && !sourceMatches) {
     findings.push({
       type: "metadata-drift",
       message: `.claude-plugin/marketplace.json source is ${
         marketplaceSource ? JSON.stringify(marketplaceSource) : "missing"
       }, expected npm source ${packageName}@${currentVersion}`,
-      remediation: "Run `npm run sync:version` before publishing @graphit/cli.",
+      remediation: driftRemediation,
     });
   }
 
   const latestVersion = await getLatestVersion(currentVersion);
   if (!isPreflight && latestVersion && compareVersions(latestVersion, currentVersion) > 0) {
-    findings.push({
-      type: "package-update",
-      message: `@graphit/cli update available: ${currentVersion} -> ${latestVersion}`,
-      remediation: "This update is for the npm CLI binary (@graphit/cli), a separate artifact from the skill bundle. Update the binary with `npm install -g @graphit/cli@latest` (not `npm update -g`, which respects the original semver range and can miss the latest). If `graphit` resolves to a custom npm prefix (compare `command -v graphit` with `npm prefix -g`), reinstall to that prefix with `npm install -g @graphit/cli@latest --prefix <dir>` (<dir> = the parent of the bin dir holding graphit). The Claude Code/Codex skill bundle updates separately via `claude plugin update graphit@graphit-plugin` and does NOT update the binary.",
-    });
+    findings.push(
+      inspectsPluginBundle
+        ? {
+            type: "plugin-update",
+            message: `Graphit plugin update available: ${currentVersion} -> ${latestVersion}`,
+            remediation: `The plugin runs the latest Graphit CLI automatically; what is behind is the plugin bundle itself (skills, hooks and commands at ${currentVersion}). ${PLUGIN_UPDATE_STEPS} Do not install @graphit/cli globally: a global install shadows the plugin's CLI on PATH.`,
+          }
+        : {
+            type: "package-update",
+            message: `@graphit/cli update available: ${currentVersion} -> ${latestVersion}`,
+            remediation: "This update is for the npm CLI binary (@graphit/cli), a separate artifact from the skill bundle. Update the binary with `npm install -g @graphit/cli@latest` (not `npm update -g`, which respects the original semver range and can miss the latest). If `graphit` resolves to a custom npm prefix (compare `command -v graphit` with `npm prefix -g`), reinstall to that prefix with `npm install -g @graphit/cli@latest --prefix <dir>` (<dir> = the parent of the bin dir holding graphit). The Claude Code/Codex skill bundle updates separately via `claude plugin update graphit@graphit-plugin` and does NOT update the binary.",
+          },
+    );
   }
 
   const claudeInstall = inspectClaudeInstalledPlugin(currentVersion, shouldRepair);
@@ -759,8 +790,8 @@ function buildHookNudges(status) {
   ) {
     lines.push(
       `- A newer Graphit plugin is available (${status.currentVersion} -> ${status.latestVersion}). ` +
-        "Tell the user once to update the bundle with `/plugin update graphit@graphit-plugin`; " +
-        "the CLI binary itself updates automatically.",
+        "Tell the user once to update it with `/plugin marketplace update graphit-plugin`, then " +
+        "`/plugin update graphit@graphit-plugin`, then restart Claude Code; the CLI itself already runs the latest release.",
     );
     shown.push("plugin-update");
   }

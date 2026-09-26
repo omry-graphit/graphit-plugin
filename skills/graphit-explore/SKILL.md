@@ -2,7 +2,7 @@
 name: graphit-explore
 description: >-
   Answer, explain or diagnose business data using Graphit. Use after Graphit routing or for a direct Graphit question, including reads of shared dashboards. Does not authorize creating reusable definitions or sharing; use graphit-build to keep a private artifact and graphit-share for shared writes.
-skill_version: "0.2.370"
+skill_version: "0.2.371"
 ---
 
 # Explore: answer the question

@@ -4,9 +4,12 @@ Load this only when installing, updating, or repairing Graphit itself: a `plugin
 
 ## Install and update
 
-Two separate artifacts ship to Claude Code and Codex: the **CLI binary** (`@graphit/cli`, installed and updated with npm) and the **skill bundle** (the plugin `graphit@graphit-plugin`, updated through the assistant's plugin manager). The plugin bundle does NOT contain the CLI binary, so updating one never updates the other.
+Graphit has two parts: the **CLI** (`@graphit/cli` on npm) and the **plugin bundle** (`graphit@graphit-plugin`: skills, references, hooks, commands). In Claude Code the plugin's `graphit` wrapper runs the CLI through npx at the latest npm release, so the CLI stays current on its own; the bundle changes only when the plugin is updated.
 
-`graphit plugin status` reports "update available" for the **npm CLI binary**. Update it with `npm install -g @graphit/cli@latest` (not `npm update -g`, which can keep you on an old release). If `graphit` resolves to a custom npm prefix - compare `command -v graphit` with `npm prefix -g` - reinstall to that prefix: `npm install -g @graphit/cli@latest --prefix <dir>`, where `<dir>` is the parent of the bin directory holding graphit. The **skill bundle** updates separately with `claude plugin update graphit@graphit-plugin`; that never touches the binary.
+`graphit plugin status --json` names what is behind by the finding's `type`:
+
+- `plugin-update` - the plugin bundle is behind. Update it with `/plugin marketplace update graphit-plugin`, then `/plugin update graphit@graphit-plugin` (`/graphit:update` runs both; in Codex, use its plugin manager), then restart: the running session keeps the old skill until then. Never suggest a global `npm install -g @graphit/cli` here - it shadows the plugin's wrapper on PATH, and the user would run whatever version they installed.
+- `package-update` - the CLI runs without the plugin, from a global npm install. Update it with `npm install -g @graphit/cli@latest` (not `npm update -g`, which can keep you on an old release). If `graphit` resolves to a custom npm prefix - compare `command -v graphit` with `npm prefix -g` - reinstall to that prefix: `npm install -g @graphit/cli@latest --prefix <dir>`, where `<dir>` is the parent of the bin directory holding graphit. If the Graphit plugin is also installed, the global is shadowing it: offer `npm uninstall -g @graphit/cli` instead, and run it only after the user confirms.
 
 How you run the binary depends on the surface: on Claude Code the plugin's `graphit` wrapper runs it directly; on Codex, Cursor, a terminal, or CI, invoke it explicitly with `npx -y @graphit/cli@<version>` (or pin `npx -y @graphit/cli@<exact>` for a deterministic, reproducible run).
 
