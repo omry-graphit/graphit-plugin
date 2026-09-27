@@ -2,7 +2,7 @@
 name: graphit-share
 description: >-
   Share or publish Graphit work, edit shared Graphit dashboards, or author into a shared group. Use after Graphit routing or a direct Graphit shared-scope request. Pair with graphit-build for dashboard authoring. Read-only questions belong to graphit-explore.
-skill_version: "0.2.372"
+skill_version: "0.2.377"
 ---
 
 # Share: checks at the shared write
@@ -39,7 +39,7 @@ For "publish", inspect the dashboard state and follow ../graphit/references/dash
 |---|---|
 | a. Share a private dashboard | Resolve its private dependency closure, then share and file the same dashboard ID. |
 | b. Share definitions | Reuse or move the selected models/metrics into the agreed group; a bound source follows its model. |
-| c. Schedule or deliver from a private source | Plan the source and bound model's move to a shared group before configuring the requested schedule/report. The dashboard may stay private. |
+| c. Schedule or deliver from a private source | Plan the source and bound model's move to a shared group before scheduling per ../graphit/references/scheduled-reports.md. The dashboard may stay private. |
 | d. Author directly in a group | "Shared from the start": apply checks before each shared source/definition write. Build authors the new private dashboard; share it when complete. Keep the agreed scope. |
 | e. Repository-owned work | Apply the same decisions through ../graphit/references/repo-kb.md's repository/PR workflow on a capable surface. An in-app ownership refusal is a handoff, not permission for a direct-write replacement. |
 
@@ -51,7 +51,7 @@ Read ../graphit/references/kb-scope.md for effective permissions and exact place
 
 **KB-readiness gate:** before work goes live for others, confirm the required models, nested components, metrics, groups and rules exist and have the needed verification. If a business measure is missing, present its gap and proposed governed definition for approval, then author and verify the approved prerequisites. An ad-hoc business measure can be unavailable to governed-only viewers; do not silently publish it as a reusable governed answer. Compare actual binding, grain, time dimension, aggregation, filters, units and policy, not just names or SQL. A same-named conflicting asset is not equivalent: explain the difference and resolve the consequential choice. A truly equivalent accessible asset should be reused.
 
-Choose dashboard audience and folder through ../graphit/references/dashboard-create.md when sharing. Org sharing requires the dashboard owner to be an org admin/owner; team sharing requires ownership and actual membership. When needed, explain Private/ORG/named scopes via ../graphit/references/kb-scope.md; keep dashboard audience separate.
+Choose dashboard audience and folder through ../graphit/references/dashboard-create.md when sharing. Owners share their own; org admins/owners also any they can see. Org needs admin/owner; Team needs membership. When needed, explain Private/ORG/named scopes via ../graphit/references/kb-scope.md; keep dashboard audience separate.
 
 Before any share or publish, inspect the dashboard for `data-graphit-placeholder` markers. Refuse while any remain and offer "wire it" through [graphit-build](../graphit-build/SKILL.md). Do not remove markers simply to make sharing pass; real resolves must replace the placeholders.
 

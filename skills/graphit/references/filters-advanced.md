@@ -1,10 +1,10 @@
 # Advanced Filter Controls - Dependent Dropdowns and Date Presets
 
-Load only when you need one of two optional controls on top of the core filters: a dependent dropdown ("only relevant values" that narrows as an upstream filter changes) or a date-preset picker. The base filter, param, bind, wiring, `:name` binding, and saved-view mechanics live in `filters.md`. Both controls below are headless logic - you own all the markup.
+Load only when you need an optional control on top of the core filters: a dependent dropdown, data-driven date bounds, a top-N list, or a date-preset picker. The base filter, param, bind, wiring, `:name` binding, and saved-view mechanics live in `filters.md`. Every control below is headless logic - you own all the markup.
 
 ## graphit.cascade(el, options) - Only Relevant Values
 
-Dependent dropdowns: fetch a column's DISTINCT values constrained by other filters, and refetch when they change. For example, pick an org and the user list shows only that org's users. Logic only - you build the checkboxes or list in `render`.
+Dependent dropdowns: fetch a column's DISTINCT values constrained by other filters, and refetch when they change - pick an org and the user list shows only that org's users. You build the markup in `render`.
 
 ```js
 const org = graphit.filter('org', { label: 'Org' })
@@ -25,11 +25,12 @@ graphit.cascade('#user-list', {
 ```
 
 - `filters()` returns `{ COLUMN: value }`. A scalar makes `COLUMN = :p`; an array makes `COLUMN IN :p`. One contract everywhere: `null`, absent or `''` means ALL (no constraint), and `[]` means match NOTHING - an empty-array upstream settles the list empty without issuing a query.
+- Objects: `{ exclude: [...] }` is NOT IN, keeping null rows unless `null` is listed; `{ start, end }` takes `dr.get()` as-is (a date-only `end` includes that day); `{ min, max }` is inclusive. Empty ones constrain nothing.
 - `selection` (a filter handle) is auto-pruned to the surviving values when an upstream changes. Name the control a cascade feeds - pass `selection`, or use the `column` that control declares in `data-graphit-field` - so report and saved-view editors can list and search these values.
-- Returns `{ destroy(), search(term) }`. Keep the result set small (default `LIMIT 1001`); these parameterized queries skip the result cache, so they hit DuckDB directly.
-- `withCounts: true` adds a per-value row count, delivered as `ctx.counts` alongside `values` (same order).
-- Type-ahead: call the handle's `search('ber')` to narrow server-side; it is debounced with the normal refetch and matches literally, so `100%` finds `100%`. Clearing it (`search('')`) restores the full list.
-- Faster for low-cardinality cascades: add `preload: true` to fetch the full distinct cross-product ONCE (cacheable, no params) and filter in-memory on every change - instant, zero per-change round-trips. Best when the column-by-upstream combinations are small (cap = `limit`, default 1001 tuples); above the cap it auto-falls-back to per-change server queries.
+- Returns `{ destroy(), search(term) }`. Keep the result set small (default `LIMIT 1001`).
+- `withCounts: true` adds a per-value row count, delivered as `ctx.counts` alongside `values` (same order). `orderBy: 'count'` returns the top `limit` by count instead - for high-cardinality columns; it never prunes `selection`.
+- Type-ahead: call the handle's `search('ber')` to narrow server-side; it is debounced with the normal refetch and is a case-insensitive contains match with literal wildcards, so `100%` finds `100%`. Clearing it (`search('')`) restores the full list.
+- For low-cardinality cascades, `preload: true` fetches the distinct cross-product ONCE and filters in memory on every change; above `limit` tuples (default 1001), or with an object filter, it queries per change.
 
 ## graphit.dataBounds(options) - A Column's Real Min/Max
 
@@ -43,6 +44,7 @@ input.max = b.max
 
 - Returns `{ min, max, dataMax, today }`. Use `max` as the picker ceiling: it is `max(dataMax, today)`, so a source lagging a few days never locks the user out of today. `dataMax` is the raw last row, for a "data through {dataMax}" caption.
 - Non-date columns return their true min/max with no ceiling applied.
+- Optional `filters` (as in cascade, e.g. `{ IS_WEB: 0 }`) bound matching rows only.
 
 ## graphit.rank(options) - Top-N Values
 
@@ -57,7 +59,7 @@ const top = await graphit.rank({
 })
 ```
 
-- Returns a plain array of values. Prefer `{{ Metric('name') }}` so ranking uses the org's definition; a bare aggregate accepts SUM, COUNT, AVG, MIN, or MAX over one column.
+- Returns a plain array of values; `withScores: true` returns `{ values, scores }` (score = the `by` value). Prefer `{{ Metric('name') }}` so ranking uses the org's definition; a bare aggregate accepts SUM, COUNT, AVG, MIN, or MAX over one column.
 
 ## graphit.dateRange(id, options) - Date Presets
 

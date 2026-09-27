@@ -39,6 +39,13 @@ Constraints keep their five semantics: required predicate, forbidden column, req
 5. Verify/unverify separately when intended.
 6. Inspect receipts; a degraded write may have landed and must not be retried blindly.
 
+When one task creates or changes several metrics or semantic models, send them as one `graphit kb batch` instead of one `kb create` or `kb update` each. Every item gets the same checks and its own result, and dashboards rebuild once for the whole batch instead of once per edit, so they keep serving while you author. A single edit stays `kb update`. Steps 1-2 still apply to every item; a batch changes the transport, not the patch discipline.
+
+- Shape: `{"operations": [...]}` or a bare array of `{"op": "update", "noun", "name", "patch"}` and `{"op": "create", "noun", "definition", "unverified"?}` items. Nouns are `metric` and `semantic-model` only; groups, rules and deletes keep their own verbs. Up to 50 items per batch, 20 in-app.
+- Order items so each validates against the ones before it: a semantic model before the metrics that use its measures, a metric before a derived metric over it. Use `--stop-on-error` when later items depend on earlier ones.
+- Items are not all-or-nothing: earlier items stay applied when a later one fails. Read `results` per item, fix what each `error` names, and re-send only the `failed` and `not_attempted` items as a new batch. Never replay the whole batch. An `unknown` item may have landed; read it back with `kb get` before sending it again.
+- In-app, approving the batch verifies each updated item, as approving a single update does.
+
 ## Delete
 
 Confirm with the user and inspect usage first. The server checks known definition dependencies, not every canvas reference. A green guard is not exhaustive impact proof.

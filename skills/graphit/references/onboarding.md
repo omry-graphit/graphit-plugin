@@ -67,7 +67,7 @@ Ask whether the user wants a quick query answer or a deployed HTML dashboard. Bu
 After the first dashboard is deployed, tell the user - concisely - what they get for free on it. Keep this to the first dashboard; it never needs repeating, because onboarding stops firing once the workspace has data.
 
 - **Each graph's 3-dot (hamburger) menu**: "view details" opens a panel with the SQL, live query results, and the trust tier plus any enforced rules (the KB assets it lists open as explorable tabs).
-- **The dashboard's own hamburger** (top bar): share it, schedule a recurring email report, export to PNG or PDF, and browse version history.
+- **The dashboard's own hamburger** (top bar): share it, schedule a recurring email or Slack report (or ask Graphit to schedule it), export to PNG or PDF, and browse version history.
 - **Themes and colors** are automatic - dark and light mode, and the brand palette, with no extra work.
 
 Then continue in the normal loop; the workspace is no longer empty.
