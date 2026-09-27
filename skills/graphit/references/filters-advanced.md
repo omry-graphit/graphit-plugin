@@ -25,7 +25,7 @@ graphit.cascade('#user-list', {
 ```
 
 - `filters()` returns `{ COLUMN: value }`. A scalar makes `COLUMN = :p`; an array makes `COLUMN IN :p`. One contract everywhere: `null`, absent or `''` means ALL (no constraint), and `[]` means match NOTHING - an empty-array upstream settles the list empty without issuing a query.
-- `selection` (a filter handle) is auto-pruned to the surviving values when an upstream changes.
+- `selection` (a filter handle) is auto-pruned to the surviving values when an upstream changes. Name the control a cascade feeds - pass `selection`, or use the `column` that control declares in `data-graphit-field` - so report and saved-view editors can list and search these values.
 - Returns `{ destroy(), search(term) }`. Keep the result set small (default `LIMIT 1001`); these parameterized queries skip the result cache, so they hit DuckDB directly.
 - `withCounts: true` adds a per-value row count, delivered as `ctx.counts` alongside `values` (same order).
 - Type-ahead: call the handle's `search('ber')` to narrow server-side; it is debounced with the normal refetch and matches literally, so `100%` finds `100%`. Clearing it (`search('')`) restores the full list.

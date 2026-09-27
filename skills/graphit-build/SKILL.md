@@ -2,7 +2,7 @@
 name: graphit-build
 description: >-
   Author and verify Graphit dashboard content, private or shared, and build private reports, sources and saved metrics. Pair with graphit-share for shared dependencies, draft sessions and publication. Use graphit-explore for answers without artifacts.
-skill_version: "0.2.371"
+skill_version: "0.2.372"
 ---
 
 # Build: author and verify content

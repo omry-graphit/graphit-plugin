@@ -1,6 +1,6 @@
 # Headless Filters, Parameters, and Saved Views
 
-Load when the dashboard has ANY user-changeable control - a select, a button set, a slider, a date picker - plus saved views. A dashboard nobody changes skips this file. Dependent dropdowns and date presets live in `filters-advanced.md`.
+Load when the dashboard has ANY user-changeable control - a select, a button set, a slider, a date picker - plus saved views. A dashboard nobody changes skips this file. Dependent dropdowns, date presets and the `date_range` kind live in `filters-advanced.md`.
 
 ## Contents
 
@@ -32,7 +32,7 @@ A declared key is a live filter before any of your script runs. `graphit.state.g
 
 **Reuse a control.** A control is page markup and a template cannot declare state, so copy the wrapper and its `<script>` between dashboards; `templates.md` says what a template can carry.
 
-**Registering from JavaScript instead.** `graphit.filter(id, options)` / `graphit.param(id, options)` still work and return a handle; calling either on a key you already declared adopts it. They are the escape hatch for keys you cannot write as markup, and a NEW undeclared one is refused at save. Both, plus the retrofit procedure, are in `state-contract.md`.
+**Registering from JavaScript instead.** `graphit.filter(id, options)` / `graphit.param(id, options)` still work and return a handle; calling either on a key you already declared adopts it. A fixed choice list (buttons, a static `<select>`) names its choices that way - `graphit.param('gran', { options: ['day', 'week', 'month'] })` - so report and saved-view editors can list them. They are the escape hatch for keys you cannot write as markup, and a NEW undeclared one is refused at save. Both, plus the retrofit procedure, are in `state-contract.md`.
 
 ## Wiring a Control
 
@@ -76,7 +76,7 @@ Params: 50 keys, arrays of 200 items, 8,192 bytes serialized. For typed value sc
 
 ## Saved Views
 
-Users save the current state as a named view and restore it later. The platform snapshots every declared and registered key automatically, and views survive page reloads (state is baked into the iframe on every render). A default view auto-applies on dashboard open with no flash.
+Users save the current state as a named view. The platform snapshots every declared and registered key, views survive page reloads, and a default view auto-applies on open.
 
 The subscribe callback restores each control's visual state when a view is applied, so every control MUST have one. A control with neither a `data-graphit-state` wrapper nor a `graphit.filter`/`param` call - a bare hand-rolled `<select>` - is invisible to views: the user changes it, saves, and the view captures nothing.
 
@@ -114,5 +114,3 @@ One declared control, wired to one reactive chart. The `<select>` is your own ma
   });
 </script>
 ```
-
-Dependent dropdowns, date-preset pickers and the `date_range` kind: `filters-advanced.md`.
