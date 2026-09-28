@@ -31,6 +31,27 @@ function isGraphitQuery(command) {
   return /(?:graphit|index\.js)\s+query\b/.test(command);
 }
 
+// Issue #1025: a query whose stdout is piped (`|`) or sent to a file (`>`) never
+// reaches this Bash call's output, so any JSON there belongs to another command.
+// Formats only when at least one query invocation writes to the call's stdout.
+// `2>` / `2>&1` redirect stderr only and do not count.
+function queryReachesStdout(command) {
+  const invocation = /(?:graphit|index\.js)\s+query\b/g;
+  for (const match of command.matchAll(invocation)) {
+    const tail = command.slice(match.index).split(/\n|;|&&|\|\||(?<![|&])&(?![&>])/)[0];
+    const withoutStderr = tail.replace(/\d?>&\d|2>>?\s*\S+/g, "");
+    if (!/(?<!\|)\|(?!\|)|>/.test(withoutStderr)) return true;
+  }
+  return false;
+}
+
+// Issue #1025: every CLI command prints JSON, and some carry `row_count`
+// (`ds create`, `ds re-upload`). Only a query result has a `rows` array together
+// with its `columns` or `provenance`.
+function isQueryResult(parsed) {
+  return Array.isArray(parsed.rows) && ("columns" in parsed || "provenance" in parsed);
+}
+
 // The CLI prints verbose SQL before and a provenance footer after the JSON, so
 // we extract the first complete top-level JSON object (string-aware brace match).
 function extractFirstJsonObject(text) {
@@ -166,7 +187,7 @@ function main() {
   if (payload.tool_name !== "Bash") return;
 
   const command = payload.tool_input?.command ?? "";
-  if (!isGraphitQuery(command)) return;
+  if (!isGraphitQuery(command) || !queryReachesStdout(command)) return;
 
   // tool_response may be an object ({stdout,stderr,...}) or a raw string.
   const resp = payload.tool_response;
@@ -188,9 +209,7 @@ function main() {
     emit(`### Graphit query failed\n\n\`${clean(parsed.error)}\``);
     return;
   }
-  if (!("rows" in parsed) && !("data" in parsed) && !("row_count" in parsed)) {
-    return;
-  }
+  if (!isQueryResult(parsed)) return;
   emit(buildMarkdown(parsed));
 }
 
