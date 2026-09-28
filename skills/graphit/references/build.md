@@ -18,7 +18,7 @@ Use a fitting cached source first and state the chosen source. If none exists, P
 
 The scan's bound semantic model supplies the semantic layer. Use its measures and dimensions, fitting existing metrics, and explicitly labeled ad-hoc SQL where needed; governance.md and sql-reference.md own query permissions and receipts. For private work, do not create a metric unless the user asks to keep it. Then read semantic-authoring.md and kb-scope.md: use the scanner model's exact private group and source binding, preserve siblings, and verify the result. A request to keep an already agreed definition authorizes that work; resolve only a new ambiguity in its meaning. No visible private group means stop before a private write, never omit the group and land in org commons. Shared definitions follow Share's agreed group and readiness checks; loading Build does not replace them.
 
-Change coverage, filters, columns or joins for the same source purpose with `ds edit-sql`; follow its drift response. A new name is not a repair for a failed edit. Re-upload file sources through their supported flow.
+Change coverage, filters, columns or joins for the same source purpose with `ds edit-sql`; follow its drift response. A new name is not a repair for a failed edit. Update an uploaded file source in place with `graphit ds re-upload <id> --file <path>` (in the app, the person uses Re-upload file in the Sources Hub); never re-create it.
 
 When no source exists and the user asks for a sketch, mockup, wireframe or layout first, build a **layout preview** instead. Ask about this fork only when genuinely ambiguous; data first is the default.
 
