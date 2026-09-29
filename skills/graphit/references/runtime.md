@@ -140,11 +140,11 @@ A resolve query following these shapes serves from a semantic cache in roughly 1
 
 `graphit.resolve()` is rate-limited per user per dashboard: 360 requests a minute, 180 of them cold executions (a cache hit is not one). Design for that budget:
 
-- **Single refresh function.** Put all queries in ONE `Promise.all` inside one `refresh()` so they share a time window. NEVER scatter `graphit.resolve()` across independent event handlers or timeouts - that turns one user action into several bursts.
-- **Count queries per interaction.** 6 charts is 6 cold executions per filter change, about 30 changes a minute of budget; 12 charts is about 15. With 10 or more charts and 3 or more filters, debounce filter changes (300ms).
-- **Reuse trend data for KPIs.** If you already fetch a weekly time series, derive the KPI total and its sparkline from that result in JS instead of a separate aggregate query. Anchor the extra graphs it feeds with `targetEntityIds` per the attribution rule above. Canonical KPI-row example: `kpi.md`.
-- **Avoid redundant refreshes.** If a filter affects only some charts, split into targeted refresh functions (`refreshKPIs()`, `refreshCharts()`).
-- **No polling.** NEVER use `setInterval(refresh, ...)`. Data sources update on their own schedule; a polling dashboard burns the entire budget.
+- **Single refresh function.** Put all queries in ONE `Promise.all` inside one `refresh()` so they share a time window. NEVER scatter `graphit.resolve()` across independent handlers or timeouts - one user action becomes several bursts.
+- **Count queries per interaction.** 6 charts cost 6 cold executions per filter change, about 30 changes a minute; 12 charts, about 15. With 10 or more charts and 3 or more filters, debounce filter changes (300ms).
+- **Reuse trend data for KPIs.** If you already fetch a weekly time series, derive the KPI total and its sparkline from that result in JS, not a separate aggregate query. Anchor the extra graphs it feeds with `targetEntityIds` per the attribution rule above. Canonical KPI-row example: `kpi.md`.
+- **Avoid redundant refreshes.** If a filter affects only some charts, split into targeted refresh functions (`refreshKPIs()`, `refreshCharts()`). Resize, highlight and axis toggles only redraw; no resolve (`page-load.md`).
+- **No polling.** NEVER use `setInterval(refresh, ...)`. Data sources refresh on their own schedule; polling burns the whole budget.
 
 ## Helper index
 

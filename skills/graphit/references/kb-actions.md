@@ -6,7 +6,7 @@ Load when an approved gap must be authored or an existing semantic asset changed
 
 For a cached data source, first read its visible scanner-created semantic model and confirm `meta.graphit.data_source.ds_id` matches the source. Add approved entities, dimensions, or measures by updating that model. If no bound model is visible, follow the scan/verify flow in `data-sources.md`; creating a second model does not bind it.
 
-Before writing, present the missing concept, proposed root, exact definition, group/access scope, and verification state. Do not write until the user approves.
+Before writing, present the missing concept, proposed root, exact definition and group/access scope. Do not write until the user approves.
 
 ## Authoring contract
 
@@ -16,7 +16,7 @@ Before writing, present the missing concept, proposed root, exact definition, gr
 - Entities, dimensions, and measures mutate only through semantic-model update.
 - A supplied nested list replaces the stored list whole. Read first and include every sibling that must remain.
 - Explicit `meta` replaces author metadata whole. Preserve family, axes, topics, and other author fields.
-- Use dedicated verify/unverify actions. Never patch metadata merely to change verification.
+- Valid authorized saves are effective in their permitted scope. Do not send retired verification metadata or call manual verify/unverify actions.
 
 When create is refused because a model already binds that physical table, read the visible model named in the refusal and propose the needed update. Do not retry with another name or scope. If the response names no readable model, report the refusal without guessing or exposing a hidden target.
 
@@ -36,15 +36,15 @@ Constraints keep their five semantics: required predicate, forbidden column, req
 2. Preserve complete nested and metadata structures.
 3. Apply the smallest patch.
 4. Re-read immediately.
-5. Verify/unverify separately when intended.
+5. Read back the saved definition and confirm its intended scope.
 6. Inspect receipts; a degraded write may have landed and must not be retried blindly.
 
 When one task creates or changes several metrics or semantic models, send them as one `graphit kb batch` instead of one `kb create` or `kb update` each. Every item gets the same checks and its own result, and dashboards rebuild once for the whole batch instead of once per edit, so they keep serving while you author. A single edit stays `kb update`. Steps 1-2 still apply to every item; a batch changes the transport, not the patch discipline.
 
-- Shape: `{"operations": [...]}` or a bare array of `{"op": "update", "noun", "name", "patch"}` and `{"op": "create", "noun", "definition", "unverified"?}` items. Nouns are `metric` and `semantic-model` only; groups, rules and deletes keep their own verbs. Up to 50 items per batch, 20 in-app.
+- Shape: `{"operations": [...]}` or a bare array of `{"op": "update", "noun", "name", "patch"}` and `{"op": "create", "noun", "definition"}` items. Nouns are `metric` and `semantic-model` only; groups, rules and deletes keep their own verbs. Up to 50 items per batch, 20 in-app.
 - Order items so each validates against the ones before it: a semantic model before the metrics that use its measures, a metric before a derived metric over it. Use `--stop-on-error` when later items depend on earlier ones.
 - Items are not all-or-nothing: earlier items stay applied when a later one fails. Read `results` per item, fix what each `error` names, and re-send only the `failed` and `not_attempted` items as a new batch. Never replay the whole batch. An `unknown` item may have landed; read it back with `kb get` before sending it again.
-- In-app, approving the batch verifies each updated item, as approving a single update does.
+- Each successful item is saved with the same validation and authorization as a single update.
 
 ## Delete
 

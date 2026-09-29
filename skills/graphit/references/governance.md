@@ -16,7 +16,7 @@ The governed fragment path serves simple, ratio, and derived metrics. Cumulative
 
 ## Trust tiers
 
-- **governed:** verified semantic references compiled through the gateway.
+- **governed:** valid accessible semantic references compiled through the gateway.
 - **verified:** known safe stored query without semantic references.
 - **ad hoc:** raw SQL at the frontier.
 
@@ -24,7 +24,7 @@ Prefer governed. Never present ad-hoc SQL as the team's definition.
 
 ## Rules
 
-Rules target model, entity, dimension, metric, or group identities. Verified constraints enforce; verified body-only rules guide; drafts do nothing. Modes and EXPLORE behavior remain server-owned.
+Rules target model, entity, dimension, metric, or group identities. Saved constrained rules enforce according to their mode; body-only rules guide. Scope, source readiness and deprecation still apply. Modes and EXPLORE behavior remain server-owned.
 
 The gateway runs before caches, injects constraints, verifies resolved SQL, and returns a transparency receipt. Do not claim a rule applied merely because it exists.
 

@@ -56,7 +56,7 @@ Shape it for the question - grain, only the columns dashboards use, low cardinal
 
 ## 4. Create the KB assets
 
-The scan supplies the bound model. Explore answers without authoring definitions; Private first Build uses it and keeps a private metric only on request. Share applies the readiness gate: show missing prerequisites and proposed definitions, obtain required approval, then create and verify via kb-structure.md and kb-actions.md. Onboarding does not override the selected workflow.
+The scan supplies the bound model. Explore answers without authoring definitions; Private first Build uses it and keeps a private metric only on request. Share applies the readiness gate: show missing prerequisites and proposed definitions, obtain required approval, then save and read back via kb-structure.md and kb-actions.md. Onboarding does not override the selected workflow.
 
 ## 5. Offer a dashboard
 

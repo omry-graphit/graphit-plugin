@@ -10,7 +10,7 @@ Each member carries:
 - `meta.graphit.family`
 - axis key/value pairs in `meta.graphit.axes`
 
-Create each concrete member with the family and repeatable axis options. Tree/search/family views collapse members; `list metric` remains flat.
+Create each concrete member with the family and repeatable axis options. For several members, send one `graphit kb batch` (kb-actions.md) whose definitions carry the same metadata: `"meta": {"graphit": {"family": "arppu", "axes": {"horizon": "d7"}}}`. Tree/search/family views collapse members; `list metric` remains flat.
 
 Use family expansion to inspect members. Supply known axes to resolve. If several candidates remain, show open axes and ask—never guess a governed metric.
 

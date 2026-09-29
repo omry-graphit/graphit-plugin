@@ -3,7 +3,18 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|resume|clear|compact",
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/plugin-status.mjs", "--hook", "SessionStart"],
+            "timeout": 120
+          }
+        ]
+      },
+      {
+        "matcher": "resume|clear|compact",
         "hooks": [
           {
             "type": "command",

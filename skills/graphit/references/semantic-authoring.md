@@ -22,7 +22,7 @@ Graphit extensions and assets:
 - topics are curated Graphit metadata, deliberately not dbt `tags`
 - rules are separate Graphit objects targeting semantic identities by name;
   never embed them in dbt metadata
-- verification attribution, provenance, and data-source bindings are
+- provenance and data-source bindings are
   server-owned; use dedicated actions instead of hand-authoring them
 
 Do not expose or depend on storage collection names, revision fields, feature
@@ -76,7 +76,7 @@ Measure identity is group/model/measure, never a bare name. A metric's measure r
 
 Explore authors no definitions. Private first Build creates a metric only on "keep": use the scanner model's exact private group (`kb-scope.md`), with no group-agreement or shared-reuse approval round. The comparisons below still apply. In Share, follow `kb-discovery.md`: agree the group, inspect assets/cross-group matches and present reuse-or-build. Before missing inputs, discover visible candidates in the target group/model. Summaries only nominate candidates; follow continuation metadata before declaring a gap. Ranked search or an incomplete page is not proof of absence.
 
-Read each plausible metric's full definition and its reached semantic models. Compare the resolved model/source binding, grain and time dimension, measure expression and aggregation parameters, metric-level and per-input filters, units/scale, verification state, ownership, and applicable rules. Similar names or identical SQL alone are insufficient. Use the existing path resolution above; never inspect hidden definitions or copy a private definition into a shared scope to make it reusable.
+Read each plausible metric's full definition and its reached semantic models. Compare the resolved model/source binding, grain and time dimension, measure expression and aggregation parameters, metric-level and per-input filters, units/scale, ownership, and applicable rules. Similar names or identical SQL alone are insufficient. Use the existing path resolution above; never inspect hidden definitions or copy a private definition into a shared scope to make it reusable.
 
 | Finding | Action |
 |---|---|
@@ -85,13 +85,13 @@ Read each plausible metric's full definition and its reached semantic models. Co
 | Different grain, filters, scale, binding or applicable policy | Keep the definitions separate; ask if the intended business meaning is unclear |
 | Repository-owned definition needs a change | Follow the repository authoring workflow; do not create a direct-write replacement to bypass ownership |
 
-A ratio still references numerator/denominator metric objects. For example, a verified total-matches metric can serve several ratios at the same grain; a country-filtered matches metric is not an interchangeable denominator for all countries. Being referenced or ending in `_num`/`_den` does not make an existing metric disposable.
+A ratio still references numerator/denominator metric objects. For example, a saved total-matches metric can serve several ratios at the same grain; a country-filtered matches metric is not an interchangeable denominator for all countries. Being referenced or ending in `_num`/`_den` does not make an existing metric disposable.
 
-After discovery, author only the approved missing prerequisites: group, data sources, semantic models with nested components, simple metrics, ratio/derived metrics, then rules after their targets exist. Execute one item at a time; do not start the next before the current receipt is terminal.
+After discovery, author only the approved missing prerequisites: group, data sources, semantic models with nested components, simple metrics, ratio/derived metrics, then rules after their targets exist. Execute in that order: metrics and semantic models as one ordered `graphit kb batch` (kb-actions.md); start any other item only after the current receipt is terminal.
 
 ## Verification
 
-Create defaults to verified on human-driven CLI paths; `--unverified` creates a draft. Promote or demote with dedicated verify/unverify actions. Never replace `meta` only to toggle verification.
+Valid authorized saves are effective within their access scope. Manual KB verification and draft status are retired; omit `unverified`, `verified`, `verified_by`, and `verified_at`. Source readiness, schema acceptance and SQL validation still apply.
 
 ## Final check
 

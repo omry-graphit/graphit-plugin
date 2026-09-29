@@ -49,4 +49,4 @@ Use `{{ Metric('revenue') }}`, `{{ Dimension('order__channel') }}`, and `{{ Meas
 
 ## Gap decision
 
-Research first, then recommend. Show which existing definitions or dashboards already cover the request, what can be reused or extended, and what is still missing. Propose authoring only for that agreed gap, with formula, grain, binding, group, rule impact and verification. Ask when a choice is unresolved; do not treat a request to investigate as permission to build.
+Research first, then recommend. Show which existing definitions or dashboards already cover the request, what can be reused or extended, and what is still missing. Propose authoring only for that agreed gap, with formula, grain, binding, group, rule impact and validation. Ask when a choice is unresolved; do not treat a request to investigate as permission to build.
