@@ -36,7 +36,7 @@ When ambiguous, propose 2-3 options and ask the user. Do not guess.
 | Hierarchy | treemap | hand-rolled SVG | 1 categorical + 1 numeric |
 | Flows | sankey | hand-rolled SVG | 2 categorical + 1 numeric |
 | Geographic | map | hand-rolled SVG | region or lat/lng + 1 numeric |
-| Distribution | histogram / box | hand-rolled SVG | 1 numeric |
+| Distribution | histogram / box | hand-rolled SVG | bins + counts, or quartiles, from SQL |
 
 ## Perception Ranking (Cleveland-McGill)
 
@@ -56,7 +56,7 @@ Position > length > angle > area > color.
 | KPI vs target | big-number + sparkline | gauge (unbounded) |
 | 2D matrix / cohort | heatmap | bar with 100+ |
 
-The standard `graphit.graph` first choices here are line, bar, stacked-bar, scatter, bubble, funnel, heatmap, gauge, and sparkline. Treemap, histogram, and box are hand-rolled SVG (see the table above) - draw them via `type:'custom'` or inline SVG, never pass them as a standard type name.
+The standard `graphit.graph` first choices here are line, bar, stacked-bar, scatter, bubble, funnel, heatmap, gauge, and sparkline. Treemap, histogram, and box are hand-rolled SVG (see the table above) - draw them via `type:'custom'` or inline SVG, never pass them as a standard type name. Compute histogram bins (`FLOOR(x / w) * w AS bin, COUNT(*)`) and box quartiles (`percentile_cont(0.25) WITHIN GROUP (ORDER BY x)`, likewise 0.5 and 0.75) in the entity's SQL; page script only draws the returned rows and never bins raw values or computes quartiles.
 
 ## Cardinality Guards
 
@@ -72,12 +72,14 @@ COALESCE categorical dimensions in SQL (`COALESCE(region, 'Other')`) to prevent 
 ```sql
 WITH ranked AS (
   SELECT *, ROW_NUMBER() OVER (ORDER BY metric DESC) AS rn
-  FROM data
+  FROM <SOURCE_NAME>
 )
 SELECT CASE WHEN rn <= 10 THEN category ELSE 'Other' END AS category,
        SUM(metric) AS metric
 FROM ranked GROUP BY 1 ORDER BY 2 DESC
 ```
+
+When the page also lists the top N itself (a ranking table above the trend), rank once and declare the trend's dependency on it (`declared-queries.md`) rather than ranking again in each statement: two rankings can disagree when values tie.
 
 ## Hard Caps
 

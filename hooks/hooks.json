@@ -1,5 +1,6 @@
 {
   "description": "Graphit plugin status checks and query result formatting",
+  "modules": ["./query-view/register.tsx"],
   "hooks": {
     "SessionStart": [
       {

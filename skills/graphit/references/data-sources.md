@@ -63,7 +63,7 @@ On an empty or suspiciously-null result: check the selected source and dialect, 
 - Reading does not imply authority over connector, SQL, or refresh settings.
 - Visibility and masking cover agent, canvas, render, export, and report paths.
 - Private names and columns remain concealed.
-- Delete your own private sources with `graphit ds delete <id> --yes` only after the user confirms. Shared sources stay in the Sources Hub. `dashboard delete <id> --yes --delete-sources <ids>` also removes the named own private sources only that dashboard used (ids from `dashboard delete-preview`). A 409 names visible dependents to remove or rebind first; a 202 means deletion applied but storage cleanup is pending: report it and do not repeat the delete.
+- Delete your own private sources with `graphit ds delete <id> --yes` only after the user confirms. Shared sources stay in the Sources Hub. `dashboard delete <id> --yes --delete-sources <ids>` also removes the named own private sources only that dashboard used (ids from `dashboard delete-preview`). A 409 names visible dependents to remove or rebind first. A 409 marked `retryable` means a concurrent workspace edit interrupted it and nothing was deleted: tell the user and repeat the same delete only after they confirm again. A 202 means deletion applied but storage cleanup is pending: report it and do not repeat the delete.
 - There is no source move on any surface. A source lives in the `group` of the semantic model bound to it, so `kb update semantic-model <name>` with a new `group` moves the source; a source with no bound model yet keeps the domain it was created with.
 
 For refresh modes, history, incremental tuning, and reconciliation, load `data-source-refresh.md`.

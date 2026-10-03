@@ -30,7 +30,7 @@ const result = await graphit.resolve({
 
 MUST: every resolve feeding a rendered graph, KPI, or table carries attribution - `target` (the entity wrapper or an element inside it), or `sourceEntityId` plus `targetEntityIds` when one result feeds several graphs. Attribution records the live filtered query behind that entity's details panel; unattributed, the panel shows `data-graphit-sql` as an unrun example, so a user changing a filter sees the SQL never move. Saving a page with filters or params and zero attributed resolves returns an `unattributed_resolves` warning. Queries feeding page chrome need no attribution and no entity, but belong on the primitives - `graphit.cascade` for option lists, `graphit.dataBounds` for a column's min/max, `graphit.rank` for top-N (`filters-advanced.md`) - never hand-written entity-less SQL.
 
-CRITICAL: use `{{ Metric('name') }}`, `{{ Dimension('entity__name') }}`, or Graphit's `{{ Measure('name') }}` extension inside `data-graphit-sql` whenever the semantic asset exists. The server expands it into the governed tier. See `governance.md`.
+CRITICAL: use `{{ Metric('name') }}`, `{{ Dimension('entity__name') }}` or `{{ Measure('name') }}` (row-level: apply its `agg`) in `data-graphit-sql` whenever the asset exists; the server expands them into the governed tier. See `governance.md`.
 
 Error handling: `graphit.resolve()` rejects on timeout (120s), bad SQL, or an invalid data source ID. Wrap calls in try/catch and show a user-visible error in the target element on failure. Verify the SQL returns data via the CLI before embedding it.
 
@@ -142,7 +142,7 @@ A resolve query following these shapes serves from a semantic cache in roughly 1
 
 - **Single refresh function.** Put all queries in ONE `Promise.all` inside one `refresh()` so they share a time window. NEVER scatter `graphit.resolve()` across independent handlers or timeouts - one user action becomes several bursts.
 - **Count queries per interaction.** 6 charts cost 6 cold executions per filter change, about 30 changes a minute; 12 charts, about 15. With 10 or more charts and 3 or more filters, debounce filter changes (300ms).
-- **Reuse trend data for KPIs.** If you already fetch a weekly time series, derive the KPI total and its sparkline from that result in JS, not a separate aggregate query. Anchor the extra graphs it feeds with `targetEntityIds` per the attribution rule above. Canonical KPI-row example: `kpi.md`.
+- **Reuse trend data for KPIs.** If you already fetch a weekly sum or row count, derive the KPI total and its sparkline from that result, not a separate aggregate query. Anchor the extra graphs it feeds with `targetEntityIds` per the attribution rule above. Canonical KPI-row example: `kpi.md`.
 - **Avoid redundant refreshes.** If a filter affects only some charts, split into targeted refresh functions (`refreshKPIs()`, `refreshCharts()`). Resize, highlight and axis toggles only redraw; no resolve (`page-load.md`).
 - **No polling.** NEVER use `setInterval(refresh, ...)`. Data sources refresh on their own schedule; polling burns the whole budget.
 

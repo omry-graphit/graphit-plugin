@@ -2,7 +2,7 @@
 name: graphit-build
 description: >-
   Author and verify Graphit dashboard content, private or shared, and build private reports, sources and saved metrics. Pair with graphit-share for shared dependencies, draft sessions and publication. Use graphit-explore for answers without artifacts.
-skill_version: "0.2.384"
+skill_version: "0.2.391"
 ---
 
 # Build: author and verify content
@@ -44,6 +44,8 @@ Preserve the current dashboard ID and edit context. Create a new dashboard priva
 Use a fitting cached source first and state the chosen source. If none exists, Private first follows ../graphit/references/data-sources.md to create a source with `--domain Private`; Shared from the start follows Share's approved source/definition plan and checks before those writes. For scratch work, choose a `scratch_` name, aggregate to the chart grain, and cap the time window; state the window in the dashboard subtitle and disclose row/cost bounds. Follow ../graphit/references/data-sources.md: a clean scan plus publication activates the source automatically. Read the completed readiness and PII verdicts; do not add a verify step to a successful create.
 
 The scan's bound semantic model supplies the semantic layer. Use its measures and dimensions, fitting existing metrics, and explicitly labeled ad-hoc SQL where needed; ../graphit/references/governance.md and ../graphit/references/sql-reference.md own query permissions and receipts. For private work, do not create a metric unless the user asks to keep it. Then read ../graphit/references/semantic-authoring.md and ../graphit/references/kb-scope.md: use the scanner model's exact private group and source binding, preserve siblings, and verify the result. A request to keep an already agreed definition authorizes that work; resolve only a new ambiguity in its meaning. No visible private group means stop before a private write, never omit the group and land in org commons. Shared definitions follow Share's agreed group and readiness checks; loading Build does not replace them.
+
+Compute every displayed number that combines raw rows - a count, sum, distinct count, average, rate or min/max - in the entity's query (a fitting metric, a measure under its own `agg`, or labeled ad-hoc SQL) or, for controls, `graphit.cascade`/`dataBounds`/`rank`. Never count, sum, average or bucket raw rows in page script: the number then has no definition, governance or details-panel provenance. Script formats, lays out, scales, sorts and picks among returned values; it may add returned sums or counts and divide one by another per ../graphit/references/runtime.md, never re-aggregate a distinct count, average or ratio. A row-level log or list may resolve raw rows.
 
 Change coverage, filters, columns or joins for the same source purpose with `ds edit-sql`; follow its drift response. A new name is not a repair for a failed edit. Update an uploaded file source in place with `graphit ds re-upload <id> --file <path>` (in the app, the person uses Re-upload file in the Sources Hub); never re-create it.
 

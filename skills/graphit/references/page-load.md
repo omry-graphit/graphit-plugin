@@ -7,7 +7,7 @@ Every `graphit.resolve()` and chrome call (`cascade`, `dataBounds`, `rank`) pays
 ## The request graph
 
 - **Parallel unless the rows are needed.** Start independent queries together in one `Promise.all`. Await one query before another only when the later query's SQL or params use the earlier result. A chain of awaits whose later steps ignore earlier results turns one round into many.
-- **Fold a dependency when you can.** A rank that only picks the top N for a series is usually one statement: rank in a CTE and join the series to it. Keep two steps when the first result is also shown.
+- **Fold a dependency when you can.** A rank that only picks the top N for a series is usually one statement: rank in a CTE and join the series to it. Keep two steps when the first result is also shown or feeds several queries; when building or re-authoring, declare the pair (`declared-queries.md`).
 - **Visible first.** Start above-the-fold charts and KPIs before option lists, bounds for secondary controls and anything below the fold; later calls wait behind earlier ones.
 - **Hidden tabs wait** until first shown (`runtime.md`, "Declare statically, execute lazily").
 - **One first load.** `graphit.state.subscribe` calls back immediately: guard the callback with a boot flag and call `refresh()` once when init ends (`state-contract.md`, "Restore order"). An unguarded callback plus a boot refresh runs every query twice.

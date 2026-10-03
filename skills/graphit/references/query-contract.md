@@ -1,6 +1,6 @@
 # Typed owner queries and named variants
 
-Read when adding typed value slots or a finite set of metric, horizon, grain or grouping choices to a canvas entity. Existing untyped canonical queries and declared runtime-composed queries remain valid (`runtime.md`).
+Read when adding typed value slots or a finite set of metric, horizon, grain or grouping choices to a canvas entity. Existing untyped canonical queries and declared runtime-composed queries remain valid (`runtime.md`). When a graph shows only the rows another query picks (a trend for the top 10 sources a table lists), rank once and declare the pair rather than ranking again inside the graph's statement: `declared-queries.md`, which also covers helper queries, per-value repeats and state-selected statements.
 
 ## One owner
 

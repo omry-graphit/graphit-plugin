@@ -24,11 +24,48 @@ function readStdin() {
   }
 }
 
+// Feature #1062 (Gate 2): blank out quoted strings and `#` comments, keeping
+// every position, so an operator inside the SQL (`x <> 'y'`, `n > 2`) is not read
+// as a redirect, and `graphit query` inside another command's quotes or a
+// comment is not read as a query.
+function maskQuotesAndComments(command) {
+  let out = "";
+  let quote = null;
+  for (let i = 0; i < command.length; i += 1) {
+    const ch = command[i];
+    if (quote) {
+      if (ch === "\\" && quote === '"' && i + 1 < command.length) {
+        out += "  ";
+        i += 1;
+      } else if (ch === quote) {
+        quote = null;
+        out += ch;
+      } else {
+        out += " ";
+      }
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      out += ch;
+    } else if (ch === "#" && (i === 0 || /\s/.test(command[i - 1]))) {
+      while (i < command.length && command[i] !== "\n") {
+        out += " ";
+        i += 1;
+      }
+      if (i < command.length) out += "\n";
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+
 // Tolerates env prefixes (GRAPHIT_API_URL=... graphit query) and local dev
 // (node dist/index.js query).
 function isGraphitQuery(command) {
   if (!command) return false;
-  return /(?:graphit|index\.js)\s+query\b/.test(command);
+  return /(?:graphit|index\.js)\s+query\b/.test(maskQuotesAndComments(command));
 }
 
 // Issue #1025: a query whose stdout is piped (`|`) or sent to a file (`>`) never
@@ -37,9 +74,13 @@ function isGraphitQuery(command) {
 // `2>` / `2>&1` redirect stderr only and do not count.
 function queryReachesStdout(command) {
   const invocation = /(?:graphit|index\.js)\s+query\b/g;
-  for (const match of command.matchAll(invocation)) {
-    const tail = command.slice(match.index).split(/\n|;|&&|\|\||(?<![|&])&(?![&>])/)[0];
-    const withoutStderr = tail.replace(/\d?>&\d|2>>?\s*\S+/g, "");
+  const masked = maskQuotesAndComments(command);
+  for (const match of masked.matchAll(invocation)) {
+    // Feature #1062: `>` before `&` is a descriptor redirect (`2>&1`), never a
+    // command separator, and only fd 2's redirects are stripped - `>&2` still
+    // sends stdout away.
+    const tail = masked.slice(match.index).split(/\n|;|&&|\|\||(?<![|&>])&(?![&>])/)[0];
+    const withoutStderr = tail.replace(/2>&\d|2>>?\s*\S+/g, "");
     if (!/(?<!\|)\|(?!\|)|>/.test(withoutStderr)) return true;
   }
   return false;

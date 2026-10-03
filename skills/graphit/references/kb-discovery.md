@@ -45,7 +45,7 @@ A capped or empty search is not proof of absence. A summary page is also incompl
 
 ## Governed references
 
-Use `{{ Metric('revenue') }}`, `{{ Dimension('order__channel') }}`, and `{{ Measure('order_total') }}` only for Graphit's measure extension. A bare `Measure('name')` must be unique across shared models; write `Measure('entity__name')` to pin the owner. Legacy token grammar is refused.
+Use `{{ Metric('revenue') }}`, `{{ Dimension('order__channel') }}`, and `{{ Measure('order_total') }}` only for Graphit's measure extension. A Dimension ref is `<entity>__<dimension>`, where the entity is the model's `primary_entity` (`<model>_row` for a scanned source with no key); copy it from `dimension_refs` in `kb explore` (or `primary_entity` in `kb get semantic-model`), never guess it. `Measure()` is the row-level expression, not an aggregate: wrap it in the measure's own `agg` (`SUM` only for a sum measure; see `governance.md`) or use `Metric()`; never re-aggregate a distinct count or average. A bare `Measure('name')` must be unique across shared models; write `Measure('entity__name')` to pin the owner. Legacy token grammar is refused.
 
 ## Gap decision
 

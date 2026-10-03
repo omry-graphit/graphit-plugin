@@ -19,7 +19,7 @@ graphit.kpi('#kpi-credits', {
 })
 ```
 
-Fetch `compareValue` in the same resolve as the value (a prior-period column) or derive both from a trend query you already run - never a second request just for the delta.
+Fetch `compareValue` in the same resolve as the value (a prior-period column) - never a second request just for the delta. Derive the value and `compareValue` from a trend query you already run only when it returns sums or row counts (for a ratio, add up its numerator and denominator, then divide); a distinct count or average is not the total of its periods, so query it at the KPI's own grain. The sparkline may still come from the trend.
 
 ## KPI Row: One Resolve, Several Cards
 

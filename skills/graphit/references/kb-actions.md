@@ -24,11 +24,17 @@ Read `semantic-authoring.md` for model/metric shapes and `metric-families.md` fo
 
 ## Rules
 
-Rules remain Graphit objects. Create them from JSON with body/constraints plus `apply_on` targets. Final targets are model, entity, dimension, metric, or group identities. A rule without targets is refused.
+Rules remain Graphit objects. Create them from JSON with `name`, `content` (the rule text; there is no `body` field), `description` (the reason query receipts show, so set it), `apply_on` and optional `constraints`. Unknown keys are refused, and an error names the field path, such as `apply_on[0].type`. A rule without targets is refused. Rule names are stored upper-case; lookups ignore case.
 
-Target grammar, live and in a repository tree alike: `model:`, `entity:` and `group:` names are lowercase snake; `metric:` and `dimension:` names are UPPER (`metric:REVENUE_USD`). In a `.graphit/rules/*.rule.yml` file every target must name something the tree declares, including assets the same sync creates; a bare model name or the model's fully qualified `DATABASE.SCHEMA.TABLE` relation also resolves. `table:` targets are retired - target the semantic model. A rule's dbt-style `groups:` key is not imported; placement comes from `apply_on`.
+```json
+{"name":"exclude_br","content":"Exclude Brazil from spend queries","description":"Brazil spend is reported separately","apply_on":[{"type":"model","name":"ua_daily"}],"constraints":[{"type":"value_restriction","column":"country","operator":"not_in","values":["BR"]}]}
+```
 
-Constraints keep their five semantics: required predicate, forbidden column, required filter, required aggregation, and value restriction. Use declared semantic identities and typed values.
+Each `apply_on` target is a `{"type": ..., "name": ...}` object or a `type:name` string; types are model, entity, dimension, metric and group. `model:`, `entity:` and `group:` names are lowercase snake; `metric:` and `dimension:` names are UPPER (`metric:REVENUE_USD`). In a `.graphit/rules/*.rule.yml` file every target must name something the tree declares, including assets the same sync creates; a bare model name or the model's fully qualified `DATABASE.SCHEMA.TABLE` relation also resolves. `table:` targets are retired - target the semantic model. A rule's dbt-style `groups:` key is not imported; placement comes from `apply_on`.
+
+Each constraint is an object with a `type`: `required_where` takes `predicate`; `forbidden_column`, `required_filter` and `required_aggregation` take `column`; `value_restriction` takes `column`, `operator` (`in` or `not_in`) and `values` as strings. `column` and `predicate` name physical columns of the source the targeted model reads, as in the example - not `entity__dimension` paths or `{{ }}` references. `apply_on` targets are the semantic identities.
+
+A saved rule enforces at once; there is no draft or verify step. To stop enforcing it, delete it, or update it with `"constraints": []` to keep it as an advisory rule (the constraints are dropped). Do either only when the user explicitly asks to change the rule, never to get a refused query through, and confirm first.
 
 ## Update
 

@@ -7,8 +7,8 @@ Load when writing a governed query, explaining a refusal, or reporting provenanc
 | Reference | Meaning |
 |---|---|
 | `{{ Metric('revenue') }}` | Reusable metric |
-| `{{ Dimension('order__channel') }}` | Qualified grouping/filter field |
-| `{{ Measure('order_total') }}` / `{{ Measure('order__order_total') }}` | Graphit's model-owned measure extension; the bare form resolves only when the name is unique across shared models, the `entity__name` form pins the owning model like a Dimension path |
+| `{{ Dimension('order__channel') }}` | Qualified grouping/filter field, `<entity>__<dimension>`. The entity is the model's `primary_entity` (`<model>_row` for a scanned source with no key); copy them from `dimension_refs` in `kb explore`, or read `primary_entity` from `kb get semantic-model`. A bare name is refused, with a did-you-mean when a qualified ref is reachable |
+| `{{ Measure('order_total') }}` / `{{ Measure('order__order_total') }}` | Graphit's model-owned measure extension. It expands to the row-level expression, not an aggregate: wrap it in the measure's own `agg` (read it in `kb get semantic-model`) with GROUP BY - `SUM` for sum, `COUNT(DISTINCT ...)` for count_distinct, `AVG` for average - or use `Metric()`, which applies it. A distinct count, average, median or percentile does not add up: query each total at the grain you show, never sum or average per-group results. The bare form resolves only when the name is unique across shared models, the `entity__name` form pins the owning model like a Dimension path |
 
 Legacy token grammar is refused. Keep references inside complete executable SQL and canvas `data-graphit-sql`.
 
@@ -24,7 +24,7 @@ Prefer governed. Never present ad-hoc SQL as the team's definition.
 
 ## Rules
 
-Rules target model, entity, dimension, metric, or group identities. Saved constrained rules enforce according to their mode; body-only rules guide. Scope, source readiness and deprecation still apply. Modes and EXPLORE behavior remain server-owned.
+Rules target model, entity, dimension, metric, or group identities. Saved constrained rules enforce according to their mode; advisory rules (no constraints) guide. There is no draft or verify step. Deleting a rule or clearing its constraints stops enforcement (shape in `kb-actions.md`); do it only when the user explicitly asks to change the rule, never to get a refused query through. Scope, source readiness and deprecation still apply. Modes and EXPLORE behavior remain server-owned.
 
 The gateway runs before caches, injects constraints, verifies resolved SQL, and returns a transparency receipt. Do not claim a rule applied merely because it exists.
 
