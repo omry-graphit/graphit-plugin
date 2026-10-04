@@ -5,7 +5,7 @@ import type { KbDef } from './state'
 import { lineText } from './sql'
 import type { Expansion, Token } from './sql'
 
-export const MAX_ROWS = 20
+export const MAX_ROWS = 10
 const MAX_COL = 24
 
 type Injection = {
@@ -25,10 +25,11 @@ export type KbReference = { kind?: string; name?: string; deprecated?: boolean }
 // The gateway's reference kinds, as template kinds.
 export const REF_KIND: Record<string, string> = { metric: 'Metric', metric_raw: 'Measure', dim: 'Dimension' }
 
-type QueryResult = {
+export type QueryResult = {
   rows: Array<Record<string, unknown>>
   columns?: string[]
   row_count?: number
+  truncated?: boolean
   query_ms?: number
   source?: string
   sql?: string
@@ -56,10 +57,18 @@ export const OUTCOME_BADGE: Record<string, { label: string; color: string }> = {
   conditional_skipped: { label: 'SKIPPED', color: '#6b7280' },
 }
 
+// Feature #1067: tier colors - Energy Teal for governed, a calm blue for
+// verified, system gray for ad hoc - and their labels.
 export const TIER_COLOR: Record<string, string> = {
-  governed: 'green',
-  verified: 'cyan',
-  ad_hoc: 'gray',
+  governed: '#4DB6AC',
+  verified: '#5B8DEF',
+  ad_hoc: '#8E8E93',
+}
+
+export const TIER_LABEL: Record<string, string> = {
+  governed: 'Governed',
+  verified: 'Verified',
+  ad_hoc: 'Ad hoc',
 }
 
 // Query data is untrusted: strip ANSI, C0/C1 controls and bidi overrides.
@@ -305,6 +314,15 @@ export function queryReachesStdout(command: string): boolean {
     const tail = masked.slice(match.index).split(/\n|;|&&|\|\||(?<![|&>])&(?![&>])/)[0]
     const withoutStderr = tail.replace(/2>&\d|2>>?\s*\S+/g, '')
     if (!/(?<!\|)\|(?!\|)|>/.test(withoutStderr)) return true
+    // Feature #1067: a single pipe into head/tail (optional -n N / -N) still
+    // shows the document when it fits; a cut-short one fails to parse and
+    // stays raw. Anything after it, or any other pipe, does not count.
+    const pipeAt = withoutStderr.search(/(?<!\|)\|(?!\|)/)
+    if (pipeAt >= 0 && !/>/.test(withoutStderr.slice(0, pipeAt)) && HEAD_OR_TAIL.test(withoutStderr.slice(pipeAt + 1))) {
+      return true
+    }
   }
   return false
 }
+
+const HEAD_OR_TAIL = /^\s*(?:head|tail)(?:\s+(?:-n\s*\d+|-\d+))?\s*$/

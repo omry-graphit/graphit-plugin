@@ -100,42 +100,67 @@ export function formatLines(sql: string): Token[][] {
     return lines.map(trimEnd)
   }
 
+  // Feature #1067: a subquery or CTE body - a "(" that opens a
+  // SELECT or WITH - is formatted like the top level, indented under its
+  // parenthesis; any other parenthesis (a call, an IN list) stays inline.
   const lines: Token[][] = []
   let line: Token[] = []
-  let depth = 0
-  let clause = ''
+  type Frame = { sub: boolean; indent: number; clause: string }
+  const frames: Frame[] = [{ sub: true, indent: 0, clause: '' }]
+  const top = () => frames[frames.length - 1]
   let prevWord = ''
   const newline = (indent: number) => {
     if (trimEnd(line).length > 0) lines.push(line)
     line = indent > 0 ? [{ kind: 'ws', text: ' '.repeat(indent) }] : []
   }
   const atLineStart = () => line.every(t => t.kind === 'ws')
+  const lineIndent = () => (line[0]?.kind === 'ws' ? line[0].text.length : 0)
+  const nextWord = (from: number) => {
+    for (let k = from; k < tokens.length; k += 1) if (tokens[k].kind !== 'ws') return tokens[k].text.toLowerCase()
+    return ''
+  }
 
-  for (const t of tokens) {
+  tokens.forEach((t, i) => {
     if (t.kind === 'ws') {
       if (!atLineStart()) line.push({ kind: 'ws', text: ' ' })
-      continue
+      return
     }
+    if (t.text === '(') {
+      const opensQuery = ['select', 'with'].includes(nextWord(i + 1))
+      line.push(t)
+      if (opensQuery) {
+        const indent = lineIndent() + 4
+        frames.push({ sub: true, indent, clause: '' })
+        newline(indent)
+      } else {
+        frames.push({ sub: false, indent: top().indent, clause: top().clause })
+      }
+      return
+    }
+    if (t.text === ')') {
+      const frame = frames.length > 1 ? frames.pop()! : top()
+      if (frame.sub) newline(Math.max(frame.indent - 4, 0))
+      line.push(t)
+      return
+    }
+    const frame = top()
     const word = t.kind === 'kw' || t.kind === 'ident' || t.kind === 'fn' ? t.text.toLowerCase() : ''
-    if (t.text === '(') depth += 1
-    if (t.text === ')') depth -= 1
-
-    if (depth === 0 && word) {
+    if (frame.sub && word) {
       const startsJoin = word === 'join' && !JOIN_PREFIXES.has(prevWord)
       if (CLAUSE_STARTS.has(word) || TWO_WORD_CLAUSES.has(word) || JOIN_PREFIXES.has(word) || startsJoin) {
-        if (!(JOIN_PREFIXES.has(prevWord) && (word === 'join' || word === 'outer'))) {
-          newline(0)
-          clause = word
+        if (!(JOIN_PREFIXES.has(prevWord) && (word === 'join' || word === 'outer')) && !(TWO_WORD_CLAUSES.has(prevWord) && word === 'by')) {
+          if (!atLineStart()) newline(frame.indent)
+          frame.clause = word
         }
-      } else if ((word === 'and' || word === 'or') && (clause === 'where' || clause === 'having')) {
-        newline(2)
+      } else if ((word === 'and' || word === 'or') && (frame.clause === 'where' || frame.clause === 'having')) {
+        newline(frame.indent + 2)
       }
     }
     line.push(t)
     if (word) prevWord = word
-    if (depth === 0 && word === 'select') newline(2)
-    if (depth === 0 && t.text === ',' && clause === 'select') newline(2)
-  }
+    if (frame.sub && word === 'select') newline(frame.indent + 2)
+    if (frame.sub && t.text === ',' && frame.clause === 'select') newline(frame.indent + 2)
+  })
   if (trimEnd(line).length > 0) lines.push(line)
   return lines
 }
@@ -206,5 +231,35 @@ export function templateExpansions(baseSql: string, runtimeSql: string): Expansi
       }
     }
   }
+  return out
+}
+
+// Feature #1067: SQL as the sidebars show it - re-flowed by the
+// formatter (one clause, one select item per line, CTEs indented) unless it
+// holds a line comment, whose end the layout must keep.
+export function prettySql(sql: string): string {
+  const text = sql.trim()
+  if (/--/.test(text.replace(/'(?:[^']|'')*'/g, "''"))) return text
+  return formatLines(text.replace(/\s+/g, ' ')).map(lineText).join('\n')
+}
+
+// Text for native Code blocks: whole lines, each block under `max` characters.
+export function codeChunks(text: string, max = 9500): Array<{ source: string; startLine: number }> {
+  const out: Array<{ source: string; startLine: number }> = []
+  let lines: string[] = []
+  let size = 0
+  let start = 1
+  text.split('\n').forEach((line, i) => {
+    const piece = line.length > max ? line.slice(0, max - 1) + '…' : line
+    if (size + piece.length + 1 > max && lines.length) {
+      out.push({ source: lines.join('\n'), startLine: start })
+      lines = []
+      size = 0
+      start = i + 1
+    }
+    lines.push(piece)
+    size += piece.length + 1
+  })
+  if (lines.length) out.push({ source: lines.join('\n'), startLine: start })
   return out
 }

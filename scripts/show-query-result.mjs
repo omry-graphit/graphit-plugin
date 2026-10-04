@@ -82,9 +82,18 @@ function queryReachesStdout(command) {
     const tail = masked.slice(match.index).split(/\n|;|&&|\|\||(?<![|&>])&(?![&>])/)[0];
     const withoutStderr = tail.replace(/2>&\d|2>>?\s*\S+/g, "");
     if (!/(?<!\|)\|(?!\|)|>/.test(withoutStderr)) return true;
+    // Feature #1067: a single pipe into head/tail (optional -n N / -N) still
+    // shows the document when it fits; a cut-short one fails to parse and
+    // stays raw. Anything after it, or any other pipe, does not count.
+    const pipeAt = withoutStderr.search(/(?<!\|)\|(?!\|)/);
+    if (pipeAt >= 0 && !/>/.test(withoutStderr.slice(0, pipeAt)) && HEAD_OR_TAIL.test(withoutStderr.slice(pipeAt + 1))) {
+      return true;
+    }
   }
   return false;
 }
+
+const HEAD_OR_TAIL = /^\s*(?:head|tail)(?:\s+(?:-n\s*\d+|-\d+))?\s*$/;
 
 // Issue #1025: every CLI command prints JSON, and some carry `row_count`
 // (`ds create`, `ds re-upload`). Only a query result has a `rows` array together
