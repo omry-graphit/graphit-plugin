@@ -2,7 +2,7 @@
 name: graphit-share
 description: >-
   Share or publish Graphit work, edit shared Graphit dashboards, or author into a shared group. Use after Graphit routing or a direct Graphit shared-scope request. Pair with graphit-build for dashboard authoring. Read-only questions belong to graphit-explore.
-skill_version: "0.2.395"
+skill_version: "0.2.397"
 ---
 
 # Share: checks at the shared write

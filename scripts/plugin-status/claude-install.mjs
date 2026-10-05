@@ -84,7 +84,11 @@ function repairSourceLooksCurrent(sourceRoot, currentVersion) {
   const skillVersion = readFrontmatterVersion(join(sourceRoot, "skills", "graphit", "SKILL.md"));
   const versionJson = tryReadJson(join(sourceRoot, "skills", "graphit", "VERSION.json"))?.version;
   const claudePlugin = tryReadJson(join(sourceRoot, ".claude-plugin", "plugin.json"))?.version;
-  return skillVersion === currentVersion && versionJson === currentVersion && claudePlugin === currentVersion;
+  // Project #305: a source without a current Cursor manifest would strip it from
+  // the repaired cache, and Cursor's Claude import would load the crashing hooks.
+  const cursorPlugin = tryReadJson(join(sourceRoot, ".cursor-plugin", "plugin.json"))?.version;
+  return skillVersion === currentVersion && versionJson === currentVersion && claudePlugin === currentVersion &&
+    cursorPlugin === currentVersion;
 }
 
 function copyRepairableBundle(sourceRoot, targetRoot, repairableEntries) {

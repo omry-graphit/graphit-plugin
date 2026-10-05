@@ -265,7 +265,10 @@ export function capitalize(s: string): string {
 // piped or redirected query, or another command's JSON, is left to the engine.
 // The two copies must agree; gate.test.tsx and show-query-result.test.mjs pin
 // the same cases.
-const QUERY_INVOCATION = /(?:graphit|index\.js)\s+query\b/
+// Project #305: a verbatim copy of graphitInvocationSource("query") in
+// scripts/plugin-status/host.mjs (npx `@graphit/cli[@<v>] query` included);
+// test/cursor-hooks.test.mjs fails if the two literals differ.
+const QUERY_INVOCATION = /(?:graphit|index\.js|@graphit\/cli(?:@\S+)?)\s+query\b/
 
 // Feature #1062 (Gate 2): blank out quoted strings and `#` comments, keeping
 // every position, so an operator inside the SQL (`x <> 'y'`, `n > 2`) is not read

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "node \"${CURSOR_PLUGIN_ROOT}/scripts/plugin-status.mjs\" --hook SessionStart",
+        "timeout": 10
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "node \"${CURSOR_PLUGIN_ROOT}/scripts/plugin-status.mjs\" --hook UserPromptSubmit",
+        "timeout": 5
+      }
+    ],
+    "preToolUse": [
+      {
+        "matcher": "Shell",
+        "command": "node \"${CURSOR_PLUGIN_ROOT}/scripts/block-legacy-setup.mjs\" --hook PreToolUse",
+        "timeout": 5
+      }
+    ],
+    "postToolUse": [
+      {
+        "matcher": "Shell",
+        "command": "node \"${CURSOR_PLUGIN_ROOT}/scripts/show-query-result.mjs\" --hook PostToolUse",
+        "timeout": 5
+      }
+    ]
+  }
+}

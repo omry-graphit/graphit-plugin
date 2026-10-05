@@ -20,5 +20,7 @@
     "sql",
     "cli"
   ],
-  "types": "./hooks/query-view/state.d.ts"
+  "skills": "./skills/",
+  "commands": [],
+  "hooks": "./hooks/cursor-hooks.json"
 }

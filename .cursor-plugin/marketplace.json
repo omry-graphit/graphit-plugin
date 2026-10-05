@@ -1,11 +1,13 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "graphit-plugin",
-  "description": "Graphit CLI plugin for AI coding assistants - build custom HTML dashboards from real data",
   "owner": {
     "name": "Graphit",
     "email": "support@graphit-app.com",
     "url": "https://graphit-app.com"
+  },
+  "metadata": {
+    "description": "Graphit plugin for AI coding assistants",
+    "version": "0.2.397"
   },
   "plugins": [
     {
@@ -19,8 +21,7 @@
         "dashboard",
         "sql",
         "data",
-        "visualization",
-        "analytics"
+        "visualization"
       ]
     }
   ]

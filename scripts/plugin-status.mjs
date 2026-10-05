@@ -26,9 +26,12 @@ const REGISTRY_URL =
   process.env.GRAPHIT_REGISTRY_URL ?? "https://registry.npmjs.org/@graphit/cli/latest";
 // Feature #1042: this list stays in the entry file - plugin-commands.test.mjs reads
 // it from here to prove `--repair` keeps `commands`.
+// Project #305: and `.cursor-plugin` - without it Cursor's import of the repaired
+// Claude cache falls back to hooks/hooks.json, whose `args` Cursor drops.
 const REPAIRABLE_BUNDLE_ENTRIES = [
   ".claude-plugin",
   ".codex-plugin",
+  ".cursor-plugin",
   "skills",
   "hooks",
   "scripts",
