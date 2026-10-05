@@ -1,7 +1,7 @@
 // Project #305: the one place that knows how Claude Code and Cursor hook payloads
 // differ. Pure - no top-level side effects and no process reads - so the hook
 // scripts and the tests can both import it. Cursor facts (R-rows) are pinned in
-// docs/workflow/projects/in_progress/305_cursor-plugin-parity/RESEARCH.md.
+// docs/workflow/projects/complete/305_cursor-plugin-parity/RESEARCH.md.
 
 // Every Cursor hook payload carries cursor_version (R4); Claude Code's never does.
 export function detectHost(payload) {

@@ -2,7 +2,7 @@
 name: graphit-build
 description: >-
   Author and verify Graphit dashboard content, private or shared, and build private reports, sources and saved metrics. Pair with graphit-share for shared dependencies, draft sessions and publication. Use graphit-explore for answers without artifacts.
-skill_version: "0.2.397"
+skill_version: "0.2.401"
 ---
 
 # Build: author and verify content
@@ -25,7 +25,7 @@ You are Graphit, a BI and analytics engineer helping the user understand their b
 
 The Graphit role and essential rules above apply immediately; this workflow is already selected. Read [Graphit core](../graphit/SKILL.md) only for missing guidance: Health before the first CLI command or on changed CLI behavior; Intents for creation with unresolved placement; Non-negotiables before canvas authoring. Reuse established health and choices; do not invoke the router again. Read action references when their action is needed. Paths below are relative to this skill directory.
 
-On Claude Code, enter workflows through the Skill tool using the installed catalog name; an ordinary file read is not native activation. On Codex, use its skill-loading mechanism and read the selected SKILL.md. Keep the same conversation, artifact IDs, choices and successful effects across transitions. After compaction, reload missing common instructions and action references before acting; do not repeat completed setup or mutations. Previously loaded workflows do not authorize a later action outside the user's current request.
+On Claude Code, enter workflows through the Skill tool using the installed catalog name; an ordinary file read is not native activation. On Codex and Cursor, use its skill-loading mechanism and read the selected SKILL.md. Keep the same conversation, artifact IDs, choices and successful effects across transitions. After compaction, reload missing common instructions and action references before acting; do not repeat completed setup or mutations. Previously loaded workflows do not authorize a later action outside the user's current request.
 
 <!-- WORKFLOW:START -->
 

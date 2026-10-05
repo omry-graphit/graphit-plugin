@@ -15,7 +15,7 @@ Turn natural language into governed SQL and bespoke, hand-authored HTML dashboar
 
 ---
 
-`@graphit/cli` exposes the [Graphit](https://graphit-app.com) platform as commands your AI coding assistant - **Claude Code** or **Codex** - or you can drive directly: explore the governed semantic layer (the "knowledge base"), run governed queries against cached data sources, and build custom HTML/SVG/CSS dashboards on a bespoke canvas.
+`@graphit/cli` exposes the [Graphit](https://graphit-app.com) platform as commands your AI coding assistant - **Claude Code**, **Codex** or **Cursor** - or you can drive directly: explore the governed semantic layer (the "knowledge base"), run governed queries against cached data sources, and build custom HTML/SVG/CSS dashboards on a bespoke canvas.
 
 It installs as a plugin/skill, so your assistant knows how to reach for Graphit on any question about your business data - even when you never say "Graphit."
 
@@ -28,7 +28,7 @@ npm install -g @graphit/cli
 graphit auth login
 ```
 
-**2. Connect it to your AI coding assistant.** Either install the plugin from the marketplace, or copy the skill in with `graphit setup`.
+**2. Connect it to your AI coding assistant** by installing the Graphit plugin.
 
 Plugin marketplace - **Claude Code**:
 
@@ -43,13 +43,17 @@ Plugin marketplace - **Codex**:
 codex plugin marketplace add omry-graphit/graphit-plugin
 ```
 
-Or, on any supported editor (**Claude Code, Codex, Cursor, VS Code**):
+**Cursor** - install the Graphit plugin into Cursor's local plugins, then reload Cursor (Developer: Reload Window):
 
 ```bash
-graphit setup
+npx -y @graphit/cli setup --editor cursor
 ```
 
-Either path installs the Graphit skill so the assistant can drive the CLI on your behalf.
+Cursor also loads Graphit's Claude Code plugin. If that plugin is on for all projects, setup says so and installs nothing. If it is on for one project only, setup still installs and warns that Graphit loads twice in that project. Update later with `npx -y @graphit/cli setup --editor cursor --update`.
+
+**VS Code** - `graphit setup --editor vscode --project` writes the skill into the repo's `AGENTS.md`.
+
+Each path installs the Graphit skills so the assistant can drive the CLI on your behalf.
 
 > **Start a new session after installing the plugin.** Claude Code (and Codex) load plugin skills and commands at session start, so the Graphit skill, `/graphit`, and the `graphit` commands are not available in the session you installed from. Open a new session first - otherwise the assistant will not have the skill loaded and will improvise instead of following the guided workflow.
 
@@ -76,7 +80,7 @@ TLS connections are verified against Node's bundled CA certificates, which alrea
 | `graphit dashboard` | Custom dashboards: list, create, get, update HTML or a single entity, export to PNG/PDF, delete |
 | `graphit connector` | Connections: list, add, and test. Removal is admin-only in the Sources Hub; the CLI verb explains the handoff but does not delete. |
 | `graphit governance` | Query governance: inspect and set the enforcement mode |
-| `graphit setup` | Install the Graphit skill into your AI coding assistant |
+| `graphit setup` | Install the Graphit plugin for Cursor, or remove legacy copied skill files |
 
 Run any command with `--help` for its exact flags and subcommands:
 

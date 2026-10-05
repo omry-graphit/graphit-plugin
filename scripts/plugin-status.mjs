@@ -16,9 +16,18 @@ import {
   tryParseJson,
   tryReadJson,
 } from "./plugin-status/common.mjs";
-import { inspectClaudeInstalledPlugin } from "./plugin-status/claude-install.mjs";
+import {
+  classifyBundle,
+  cursorFindings,
+  pluginUpdateRemediation,
+  pluginUpdateSteps,
+} from "./plugin-status/bundle-kind.mjs";
+import { claudePluginsRoot, inspectClaudeInstalledPlugin } from "./plugin-status/claude-install.mjs";
 import { cloudRefreshApplies, refreshPluginInCloud } from "./plugin-status/cloud-refresh.mjs";
+// Project #305: status only reads Cursor state - never the installer or removal exports.
+import { cursorPluginsRoot, inspectCursor } from "./plugin-status/cursor-install.mjs";
 import { armCutoff, buildHookNudges, shouldRunForPrompt, stampSessionMarker } from "./plugin-status/hook-io.mjs";
+import { detectHost, formatContext } from "./plugin-status/host.mjs";
 
 // Project #246: GRAPHIT_REGISTRY_URL lets tests point at a local server and
 // supports private/enterprise registries; defaults to the public npm registry.
@@ -53,6 +62,7 @@ const hookEvent = hookIndex >= 0 ? process.argv[hookIndex + 1] : null;
 const pluginRootFromEnv =
   process.env.CLAUDE_PLUGIN_ROOT ??
   process.env.CODEX_PLUGIN_ROOT ??
+  process.env.CURSOR_PLUGIN_ROOT ??
   process.env.GRAPHIT_PLUGIN_ROOT;
 const pluginRoot = pluginRootFromEnv ?? dirname(dirname(fileURLToPath(import.meta.url)));
 // Issue #994: a plugin root variable means this run inspects the bundle an
@@ -60,11 +70,26 @@ const pluginRoot = pluginRootFromEnv ?? dirname(dirname(fileURLToPath(import.met
 // GRAPHIT_PLUGIN_ROOT). That bundle's CLI already tracks npm latest through npx, so
 // a newer release means the BUNDLE is behind. Without one, this run inspects the
 // npm package it ships in - a CLI launched without the plugin, i.e. a global install.
-const inspectsPluginBundle = pluginRootFromEnv !== undefined;
-const PLUGIN_UPDATE_STEPS =
-  "In Claude Code run `/plugin marketplace update graphit-plugin`, then `/plugin update graphit@graphit-plugin`, " +
-  "then restart Claude Code (asking to update Graphit runs the same steps via `/graphit:update`). " +
-  "In Codex, update the Graphit plugin through its plugin manager.";
+// Project #305: or the package in npm's npx cache, which a plugin update refreshes.
+function inspectsPluginBundle(bundle) {
+  return pluginRootFromEnv !== undefined || bundle.kind === "npx";
+}
+
+function currentBundle() {
+  return classifyBundle(pluginRoot, {
+    claudePluginsRoot: claudePluginsRoot(),
+    cursorPluginsRoot: cursorPluginsRoot(),
+    hasRootEnv: pluginRootFromEnv !== undefined,
+  });
+}
+
+// Project #305: the manifest the running host loads must exist; the others are
+// checked only when present (a Cursor local copy ships no .claude-plugin/.codex-plugin).
+function manifestHost(host) {
+  const cursor = hookEvent ? host === "cursor" : !!process.env.CURSOR_PLUGIN_ROOT;
+  if (cursor) return "cursor";
+  return !process.env.CLAUDE_PLUGIN_ROOT && process.env.CODEX_PLUGIN_ROOT ? "codex" : "claude";
+}
 // Project #246: the version cache must be shared between this SessionStart hook
 // and the bin/graphit wrapper (agent Bash tool). CLAUDE_PLUGIN_DATA is set
 // per-plugin/per-context by Claude Code and is NOT guaranteed identical across
@@ -76,6 +101,7 @@ function readBundleInfo(root) {
   const packageJson = tryReadJson(join(root, "package.json"));
   const versionJson = tryReadJson(join(root, "skills", "graphit", "VERSION.json"));
   const claudePlugin = tryReadJson(join(root, ".claude-plugin", "plugin.json"));
+  const cursorPlugin = tryReadJson(join(root, ".cursor-plugin", "plugin.json"));
   const marketplace = tryReadJson(join(root, ".claude-plugin", "marketplace.json"));
   const marketplacePlugin = marketplace?.plugins?.find((plugin) => plugin.name === CLAUDE_PLUGIN_NAME);
   return {
@@ -84,37 +110,45 @@ function readBundleInfo(root) {
       packageJson?.version ??
       versionJson?.version ??
       claudePlugin?.version ??
+      cursorPlugin?.version ??
       marketplacePlugin?.version ??
-    marketplace?.metadata?.version ??
+      marketplace?.metadata?.version ??
       readFrontmatterVersion(join(root, "skills", "graphit", "SKILL.md")) ??
       null,
     claudePlugin: claudePlugin ?? null,
+    cursorPlugin: cursorPlugin ?? null,
     marketplace: marketplace ?? null,
     marketplacePlugin: marketplacePlugin ?? null,
   };
 }
 
+// Project #305: Cursor's copied .mdc rules are reported from inspectCursor() as
+// legacy-cursor-rule-present (with the hook's workspace roots, never in preflight).
 function copiedSkillTargets(home = homedir(), cwd = process.cwd()) {
   return [
-    { kind: "claude-code", label: "Claude Code global", scope: "global", path: join(home, ".claude", "skills", "graphit", "SKILL.md") },
-    { kind: "codex", label: "Codex global", scope: "global", path: join(home, ".codex", "skills", "graphit", "SKILL.md") },
-    { kind: "cursor", label: "Cursor global", scope: "global", path: join(home, ".cursor", "rules", "graphit.mdc") },
-    { kind: "claude-code", label: "Claude Code project", scope: "project", path: join(cwd, ".claude", "skills", "graphit", "SKILL.md") },
-    { kind: "codex", label: "Codex project", scope: "project", path: join(cwd, ".codex", "skills", "graphit", "SKILL.md") },
-    { kind: "cursor", label: "Cursor project", scope: "project", path: join(cwd, ".cursor", "rules", "graphit.mdc") },
+    { label: "Claude Code global", path: join(home, ".claude", "skills", "graphit", "SKILL.md") },
+    { label: "Codex global", path: join(home, ".codex", "skills", "graphit", "SKILL.md") },
+    { label: "Claude Code project", path: join(cwd, ".claude", "skills", "graphit", "SKILL.md") },
+    { label: "Codex project", path: join(cwd, ".codex", "skills", "graphit", "SKILL.md") },
   ];
 }
 
-function isPluginManagedKind(kind) {
-  return kind === "claude-code" || kind === "codex";
+function readCopiedSkillVersion(path) {
+  return tryReadJson(join(dirname(path), "VERSION.json"))?.version ?? readFrontmatterVersion(path);
 }
 
-function readCopiedSkillVersion(path) {
-  if (!existsSync(path)) return null;
-  const versionJson = path.endsWith("SKILL.md")
-    ? tryReadJson(join(dirname(path), "VERSION.json"))
-    : null;
-  return versionJson?.version ?? readFrontmatterVersion(path);
+// Project #305: a Cursor hook's cwd is the plugin root (R5), so its workspaces come from
+// the payload - read-only input; inspectCursor keeps only absolute, existing directories.
+// A Claude Code hook and the direct CLI use the cwd, as the copied-skill check does.
+function cursorWorkspaceRoots(hookPayload, host) {
+  if (hookEvent && host === "cursor") {
+    return Array.isArray(hookPayload?.workspace_roots) ? hookPayload.workspace_roots : [];
+  }
+  try {
+    return [process.cwd()];
+  } catch {
+    return [];
+  }
 }
 
 // SEC-6: the cache file is user-writable. Treat it as untrusted - require the
@@ -202,7 +236,9 @@ export function readAuthState(creds) {
   };
 }
 
-async function collectStatus() {
+// `host` is detectHost() of the hook payload ("claude" outside a hook); `bundle` is
+// currentBundle(). The entry computes both once and passes them in.
+async function collectStatus({ hookPayload, host, bundle }) {
   const bundleInfo = readBundleInfo(pluginRoot);
   const packageName = bundleInfo.packageName;
   const currentVersion = bundleInfo.currentVersion;
@@ -240,20 +276,26 @@ async function collectStatus() {
   const isPackageLayout = existsSync(join(pluginRoot, "package.json"));
   const driftRemediation = isPackageLayout
     ? "Run `npm run sync:version` before publishing @graphit/cli."
-    : `This installed Graphit plugin bundle is inconsistent. Update or reinstall it: ${PLUGIN_UPDATE_STEPS}`;
+    : `This installed Graphit plugin bundle is inconsistent. Update or reinstall it: ${pluginUpdateSteps(bundle, null)}`;
 
+  const requiredManifest = manifestHost(host);
+  const manifestChecks = [
+    ["claude", ".claude-plugin/plugin.json", claudePlugin],
+    ["codex", ".codex-plugin/plugin.json", codexPlugin],
+    ["cursor", ".cursor-plugin/plugin.json", bundleInfo.cursorPlugin],
+  ].filter(([owner, , manifest]) => manifest || owner === requiredManifest);
   const versionChecks = [
-    [".claude-plugin/plugin.json", claudePlugin?.version],
-    [".codex-plugin/plugin.json", codexPlugin?.version],
+    ...manifestChecks.map(([, label, manifest]) => [label, manifest?.version]),
     ...(isPackageLayout
       ? [[".claude-plugin/marketplace.json metadata", marketplace?.metadata?.version]]
       : []),
-    [".claude-plugin/marketplace.json plugin", marketplacePlugin?.version],
+    ...(marketplace || requiredManifest === "claude"
+      ? [[".claude-plugin/marketplace.json plugin", marketplacePlugin?.version]]
+      : []),
     ["skills/graphit/VERSION.json", tryReadJson(join(pluginRoot, "skills", "graphit", "VERSION.json"))?.version],
     ["skills/graphit/SKILL.md", readFrontmatterVersion(join(pluginRoot, "skills", "graphit", "SKILL.md"))],
-    // The Cursor source file (skills/graphit/graphit.mdc) is frozen and no longer
-    // version-stamped, so it is intentionally excluded here. The copied-Cursor-home
-    // staleness checks below still run for existing Cursor users.
+    // The retired Cursor rule (skills/graphit/graphit.mdc) is no longer
+    // version-stamped, so it is intentionally excluded here.
   ];
 
   for (const [label, version] of versionChecks) {
@@ -290,11 +332,11 @@ async function collectStatus() {
   const latestVersion = await getLatestVersion(currentVersion);
   if (!isPreflight && latestVersion && compareVersions(latestVersion, currentVersion) > 0) {
     findings.push(
-      inspectsPluginBundle
+      inspectsPluginBundle(bundle)
         ? {
             type: "plugin-update",
             message: `Graphit plugin update available: ${currentVersion} -> ${latestVersion}`,
-            remediation: `The plugin runs the latest Graphit CLI automatically; what is behind is the plugin bundle itself (skills, hooks and commands at ${currentVersion}). ${PLUGIN_UPDATE_STEPS} Do not install @graphit/cli globally: a global install shadows the plugin's CLI on PATH.`,
+            remediation: pluginUpdateRemediation(bundle, currentVersion, latestVersion),
           }
         : {
             type: "package-update",
@@ -311,31 +353,26 @@ async function collectStatus() {
   metadata.push(...claudeInstall.metadata);
   findings.push(...claudeInstall.findings);
 
-  for (const target of copiedSkillTargets()) {
-    const { label, path } = target;
+  for (const { label, path } of copiedSkillTargets()) {
     if (!existsSync(path)) continue;
-    const version = readCopiedSkillVersion(path);
-    if (isPluginManagedKind(target.kind)) {
-      findings.push({
-        type: "legacy-copied-skill-present",
-        message: `${label} legacy copied skill exists at ${path} (${version ?? "unversioned"})`,
-        remediation: "Claude Code and Codex should use the Graphit plugin bundle. Remove legacy copied snapshots with `graphit setup --remove-legacy-copies` after confirming the plugin is installed.",
-      });
-      continue;
-    }
+    findings.push({
+      type: "legacy-copied-skill-present",
+      message: `${label} legacy copied skill exists at ${path} (${readCopiedSkillVersion(path) ?? "unversioned"})`,
+      remediation: "Claude Code and Codex should use the Graphit plugin bundle. Remove legacy copied snapshots with `graphit setup --remove-legacy-copies` after confirming the plugin is installed.",
+    });
+  }
 
-    if (!version || compareVersions(version, currentVersion) < 0) {
-      findings.push({
-        type: "copied-skill-stale",
-        message: `${label} copied skill is ${version ?? "unversioned"}, expected ${currentVersion}`,
-        remediation: "Cursor currently uses copied rules; refresh them with `graphit setup --editor cursor --update`.",
-      });
-    }
+  // Project #305: report-only, and never in preflight - no implicit reads or writes
+  // under ~/.cursor from a CLI run's health check.
+  if (!isPreflight) {
+    const inspection = inspectCursor({ workspaceRoots: cursorWorkspaceRoots(hookPayload, host) });
+    findings.push(...cursorFindings(inspection, { pluginRoot, currentVersion, latestVersion }));
   }
 
   return {
     packageName,
     sourceOfTruth: "plugin-bundle",
+    bundleKind: bundle.kind,
     currentVersion,
     latestVersion,
     auth,
@@ -373,11 +410,17 @@ if (isMainModule()) {
     process.exit(0);
   }
 
-  const cloudStartup = cloudRefreshApplies({ hookEvent, source: hookInput.parsed?.source, env: process.env });
+  // Project #305: the running host gates host behavior; the install kind only picks
+  // the remedy. Route A on Cursor has a real Claude cache root, so the cloud
+  // self-refresh (`claude plugin update`) stays Claude Code only.
+  const host = detectHost(hookInput.parsed);
+  const cloudStartup =
+    host === "claude" && cloudRefreshApplies({ hookEvent, source: hookInput.parsed?.source, env: process.env });
   if (hookEvent && !cloudStartup) armCutoff(LOCAL_HOOK_CUTOFF_MS);
 
   // Feature #743: record that the plugin loaded this session (SessionStart only).
-  stampSessionMarker(hookEvent, hookInput.parsed, cacheRoot);
+  // Project #305: not on Cursor - the marker arms Claude Code's skill-ack tripwire.
+  if (host !== "cursor") stampSessionMarker(hookEvent, hookInput.parsed, cacheRoot);
 
   // Feature #1042: update before the status read, so a cloud startup reports the
   // version it leaves on disk rather than asking the agent for /plugin update.
@@ -397,20 +440,16 @@ if (isMainModule()) {
     }
   }
 
-  const status = await collectStatus();
+  const bundle = currentBundle();
+  const status = await collectStatus({ hookPayload: hookInput.parsed, host, bundle });
 
   if (args.has("--json")) {
     console.log(JSON.stringify(status, null, 2));
   } else if (hookEvent) {
-    const nudge = buildHookNudges(status, { cacheRoot, pluginRoot, suppressPluginUpdate: cloudStartup });
+    const nudge = buildHookNudges(status, { cacheRoot, pluginRoot, suppressPluginUpdate: cloudStartup, host, bundle });
     const context = [refreshLine, nudge?.context].filter(Boolean).join("\n");
     if (context) {
-      console.log(JSON.stringify({
-        hookSpecificOutput: {
-          hookEventName: hookEvent,
-          additionalContext: context,
-        },
-      }));
+      console.log(JSON.stringify(formatContext(host, hookEvent, context)));
       nudge?.persist();
     }
   } else if (!args.has("--quiet") || status.findings.length > 0) {

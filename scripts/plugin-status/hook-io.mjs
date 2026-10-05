@@ -5,6 +5,7 @@
 import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 
+import { CURSOR_FINDING_TYPES, pluginUpdateNudge } from "./bundle-kind.mjs";
 import {
   CACHE_SCHEMA_VERSION,
   atomicWriteJson,
@@ -68,6 +69,9 @@ function detectForeignGraphit(pluginRoot) {
 
 // `raw` is the hook's stdin (null when it could not be read). A UserPromptSubmit run
 // continues only for a Graphit update/status question; every other run continues.
+// Project #305: Claude Code and Cursor's beforeSubmitPrompt both send `prompt`. "Up to
+// date" / "outdated" / "the latest" count only right after "graphit" ("is graphit up to
+// date"), so a data question like "the latest signups" never triggers a registry read.
 export function shouldRunForPrompt(hookEvent, raw, parsed) {
   if (hookEvent !== "UserPromptSubmit") return true;
   if (raw === null) return false;
@@ -75,7 +79,8 @@ export function shouldRunForPrompt(hookEvent, raw, parsed) {
   const prompt = String(parsed?.prompt ?? parsed?.user_prompt ?? raw).toLowerCase();
   return (
     prompt.includes("graphit") &&
-    /\b(update|version|status|doctor|plugin|stale|staleness)\b/.test(prompt)
+    (/\b(update|version|status|doctor|plugin|stale|staleness)\b/.test(prompt) ||
+      /\bgraphit(?:\s+(?:plugin|cli))?\s+(?:is\s+)?(?:up[- ]to[- ]date|outdated|the\s+latest)\b/.test(prompt))
   );
 }
 
@@ -151,13 +156,18 @@ export function armCutoff(ms, exit = (code) => process.exit(code)) {
 // thin-layer /plugin update nudge (4.3), and legacy copied-skill cleanup. It does
 // NOT emit founder-only publish drift, nor the npm-install-g binary message - under
 // the plugin model the binary auto-updates via npx, so the bundle nudge is correct.
-export function buildHookNudges(status, { cacheRoot, pluginRoot, suppressPluginUpdate = false }) {
+export function buildHookNudges(
+  status,
+  { cacheRoot, pluginRoot, suppressPluginUpdate = false, host = "claude", bundle = { kind: "package" } },
+) {
   const state = readNudgeState(cacheRoot);
   const lines = [];
   const shown = [];
 
   // 4.1 Migration: a global @graphit/cli shadows the plugin's npx-backed wrapper.
-  const foreignGraphit = detectForeignGraphit(pluginRoot);
+  // Project #305: only Claude Code puts the plugin's bin/ on PATH. Cursor runs a pinned
+  // npx even through route A (whose files sit in the Claude cache), so it never applies there.
+  const foreignGraphit = host === "claude" ? detectForeignGraphit(pluginRoot) : null;
   if (foreignGraphit && nudgeAllowed(state, "legacy-global")) {
     lines.push(
       `- A legacy global \`graphit\` (@graphit/cli) at ${foreignGraphit} shadows the plugin's bundled CLI ` +
@@ -177,19 +187,24 @@ export function buildHookNudges(status, { cacheRoot, pluginRoot, suppressPluginU
     compareVersions(status.latestVersion, status.currentVersion) > 0 &&
     nudgeAllowed(state, "plugin-update")
   ) {
-    lines.push(
-      `- A newer Graphit plugin is available (${status.currentVersion} -> ${status.latestVersion}). ` +
-        "Tell the user once to update it with `/plugin marketplace update graphit-plugin`, then " +
-        "`/plugin update graphit@graphit-plugin`, then restart Claude Code; the CLI itself already runs the latest release.",
-    );
+    // Project #305: the install kind picks the steps; Claude Code's wording is unchanged.
+    lines.push(pluginUpdateNudge(bundle, status.currentVersion, status.latestVersion));
     shown.push("plugin-update");
   }
 
   // Legacy copied skill snapshots are real user-side issues - surface until removed.
   for (const finding of status.findings) {
-    if (finding.type === "legacy-copied-skill-present" || finding.type === "copied-skill-stale") {
+    if (finding.type === "legacy-copied-skill-present") {
       lines.push(`- ${finding.message}. ${finding.remediation}`);
     }
+  }
+
+  // Project #305: the Cursor findings, once a day per finding type.
+  for (const type of CURSOR_FINDING_TYPES) {
+    const matching = status.findings.filter((finding) => finding.type === type);
+    if (matching.length === 0 || !nudgeAllowed(state, type)) continue;
+    for (const finding of matching) lines.push(`- ${finding.message}. ${finding.remediation}`);
+    shown.push(type);
   }
 
   if (lines.length === 0) return null;
