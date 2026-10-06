@@ -2,7 +2,7 @@
 name: graphit-share
 description: >-
   Share or publish Graphit work, edit shared Graphit dashboards, or author into a shared group. Use after Graphit routing or a direct Graphit shared-scope request. Pair with graphit-build for dashboard authoring. Read-only questions belong to graphit-explore.
-skill_version: "0.2.401"
+skill_version: "0.2.402"
 ---
 
 # Share: checks at the shared write
@@ -43,7 +43,7 @@ For "publish", inspect the dashboard state and follow ../graphit/references/dash
 | d. Author directly in a group | "Shared from the start": apply checks before each shared source/definition write. Build authors the new private dashboard; share it when complete. Keep the agreed scope. |
 | e. Repository-owned work | Apply the same decisions through ../graphit/references/repo-kb.md's repository/PR workflow on a capable surface. An in-app ownership refusal is a handoff, not permission for a direct-write replacement. |
 
-Use the **draft door** for shared dashboards and the **share plan** for private work. Preserve the current door when adding Build.
+Use the **draft door** for shared dashboards and the **share plan** for private work. Preserve the current door when adding Build. Partner shares and readiness: ../graphit/references/partner-share.md.
 
 ## Shared-scope checks
 
@@ -63,9 +63,9 @@ Report 409 (another editor), 423 (locked) and 403 (view-only) with the returned 
 
 ## Share plan: private to shared
 
-1. With the requested audience and placement established and the content checked, attempt `dashboard share` on the same ID. A success needs audience and placement readback; a private-dependency refusal supplies `blockers` and `remediation_options`. Read ../graphit/references/sharing-recovery.md. Respect `blockers_truncated` and uncertainty; the visible list is not proof of a complete closure when eligibility could not be verified. For shapes b/c without a dashboard, inspect the selected assets and their visible dependencies directly; do not invent a share-preview endpoint.
+1. Once audience, placement and content are settled, attempt `dashboard share` on the same ID. A success needs audience and placement readback; a private-dependency refusal supplies `blockers` and `remediation_options`. Read ../graphit/references/sharing-recovery.md. Respect `blockers_truncated` and uncertainty; the visible list is not proof of a complete closure when eligibility could not be verified. For shapes b/c without a dashboard, inspect the selected assets and their visible dependencies directly; do not invent a share-preview endpoint.
 2. For each returned private dependency, choose **reuse**, **move**, or **create**. Reuse an accessible shared equivalent only after inspecting its full definition. Move an approved model or metric with `kb update semantic-model` or `kb update metric` and the target `group`, several in one ordered `kb batch`; the bound source's home follows its model, no command moves a source alone. Create only a genuinely missing, supported definition through `kb create`, never a copy to evade ownership or a refusal. Include naming collisions and visibility impact.
-3. Present the whole plan as **one structured ask**: exact assets, reuse comparisons, moves/new definitions, affected audience, group, rules and destination. Carry forward existing authorization; ask for the additional effects or consequential choices not yet approved. An authorization to share a dashboard alone does not silently authorize broadening every source's audience.
+3. Present the whole plan as **one structured ask**: exact assets, reuse comparisons, moves/new definitions, affected audience, group, rules and destination. Carry forward existing authorization; ask for effects or consequential choices not yet approved. An authorization to share a dashboard alone does not silently authorize broadening every source's audience.
 4. Apply the approved dependency order. Read each item's terminal receipt and re-read the resulting definition/binding before the next step. When reusing a shared asset, rewrite each `data-graphit-*` attribute naming the replaced asset through `dashboard update-html`, preserving unrelated content. Run the readiness checks on the resulting references and pre-flight the canvas. `dashboard check` is not proof of sharing eligibility.
 5. Retry the original `dashboard share` with the agreed space/team and `--folder-path`. Verify the same ID's audience through `dashboard list` and placement through the destination folder listing. For definitions/source-only work, read back the exact group, binding and requested configuration instead of claiming a dashboard was shared.
 6. On intermediate failure, report what applied, what remains and the returned next step. Preserve successful work. Reconcile uncertain writes by reading state before retrying; do not repeat a non-retryable operation unchanged, silently fall back to another folder, or create a replacement dashboard/source.
