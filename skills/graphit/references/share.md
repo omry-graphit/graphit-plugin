@@ -30,7 +30,7 @@ Before any share or publish, inspect the dashboard for `data-graphit-placeholder
 
 ## Draft door: already shared
 
-Acquire the edit session with `dashboard edit` before content changes. Build authors and verifies in that same draft; apply the KB-readiness gate at publish, not after every chart. Query governance and private-dependency restrictions still apply in the draft. Any new shared definitions or sources use shape d and its create checks. Pre-flight with `dashboard check`, resolve warnings, then use `dashboard publish` when publishing is authorized. Read back publication state before reporting live. A request to save a draft does not authorize publication.
+Acquire the edit session with `dashboard edit` before content changes. Build authors and verifies in that same draft; apply the KB-readiness gate at publish, not after every chart. Query governance and private-dependency restrictions still apply in the draft. Any new shared definitions or sources use shape d and its create checks. Pre-flight with `dashboard check`: fix blockers, report warnings, then `dashboard publish` when authorized. Read back publication state before reporting live. A request to save a draft does not authorize publication.
 
 Report 409 (another editor), 423 (locked) and 403 (view-only) with the returned next step. Preserve the same ID and draft. Do not duplicate, steal a session or discard edits to get past a refusal.
 

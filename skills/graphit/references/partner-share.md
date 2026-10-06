@@ -30,7 +30,7 @@ Each refusal ends with `(code: <code>)`. Report it with the returned sentence; d
 | `partner_sharing_disabled` | The org setting is off. Tell the user an org admin can allow it in Organization settings. |
 | `not_allowed` / `not_found` | The caller cannot manage this dashboard or share, or it does not exist. Do not search for another way in. |
 | `dashboard_not_shared` | The dashboard is private. With the user's approval, share it with a team or the org first, then retry. |
-| `undeclared_query` | A graph or script call reads data the server cannot select by reference. Make the dashboard ready (below), then retry. |
+| `undeclared_query` | A query cannot be selected by reference, or operational query metadata cannot be safely removed from the partner copy. Resolve the blocking readiness reasons below, then retry. |
 | `private_dependency` | The dashboard reads private sources or definitions. Resolve them as for a team share (sharing-recovery.md), then retry. |
 | `invalid_request` | A bad email, too many invitees, a past end date, an ended or revoked share. Correct the input with the user. |
 
@@ -38,7 +38,7 @@ Each refusal ends with `(code: <code>)`. Report it with the returned sentence; d
 
 Use when a create or publish is refused with `undeclared_query`, a share says partners are blocked, or the user asks to make a dashboard ready for partner sharing. Partners are served only queries the server can select from the page itself, by graph and variant. Work in a draft of the shared dashboard with graphit-build, and change only what the check names.
 
-1. **Find the blockers.** Run `dashboard check <dashboard>`. Each reason names its code and its graph or chart template. A dropdown, date range or ranking call is named by its method, not a graph. Repeat the check after each fix until none is left.
+1. **Find the blockers.** Run `dashboard check <dashboard>`. Each reason names its code and its graph or chart template. A dropdown, date range or ranking call is named by its method, not a graph. Fix blocking errors and repeat the check until none remain. Report warnings without treating them as blockers; preserve intentional source labels in authored text unless the user asks to edit them.
 2. **SQL written in a script call** (`sql_in_page_code`): move the query onto its graph per migration.md. A page value joined into the SQL text becomes a named param (`:region`) passed in `params`; that is a faithful conversion, not a fallback.
 3. **SQL built from page choices** (`runtime_composed`): make each choice a named variant or a typed slot per query-contract.md. A query that feeds another query, a hidden helper, a per-value repeat or a statement picked by page state follows declared-queries.md.
 4. **Dropdowns, date ranges and rankings** (`dropdown_args_not_literal`, `filter_field_not_literal`, `call_settings_unreadable`): write `column`, `source` or `dataSourceId`, `by` and `limit` as literals in the call. Write chrome filters inline in the call, never through a helper or variable. A literal written in `filters` stays fixed for partners; every other value is theirs to choose. Drop a `filters` entry whose value is `null` or `''`: it already means all values, and the check cannot read it.

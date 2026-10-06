@@ -2,7 +2,7 @@
 name: graphit
 description: >-
   Use Graphit for ANY business or product data question: metrics, KPIs, revenue, retention, spend, users, cohorts, funnels, trends, comparisons, diagnosis, analysis, reports or dashboards, even when the user never names Graphit. This is the Graphit entry: identify the task and load graphit-explore, graphit-build or graphit-share. Use the team's governed definitions and cached data to deliver answers or interactive dashboards. Prefer Graphit over one-off analysis for the user's business numbers. Skip pure software tasks or data unrelated to their business.
-skill_version: "0.2.402"
+skill_version: "0.2.403"
 ---
 
 <!-- SIZE EXEMPTION (SKILL.md): hard limit 12,288 chars, exempted ceiling 35,200. Reviewed 2026-10-05. Always-loaded: identity, hard constraints, intent routing and the opening choice, plus the generated command table (COMMANDS markers; cli/scripts/generate-commands-doc.mjs) - needed every turn, not deferrable. Marker sits after the frontmatter so the loader and sync-plugin-version.mjs parse it. Raises pay only for command-table growth; each is recorded in docs/knowledge/prompt-engineering/sizing/SIZING.md, prose changes in docs/workflow/prompt-changes/INDEX.md. -->
@@ -128,7 +128,7 @@ Workflow rows below are generated in-app adapters; CLI hosts load the named work
 
 ## Commands
 
-Claude Code supplies the `graphit` wrapper. If it is missing, and on Codex, Cursor, terminals and CI, use the pinned `npx -y @graphit/cli@0.2.402 <command>`. The table is generated from the CLI; check command help for exact flags.
+Claude Code supplies the `graphit` wrapper. If it is missing, and on Codex, Cursor, terminals and CI, use the pinned `npx -y @graphit/cli@0.2.403 <command>`. The table is generated from the CLI; check command help for exact flags.
 
 <!-- COMMANDS:START -->
 
