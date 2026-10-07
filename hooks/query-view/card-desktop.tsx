@@ -195,7 +195,8 @@ export function drawDesktopCard(ui: Ui, m: CardModel): unknown {
   })
   return (
     <Box flexDirection="column" marginTop={1} alignSelf="flex-start">
-      <Svg key="card" source={card.svg} alt={`Graphit query result: ${m.meta.join(', ')}`} width={card.width} height={card.height} />
+      {/* Feature #1067: the lineage tab draws interactive, so a node's <title> shows its full name on hover. */}
+      <Svg key="card" source={card.svg} alt={`Graphit query result: ${m.meta.join(', ')}`} width={card.width} height={card.height} isInteractive={active === 'lineage' || undefined} />
       {/* The tab band: tabs on the left, the query switcher on the right. */}
       <Box position="absolute" top={4} left={2} right={2} alignItems="center" justifyContent="space-between">
         <Box alignItems="center" gap={1}>

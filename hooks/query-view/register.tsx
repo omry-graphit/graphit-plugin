@@ -343,10 +343,28 @@ export const register: Register = on => {
   // so Back returns to it too. A pane that throws draws nothing; say why.
   on('ui.render', { component: 'Pane', requestId: LINEAGE_PANE }, async ($, e) => {
     try {
+      // A press redraws the pane and the pressed Button goes with it, which
+      // left the pane without the focus: the next press only took it back.
+      // Each move hands the focus back to the pane.
+      const refocus = () => $.ui.open({ id: LINEAGE_PANE, title: 'Lineage', closeOnEscape: true, focus: true })
       return drawExplorer($.ui.resolve(e), await read($, explore), {
-        go: to => update($, explore, x => (x ? { ...x, selected: to, trail: [...x.trail, x.selected ?? ''].slice(-30) } : x)),
-        back: () => update($, explore, x => (x && x.trail.length ? { ...x, selected: x.trail[x.trail.length - 1] || undefined, trail: x.trail.slice(0, -1) } : x)),
-        all: () => update($, explore, x => (x ? { ...x, selected: undefined, trail: [...x.trail, x.selected ?? ''].slice(-30) } : x)),
+        go: async to => {
+          await update($, explore, x => (x ? { ...x, selected: to, trail: [...x.trail, x.selected ?? ''].slice(-30) } : x))
+          await refocus()
+        },
+        back: async () => {
+          await update($, explore, x => (x && x.trail.length ? { ...x, selected: x.trail[x.trail.length - 1] || undefined, trail: x.trail.slice(0, -1) } : x))
+          await refocus()
+        },
+        all: async () => {
+          await update($, explore, x => (x ? { ...x, selected: undefined, trail: [...x.trail, x.selected ?? ''].slice(-30) } : x))
+          await refocus()
+        },
+        openSql: async (title, sql) => {
+          await update($, sqlPane, () => ({ title, sql }))
+          await $.ui.open({ id: SQL_PANE, title, closeOnEscape: true, focus: true })
+        },
+        copy: text => $.ui.copy({ text, surface: e.surface }),
       })
     } catch (err) {
       const { Text } = $.ui.resolve(e)

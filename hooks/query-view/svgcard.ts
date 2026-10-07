@@ -5,6 +5,7 @@
 import type { Token } from './sql'
 import { SERIES_COLORS } from './viz'
 import type { ChartSpec } from './viz'
+import { overviewLayers } from './upstream'
 import type { Layers } from './upstream'
 
 export type SvgPanel =
@@ -320,24 +321,51 @@ function chartSvg(p: Extract<SvgPanel, { kind: 'chart' }>, top: number): { body:
 }
 
 
-// Feature #1067: lineage as a left-to-right flow inside the card's fixed body -
-// one column per layer, warehouse first and the result last, each column's nodes
-// stacked and centered. An overview: Explore lineage holds every name and fact.
-const MAX_PER_LAYER = 6
-// Column heads short enough for nine columns across the card.
-const SHORT_LABEL: Record<string, string> = { 'DATA SOURCE': 'SOURCE', 'SEMANTIC MODEL': 'MODEL', 'KB ASSETS': 'KB', GOVERNANCE: 'RULES' }
+// Advance width by character class: capitals, digits and `_` run wide in a
+// system face, lowercase narrow. Close enough to fit names without clipping.
+export function measure(s: string, px: number, bold = false): number {
+  let w = 0
+  for (const ch of s) w += /[A-Z0-9_%@#&MW]/.test(ch) ? 0.68 : /[ .,:;'|!il()[\]]/.test(ch) ? 0.3 : 0.55
+  return w * px * (bold ? 1.05 : 1)
+}
 
-// A layer past MAX_PER_LAYER keeps its first nodes and folds the rest into one
-// "+N more" node; edges to a folded node land on it. The sidebar shows all.
-function capLayers(spec: Layers): Layers {
+// Fit a name into a width; when it does not fit, keep its head and its tail
+// (`digest_act…_count`) - two names sharing a prefix still read apart.
+export function fitText(s: string, px: number, maxW: number, bold = false): string {
+  if (measure(s, px, bold) <= maxW) return s
+  let head = s.length
+  let tail = 0
+  while (head > 1) {
+    head -= 1
+    tail = Math.min(Math.ceil(head * 0.6), s.length - head)
+    const cut = `${s.slice(0, head)}…${s.slice(s.length - tail)}`
+    if (measure(cut, px, bold) <= maxW) return cut
+  }
+  return `${s.slice(0, 1)}…`
+}
+
+// Feature #1067: lineage as a left-to-right flow inside the card's fixed body -
+// one column per layer, the tables first and the result last, each column's
+// nodes stacked and centered, each column as wide as its names need. An
+// overview: Explore lineage holds every name and fact.
+// Column heads short enough for eight columns across the card.
+const SHORT_LABEL: Record<string, string> = { 'DATA SOURCE': 'SOURCE', 'SEMANTIC MODEL': 'MODEL', 'KB ASSETS': 'KB', GOVERNANCE: 'RULES' }
+const TITLE_PX = 10.5
+const SUB_PX = 9.5
+const nodeHeight = (layer: { nodes: Array<{ subtitle?: string }> }) => (layer.nodes.some(n => n.subtitle) ? 40 : 28)
+
+// A layer past what its column holds keeps its first nodes and folds the rest
+// into one "+N more" node; edges to a folded node land on it. The sidebar shows all.
+function capLayers(spec: Layers, room: (layer: Layers['layers'][number]) => number): Layers {
   const folded = new Map<string, string>()
   const layers = spec.layers.map(layer => {
-    if (layer.nodes.length <= MAX_PER_LAYER) return layer
-    const keep = layer.nodes.slice(0, MAX_PER_LAYER - 1)
-    const rest = layer.nodes.slice(MAX_PER_LAYER - 1)
+    const max = room(layer)
+    if (layer.nodes.length <= max) return layer
+    const keep = layer.nodes.slice(0, max - 1)
+    const rest = layer.nodes.slice(max - 1)
     const moreId = `more:${layer.label}`
     for (const n of rest) folded.set(n.id, moreId)
-    return { ...layer, nodes: [...keep, { id: moreId, title: `+${rest.length} more`, subtitle: 'in sidebar', color: '#8E8E93' }] }
+    return { ...layer, nodes: [...keep, { id: moreId, title: `+${rest.length} more`, subtitle: 'Explore lineage', color: '#8E8E93' }] }
   })
   const seen = new Set<string>()
   const edges = spec.edges
@@ -352,47 +380,98 @@ function capLayers(spec: Layers): Layers {
 }
 
 function layersSvg(panel: Extract<SvgPanel, { kind: 'layers' }>, top: number): { body: string; height: number } {
-  const p = { ...panel, spec: capLayers(panel.spec) }
-  const cols = Math.max(1, p.spec.layers.length)
-  // A short chain stays compact and centered instead of stretching edge to edge.
-  const gap = cols <= 5 ? 34 : 6
-  const colW = Math.min(150, (W - 2 * PAD - gap * (cols - 1)) / cols)
-  const x0 = PAD + (W - 2 * PAD - (cols * colW + gap * (cols - 1))) / 2
-  const labelH = 22
-  const nodeH = 30
-  const nodeGap = 8
+  const labelH = 26
+  const gapY = 10
   const areaTop = top + labelH
-  const areaH = BODY_H - labelH - 6
-  const pos = new Map<string, { x: number; y: number }>()
-  let out = ''
-  p.spec.layers.forEach((layer, li) => {
-    const x = x0 + li * (colW + gap)
+  const areaH = BODY_H - labelH - 4
+  const spec = capLayers(overviewLayers(panel.spec), layer => Math.max(2, Math.floor((areaH + gapY) / (nodeHeight(layer) + gapY))))
+  const cols = Math.max(1, spec.layers.length)
+  const label = (l: string) => SHORT_LABEL[l] ?? l
+  // "SNOWFLAKE TABLES" when it fits its column, else "TABLES".
+  const head = (l: string, w: number) => (measure(label(l), 9, true) + 4 <= w || !l.endsWith(' TABLES') ? fitText(label(l), 9, w, true) : 'TABLES')
+  // Each column as wide as its longest name (and its head) needs, within bounds;
+  // squeezed evenly when the chain is longer than the card.
+  const want = spec.layers.map(layer =>
+    Math.min(
+      190,
+      Math.max(
+        76,
+        measure(label(layer.label), 9, true) + 4,
+        // The name sets the width; a subtitle may widen it a little, never much.
+        ...layer.nodes.map(n => {
+          const title = measure(n.title, TITLE_PX, true)
+          return Math.max(title, Math.min(measure(n.subtitle ?? '', SUB_PX), title + 24)) + 22
+        }),
+      ),
+    ),
+  )
+  const margin = 16
+  const room = W - 2 * margin
+  const minGap = 16
+  // Too long for the card: trim the widest columns first, down to a common
+  // ceiling, so short names never pay for a long one.
+  const budget = room - minGap * (cols - 1)
+  let ceiling = Math.max(...want)
+  while (want.reduce((a, w) => a + Math.min(w, ceiling), 0) > budget && ceiling > 40) ceiling -= 1
+  const widths = want.map(w => Math.min(w, ceiling))
+  const gap = cols > 1 ? Math.min(64, (room - widths.reduce((a, b) => a + b, 0)) / (cols - 1)) : 0
+  const used = widths.reduce((a, b) => a + b, 0) + gap * (cols - 1)
+  let x = margin + (room - used) / 2
+  const pos = new Map<string, { x: number; y: number; w: number; h: number; col: number }>()
+  // Each column's extent: left, right, its first node's top, its last node's bottom.
+  const extents: Array<{ left: number; right: number; top: number; bottom: number }> = []
+  let heads = ''
+  spec.layers.forEach((layer, li) => {
+    const w = widths[li]
+    const h = nodeHeight(layer)
     const n = layer.nodes.length
-    const total = n * nodeH + (n - 1) * nodeGap
+    const total = n * h + (n - 1) * gapY
     const y0 = areaTop + Math.max(0, (areaH - total) / 2)
-    out += `<text x="${(x + colW / 2).toFixed(1)}" y="${top + 12}" text-anchor="middle" font-size="9" font-weight="700" fill="${SUB}" letter-spacing="0.5">${xml(clip(SHORT_LABEL[layer.label] ?? layer.label, Math.floor(colW / 6)))}</text>`
-    layer.nodes.forEach((node, i) => pos.set(node.id, { x, y: y0 + i * (nodeH + nodeGap) }))
+    heads += `<text x="${x.toFixed(1)}" y="${top + 13}" font-size="9" font-weight="700" fill="${SUB}" letter-spacing="0.6">${xml(head(layer.label, w))}</text>`
+    layer.nodes.forEach((node, i) => pos.set(node.id, { x, y: y0 + i * (h + gapY), w, h, col: li }))
+    extents.push({ left: x, right: x + w, top: y0, bottom: y0 + total })
+    x += w + gap
   })
-  for (const e of p.spec.edges) {
+  let out = heads
+  for (const e of spec.edges) {
     const a = pos.get(e.from)
     const b = pos.get(e.to)
     if (!a || !b) continue
-    const x1 = a.x + colW
-    const y1 = a.y + nodeH / 2
+    const x1 = a.x + a.w
+    const y1 = a.y + a.h / 2
     const x2 = b.x
-    const y2 = b.y + nodeH / 2
+    const y2 = b.y + b.h / 2
     const mx = (x1 + x2) / 2
-    out += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} C${mx.toFixed(1)},${y1.toFixed(1)} ${mx.toFixed(1)},${y2.toFixed(1)} ${(x2 - 3).toFixed(1)},${y2.toFixed(1)}" fill="none" stroke="${e.color}" stroke-opacity="0.45" stroke-width="1.3"${e.dashed ? ' stroke-dasharray="4 4"' : ''}/>`
-    out += `<circle cx="${(x2 - 2).toFixed(1)}" cy="${y2.toFixed(1)}" r="2.2" fill="${e.color}"/>`
+    let d = `M${x1.toFixed(1)},${y1.toFixed(1)} C${mx.toFixed(1)},${y1.toFixed(1)} ${mx.toFixed(1)},${y2.toFixed(1)} ${(x2 - 3).toFixed(1)},${y2.toFixed(1)}`
+    // An edge that skips columns runs above or below them (the side nearer
+    // its ends), never behind the nodes it passes.
+    const between = extents.slice(a.col + 1, b.col)
+    if (between.length) {
+      const above = Math.min(...between.map(c => c.top)) - 7
+      const below = Math.max(...between.map(c => c.bottom)) + 7
+      const g = Math.abs((y1 + y2) / 2 - above) <= Math.abs((y1 + y2) / 2 - below) ? Math.max(areaTop - 4, above) : Math.min(top + BODY_H - 4, below)
+      const xa = between[0].left - 4
+      const xb = between[between.length - 1].right + 4
+      d =
+        `M${x1.toFixed(1)},${y1.toFixed(1)} C${((x1 + xa) / 2).toFixed(1)},${y1.toFixed(1)} ${((x1 + xa) / 2).toFixed(1)},${g.toFixed(1)} ${xa.toFixed(1)},${g.toFixed(1)}` +
+        ` L${xb.toFixed(1)},${g.toFixed(1)} C${((xb + x2) / 2).toFixed(1)},${g.toFixed(1)} ${((xb + x2) / 2).toFixed(1)},${y2.toFixed(1)} ${(x2 - 3).toFixed(1)},${y2.toFixed(1)}`
+    }
+    out += `<path d="${d}" fill="none" stroke="${e.color}" stroke-opacity="0.38" stroke-width="1.2"${e.dashed ? ' stroke-dasharray="4 4"' : ''}/>`
+    out += `<circle cx="${(x2 - 2).toFixed(1)}" cy="${y2.toFixed(1)}" r="2" fill="${e.color}" fill-opacity="0.8"/>`
   }
-  const chars = Math.max(4, Math.floor((colW - 10) / 5.9))
-  for (const layer of p.spec.layers) {
+  for (const layer of spec.layers) {
     for (const n of layer.nodes) {
       const at = pos.get(n.id)
       if (!at) continue
-      out += `<rect x="${at.x.toFixed(1)}" y="${at.y.toFixed(1)}" width="${colW.toFixed(1)}" height="${nodeH}" rx="8" fill="#FFFFFF" fill-opacity="0.94" stroke="${n.color}" stroke-opacity="0.35"/>`
-      out += `<rect x="${at.x.toFixed(1)}" y="${(at.y + 7).toFixed(1)}" width="3" height="${nodeH - 14}" rx="1.5" fill="${n.color}"/>`
-      out += `<text x="${(at.x + 3 + colW / 2).toFixed(1)}" y="${(at.y + nodeH / 2 + 4).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="600" fill="${n.muted ? '#AEAEB2' : INK}"${n.muted ? ' text-decoration="line-through"' : ''}>${xml(clip(n.title, chars))}</text>`
+      const textW = at.w - 18
+      // The full name on hover: the desktop draws the lineage tab interactive.
+      out += `<g><title>${xml([n.title, n.subtitle].filter(Boolean).join(' - '))}</title>`
+      out += `<rect x="${at.x.toFixed(1)}" y="${at.y.toFixed(1)}" width="${at.w.toFixed(1)}" height="${at.h}" rx="9" fill="#FFFFFF" stroke="${n.color}" stroke-opacity="0.32"/>`
+      out += `<rect x="${(at.x + 0.5).toFixed(1)}" y="${(at.y + 8).toFixed(1)}" width="3" height="${at.h - 16}" rx="1.5" fill="${n.color}"/>`
+      const titleY = n.subtitle ? at.y + 17 : at.y + at.h / 2 + 4
+      out += `<text x="${(at.x + 11).toFixed(1)}" y="${titleY.toFixed(1)}" font-size="${TITLE_PX}" font-weight="600" fill="${n.muted ? '#AEAEB2' : INK}"${n.muted ? ' text-decoration="line-through"' : ''}>${xml(fitText(n.title, TITLE_PX, textW, true))}</text>`
+      if (n.subtitle) out += `<text x="${(at.x + 11).toFixed(1)}" y="${(at.y + 31).toFixed(1)}" font-size="${SUB_PX}" fill="${SUB}">${xml(fitText(n.subtitle, SUB_PX, textW))}</text>`
+      out += '</g>'
     }
   }
   return { body: out, height: BODY_H }
@@ -462,9 +541,9 @@ ${F && input.status ? `<text x="${PAD}" y="${H - F / 2 + 4}" font-size="12" fill
 
 // Feature #1067: the lineage inspector's header - a frosted card
 // tinted with the node's color, a rounded icon tile, the title and its kind.
+// Feature #1092: the tables layer is named for its warehouse ("SNOWFLAKE TABLES").
 const HERO_GLYPH: Record<string, string> = {
-  WAREHOUSE: 'WH',
-  TABLES: 'TB',
+  FILE: 'F',
   'DATA SOURCE': 'DS',
   'SEMANTIC MODEL': 'SM',
   COLUMNS: 'C',
@@ -478,7 +557,7 @@ const HERO_GLYPH: Record<string, string> = {
 export function renderHeroSvg(input: { kind: string; title: string; subtitle?: string; color: string }): { svg: string; width: number; height: number } {
   const w = 360
   const heroH = 96
-  const glyph = HERO_GLYPH[input.kind] ?? input.kind.slice(0, 2)
+  const glyph = HERO_GLYPH[input.kind] ?? (input.kind.endsWith(' TABLES') ? 'TB' : input.kind.slice(0, 2))
   const kindLabel = input.kind.charAt(0) + input.kind.slice(1).toLowerCase()
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${heroH}" viewBox="0 0 ${w} ${heroH}" font-family="${xml(FONT)}">
 <defs>
@@ -498,8 +577,8 @@ export function renderHeroSvg(input: { kind: string; title: string; subtitle?: s
 <rect x="18.5" y="22.5" width="51" height="51" rx="12.5" fill="none" stroke="rgba(255,255,255,0.35)"/>
 <text x="44" y="${glyph.length > 1 ? 54 : 56}" text-anchor="middle" font-size="${glyph.length > 1 ? 17 : 22}" font-weight="700" fill="#FFFFFF" letter-spacing="0.3">${xml(glyph)}</text>
 <text x="86" y="34" font-size="10.5" font-weight="700" fill="${input.color}" letter-spacing="0.8">${xml(kindLabel.toUpperCase())}</text>
-<text x="86" y="56" font-size="17" font-weight="700" fill="${INK}" letter-spacing="-0.2">${xml(clip(input.title, 26))}</text>
-${input.subtitle ? `<text x="86" y="75" font-size="12" fill="${SUB}">${xml(clip(input.subtitle, 40))}</text>` : ''}
+<text x="86" y="56" font-size="17" font-weight="700" fill="${INK}" letter-spacing="-0.2">${xml(fitText(input.title, 17, w - 100, true))}</text>
+${input.subtitle ? `<text x="86" y="75" font-size="12" fill="${SUB}">${xml(fitText(input.subtitle, 12, w - 100))}</text>` : ''}
 </svg>`
   return { svg, width: w, height: heroH }
 }

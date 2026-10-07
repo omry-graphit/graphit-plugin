@@ -23,6 +23,20 @@ const KEYWORDS = new Set(
 
 // Blank quoted text so an identifier search never reads inside a literal.
 const unquote = (sql: string) => sql.replace(/'(?:[^']|'')*'/g, "''")
+// Feature #1092: blank literals and drop comments in one left-to-right pass, so
+// neither fools the other - an apostrophe in `-- it's read from Firestore`
+// opened a fake literal that swallowed the next real FROM, and a `--` inside a
+// literal must stay text. A comment is prose, never a table.
+const uncomment = (sql: string) =>
+  sql.replace(/'(?:[^']|'')*'|--[^\n]*|\/\*[\s\S]*?\*\//g, m => (m.startsWith("'") ? "''" : ' '))
+// One name part: bare, "double quoted" (Snowflake) or `backticked` (BigQuery).
+const NAME_PART = '(?:"[^"]+"|`[^`]+`|[A-Za-z_][\\w$]*)'
+const FROM_TARGET = new RegExp(`\\b(?:FROM|JOIN)\\s+(${NAME_PART}(?:\\s*\\.\\s*${NAME_PART})*)`, 'gi')
+
+// FROM targets that are not tables: inline rows and table functions.
+const NOT_TABLES = new Set(['VALUES', 'LATERAL', 'TABLE', 'UNNEST', 'FLATTEN', 'GENERATOR', 'SELECT'])
+// A FROM inside EXTRACT(YEAR FROM col) or TRIM(x FROM col) names a column.
+const IN_FUNCTION = /\b(?:EXTRACT|TRIM|SUBSTRING|POSITION|OVERLAY)\s*\([^()]*$/i
 
 // Column identifiers an expression reads: bare names, not functions, keywords
 // or numbers; a qualified `o.AMOUNT` counts as AMOUNT.
@@ -36,16 +50,23 @@ export function columnsOf(expr: string): string[] {
 }
 
 // The warehouse tables a data source's SQL reads: FROM / JOIN targets that are
-// not its own CTE names.
+// not its own CTE names, inline VALUES, table functions or comment text.
 export function warehouseTables(sql: string): string[] {
-  const text = unquote(sql)
+  const text = uncomment(sql)
   const ctes = new Set([...text.matchAll(/\b([A-Za-z_]\w*)\s+AS\s*\(/gi)].map(m => m[1].toUpperCase()))
   const out: string[] = []
-  for (const m of text.matchAll(/\b(?:FROM|JOIN)\s+([A-Za-z_][\w.$"]*)/gi)) {
-    const name = m[1].replace(/"/g, '')
-    if (!ctes.has(name.toUpperCase()) && !out.includes(name)) out.push(name)
+  for (const m of text.matchAll(FROM_TARGET)) {
+    const name = m[1].replace(/\s*\.\s*/g, '.').replace(/["`]/g, '')
+    const upper = name.toUpperCase()
+    if (ctes.has(upper) || NOT_TABLES.has(upper) || IN_FUNCTION.test(text.slice(Math.max(0, (m.index ?? 0) - 80), m.index))) continue
+    if (!out.includes(name)) out.push(name)
   }
   return out
+}
+
+// snowflake -> Snowflake; the warehouse names the tables layer.
+export function warehouseLabel(kind: string): string {
+  return kind === 'snowflake' ? 'Snowflake' : kind === 'bigquery' ? 'BigQuery' : kind === 'file_upload' ? 'File upload' : kind.charAt(0).toUpperCase() + kind.slice(1)
 }
 
 // 2026-10-04T05:00:10Z -> "4 Oct 08:00" in Israel time.
@@ -167,6 +188,58 @@ export function assembleUpstream(input: {
   return up
 }
 
+// Drop a set of nodes and join what fed them straight to what they fed, so
+// the chain stays connected.
+function bypass(spec: Layers, drop: Set<string>): Layers {
+  const into = spec.edges.filter(e => drop.has(e.to) && !drop.has(e.from))
+  const out = spec.edges.filter(e => drop.has(e.from) && !drop.has(e.to))
+  const kept = spec.edges.filter(e => !drop.has(e.from) && !drop.has(e.to))
+  const joined = into.flatMap(a => out.filter(b => b.from === a.to).map(b => ({ ...b, from: a.from })))
+  const seen = new Set<string>()
+  const edges = [...kept, ...joined].filter(e => {
+    const k = `${e.from}>${e.to}`
+    return seen.has(k) ? false : (seen.add(k), true)
+  })
+  const layers = spec.layers.map(l => ({ ...l, nodes: l.nodes.filter(n => !drop.has(n.id)) })).filter(l => l.nodes.length > 0)
+  return { layers, edges }
+}
+
+// The card's overview of the chain: tables, source, model, KB, rules, result.
+// Physical columns and measures are the model's detail - drawn on the card
+// they made eight columns too narrow to read a name in. The explorer keeps
+// every layer.
+const DETAIL_LAYERS = new Set(['COLUMNS', 'MEASURES'])
+export function overviewLayers(spec: Layers): Layers {
+  const drop = new Set(spec.layers.filter(l => DETAIL_LAYERS.has(l.label)).flatMap(l => l.nodes.map(n => n.id)))
+  return drop.size ? bypass(spec, drop) : spec
+}
+
+// One node's own chain: everything it comes from and everything it feeds.
+export function chainOf(spec: Layers, id: string): Layers {
+  const walk = (upward: boolean) => {
+    const seen = new Set([id])
+    const queue = [id]
+    while (queue.length) {
+      const at = queue.shift() as string
+      for (const e of spec.edges) {
+        const next = upward ? (e.to === at ? e.from : undefined) : e.from === at ? e.to : undefined
+        if (next && !seen.has(next)) {
+          seen.add(next)
+          queue.push(next)
+        }
+      }
+    }
+    return seen
+  }
+  const up = walk(true)
+  const down = walk(false)
+  const keep = new Set([...up, ...down])
+  return {
+    layers: spec.layers.map(l => ({ ...l, nodes: l.nodes.filter(n => keep.has(n.id)) })).filter(l => l.nodes.length > 0),
+    edges: spec.edges.filter(e => keep.has(e.from) && keep.has(e.to) && (up.has(e.to) || down.has(e.from))),
+  }
+}
+
 const C = {
   ink: '#222224',
   wh: '#2F6FDB',
@@ -197,26 +270,33 @@ export function lineageLayers(input: {
   const add = (label: string, nodes: LayerNode[]) => nodes.length && layers.push({ label, nodes })
   const link = (from: string, to: string, color: string, dashed?: boolean) => edges.push({ from, to, color, dashed })
 
-  // Warehouse and its tables.
-  if (up?.warehouse) {
-    const file = up.warehouse.kind === 'file_upload'
-    add('WAREHOUSE', [
-      {
-        id: 'wh',
-        title: file ? 'File upload' : up.warehouse.kind === 'snowflake' ? 'Snowflake' : up.warehouse.kind === 'bigquery' ? 'BigQuery' : up.warehouse.kind,
-        subtitle: file ? up.warehouse.file : 'warehouse',
-        color: C.wh,
-        facts: [{ label: 'Kind', value: file ? 'File upload' : up.warehouse.kind }, ...(file && up.warehouse.file ? [{ label: 'File', value: up.warehouse.file }] : [])],
-      },
-    ])
-    add('TABLES', (up.tables ?? []).map(t => ({ id: `tb:${t}`, title: t.split('.').slice(-2).join('.'), subtitle: 'table', color: C.wh, facts: [{ label: 'Table', value: t }] })))
-    for (const t of up.tables ?? []) link('wh', `tb:${t}`, C.wh)
+  // The warehouse tables (or the uploaded file) the source reads. The
+  // warehouse itself is the layer's name, not a node of its own: one box
+  // saying "Snowflake" told nothing the tables do not.
+  const warehouse = up?.warehouse ? warehouseLabel(up.warehouse.kind) : undefined
+  if (up?.warehouse?.kind === 'file_upload') {
+    add('FILE', [{ id: 'file', title: up.warehouse.file ?? 'Uploaded file', subtitle: 'file upload', color: C.wh, facts: [{ label: 'Kind', value: 'File upload' }, ...(up.warehouse.file ? [{ label: 'File', value: up.warehouse.file }] : [])] }])
+  } else if (warehouse) {
+    add(
+      `${warehouse.toUpperCase()} TABLES`,
+      (up?.tables ?? []).map(t => {
+        const parts = t.split('.')
+        return {
+          id: `tb:${t}`,
+          title: parts[parts.length - 1],
+          subtitle: parts.length > 1 ? parts.slice(0, -1).join('.') : 'table',
+          color: C.wh,
+          facts: [{ label: 'Table', value: t }, { label: 'Warehouse', value: warehouse }],
+        }
+      }),
+    )
   }
 
   // The cached data source.
   const dsName = up?.ds?.name ?? input.sourceName
   if (dsName) {
-    const bits = [up?.ds?.refreshType?.replace(/ refresh$/i, ''), up?.ds?.refreshedAt, up?.ds?.rows != null ? `${up.ds.rows.toLocaleString('en-US')} rows` : undefined].filter(Boolean)
+    // Rows first: a clipped subtitle still says how big the source is.
+    const bits = [up?.ds?.rows != null ? `${up.ds.rows.toLocaleString('en-US')} rows` : undefined, up?.ds?.refreshedAt].filter(Boolean)
     add('DATA SOURCE', [
       {
         id: 'ds',
@@ -231,8 +311,8 @@ export function lineageLayers(input: {
         ],
       },
     ])
-    if (up?.tables?.length) for (const t of up.tables) link(`tb:${t}`, 'ds', C.wh)
-    else if (up?.warehouse) link('wh', 'ds', C.wh)
+    if (up?.warehouse?.kind === 'file_upload') link('file', 'ds', C.wh)
+    else for (const t of up?.tables ?? []) link(`tb:${t}`, 'ds', C.wh)
   }
 
   // Semantic model, its physical columns, its measures.
@@ -256,7 +336,11 @@ export function lineageLayers(input: {
     add('COLUMNS', physical.map(c => ({ id: `col:${c}`, title: c, color: C.column, facts: [{ label: 'Physical column', value: c }] })))
     for (const c of physical) link('model', `col:${c}`, C.gray)
     add('MEASURES', (up.measures ?? []).map(m => ({ id: `ms:${m.name}`, title: m.name, subtitle: `${m.agg}(${m.expr})`, color: C.measure, facts: [{ label: 'Aggregation', value: m.agg }, { label: 'Expression', value: `${m.agg}(${m.expr})`, code: true }] })))
-    for (const m of up.measures ?? []) for (const c of m.columns) link(`col:${c}`, `ms:${m.name}`, C.measure)
+    for (const m of up.measures ?? []) {
+      for (const c of m.columns) link(`col:${c}`, `ms:${m.name}`, C.measure)
+      // COUNT(1) reads no column: it comes from the model itself.
+      if (m.columns.length === 0) link('model', `ms:${m.name}`, C.measure)
+    }
   }
 
   // Metrics and dimensions the query references.
@@ -331,6 +415,8 @@ export function lineageLayers(input: {
       facts: [{ label: 'Result column', value: c }, ...(input.hidden.has(c) ? [{ label: 'Policy', value: 'Returned as NULL by a masking rule' }] : [])],
     })),
   ])
+  // The rows come from the source; a rule that filters them says so above.
+  if (dsName) link('ds', 'rows', C.ds)
   for (const c of input.columns) {
     const ref = input.refs.find(r => {
       const x = input.expansions.find(e => e.kind === r.kind && e.name === r.name)

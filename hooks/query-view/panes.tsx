@@ -8,7 +8,10 @@ import { KIND_LABEL, capitalize, cell, clean } from './result'
 import { TEMPLATE_COLOR, tokenSpans } from './spans'
 import { codeChunks, formatLines, prettySql, tokenize } from './sql'
 import type { Explore, KbDef, KbSelection, SqlPane } from './state'
+import { renderFlowSvg } from './flow'
 import { renderHeroSvg } from './svgcard'
+import { chainOf } from './upstream'
+import type { Layers } from './upstream'
 
 // The inspector's inset grouped lists.
 const INSET_FILL = '#FFFFFF'
@@ -133,7 +136,16 @@ export function drawSqlPane(ui: Ui, pane: SqlPane | null, copy: (text: string) =
 // The lineage explorer: with no node chosen it lists every layer; a node shows
 // its facts and the nodes it comes from and feeds, each one a click away.
 // What the explorer's controls do; each runs in register.tsx with `$`.
-export type ExploreActions = { go: (id: string) => unknown; back: () => unknown; all: () => unknown }
+export type ExploreActions = {
+  go: (id: string) => unknown
+  back: () => unknown
+  all: () => unknown
+  openSql: (title: string, sql: string) => unknown
+  copy: (text: string) => unknown
+}
+
+// A node's SQL shows this many lines in the explorer; Open full SQL has the rest.
+const SQL_PREVIEW_LINES = 12
 
 export function drawExplorer(ui: Ui, ex: Explore | null, act: ExploreActions): unknown {
   const { Box, Text, Button, Code, Svg } = ui
@@ -194,12 +206,57 @@ export function drawExplorer(ui: Ui, ex: Explore | null, act: ExploreActions): u
     </Box>
   )
 
+  // The chain drawn top to bottom: all of it on the overview, one node's own
+  // upstream and downstream on its page. Each node is a native box with its
+  // name as a Button, laid out in flow; only the links between layers are
+  // drawn (flow.ts). Pressing a node opens it here.
+  const flow = (key: string, spec: Layers, focus?: string) => {
+    if (!Svg) return null
+    const drawn = renderFlowSvg(spec, { focus })
+    const alt = focus ? `Lineage of ${sel?.title ?? ''}` : `${ex.title}, top to bottom`
+    return (
+      <Box key={key} flexDirection="column" alignSelf="flex-start">
+        {drawn.strips.map(strip =>
+          strip.kind === 'link' ? (
+            <Svg key={`${key}-${strip.key}`} source={strip.svg} alt={alt} width={drawn.width} height={strip.height} />
+          ) : (
+            // A node is native, so its name takes the first press and no
+            // drawing has to line up with it.
+            <Box key={`${key}-${strip.key}`} flexDirection="row" marginLeft={strip.lead} marginTop={strip.first ? 0 : 1}>
+              {strip.nodes.map(n => (
+                <Box
+                  key={`${key}-box-${n.id}`}
+                  width={n.cols}
+                  marginLeft={n.gap}
+                  flexDirection="column"
+                  borderStyle="round"
+                  borderColor={n.color}
+                  backgroundColor={n.focus ? '#F2F8F7' : '#FFFFFF'}
+                  paddingX={1}
+                >
+                  <Button key={`${key}-n-${n.id}`} label={n.label} plain dimColor={n.muted || undefined} onPress={() => (n.focus ? undefined : go(n.id))} />
+                  {n.subtitle ? (
+                    <Text dimColor wrap="truncate-end">
+                      {n.subtitle}
+                    </Text>
+                  ) : null}
+                </Box>
+              ))}
+            </Box>
+          ),
+        )}
+      </Box>
+    )
+  }
+  const spec: Layers = { layers: ex.layers, edges: ex.edges }
+
   if (!sel) {
     return (
       <Box flexDirection="column" gap={1} paddingX={1}>
         {navBar}
         {hero('LINEAGE', ex.title, `${ex.layers.length} layers · ${nodes.length} nodes`, '#4DB6AC')}
-        {ex.layers.map((layer, li) => group(`ly${li}`, layer.label, layer.nodes.map((n, ni) => navRow(n, `ln${li}-${ni}`))))}
+        {/* The drawing is the navigation; without one (the terminal), the layers as rows. */}
+        {Svg ? flow('lx-flow', spec) : ex.layers.map((layer, li) => group(`ly${li}`, layer.label, layer.nodes.map((n, ni) => navRow(n, `ln${li}-${ni}`))))}
       </Box>
     )
   }
@@ -239,20 +296,37 @@ export function drawExplorer(ui: Ui, ex: Explore | null, act: ExploreActions): u
             )),
           )
         : null}
-      {codeFacts.map((f, i) => (
-        <Box key={`lc${i}`} flexDirection="column">
-          <Text dimColor bold>{`  ${(f.label || 'SQL').toUpperCase()}`}</Text>
-          {Code ? (
-            codeChunks(prettySql(f.value)).map((c, ci) => (
-              <Code key={`lc${i}-${ci}`} source={c.source} language="sql" startLine={prettySql(f.value).includes('\n') ? c.startLine : undefined} />
-            ))
-          ) : (
-            <Text>{f.value}</Text>
-          )}
-        </Box>
-      ))}
-      {from.length > 0 ? group('lx-from', 'COMES FROM', from.map((n, i) => navRow(n, `lfrom${i}`))) : null}
-      {into.length > 0 ? group('lx-into', 'FEEDS', into.map((n, i) => navRow(n, `linto${i}`))) : null}
+      {flow('lx-chain', chainOf(spec, sel.id), sel.id)}
+      {codeFacts.map((f, i) => {
+        // A long query (a source's SQL runs to hundreds of lines) shows its
+        // head here; the full SQL sidebar is wider and holds every line.
+        const pretty = prettySql(f.value)
+        const lines = pretty.split('\n')
+        const label = f.label || 'SQL'
+        const cut = lines.length > SQL_PREVIEW_LINES
+        const shown = cut ? lines.slice(0, SQL_PREVIEW_LINES).join('\n') : pretty
+        return (
+          <Box key={`lc${i}`} flexDirection="column">
+            <Box justifyContent="space-between" alignItems="center">
+              <Text dimColor bold>{`  ${label.toUpperCase()}${lines.length > 1 ? `  ·  ${lines.length} lines` : ''}`}</Text>
+              <Box gap={1} alignItems="center">
+                <Button key={`lc${i}-copy`} label="Copy" plain onPress={() => act.copy(pretty)} />
+                {cut ? <Button key={`lc${i}-open`} label="Open full SQL" variant="secondary" onPress={() => act.openSql(`${sel.title} · ${label}`, f.value)} /> : null}
+              </Box>
+            </Box>
+            {Code ? (
+              codeChunks(shown).map((c, ci) => (
+                <Code key={`lc${i}-${ci}`} source={c.source} language="sql" startLine={lines.length > 1 ? c.startLine : undefined} />
+              ))
+            ) : (
+              <Text>{shown}</Text>
+            )}
+            {cut ? <Text dimColor>{`  ${lines.length - SQL_PREVIEW_LINES} more lines - Open full SQL`}</Text> : null}
+          </Box>
+        )
+      })}
+      {!Svg && from.length > 0 ? group('lx-from', 'COMES FROM', from.map((n, i) => navRow(n, `lfrom${i}`))) : null}
+      {!Svg && into.length > 0 ? group('lx-into', 'FEEDS', into.map((n, i) => navRow(n, `linto${i}`))) : null}
     </Box>
   )
 }
