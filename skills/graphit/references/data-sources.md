@@ -43,6 +43,17 @@ This is advisory: when you see a slow shape (raw passthrough, `SELECT *` wide, h
 
 Establish connector, relation/query, policy key, grain, refresh mode and cost from the request and evidence; ask only about unresolved consequential choices. Explore/Build use `--domain Private`; shared placement is agreed in Share. Read columns through metadata rather than probing with ad-hoc SQL.
 
+### Estimate, then build without waiting
+
+Build time is mostly the warehouse query, plus a start-up cost set by the source's shape. Estimate from free reads before proposing a source:
+- Shape: `ds create --sql "..." --detect-tables` lists the relations without creating anything. One Snowflake table with a small result usually finishes within about a minute. Joins, larger results and BigQuery start with a build that takes about 2-5 minutes before query time.
+- History: `ds refresh-history <id>` on one to three existing sources from the same connection shows real durations and row counts from the last 7 days. Use the closest match.
+- With no history, give the start-up range and call the query time unknown.
+
+Show the estimate and its basis whenever you propose a source. After approval, include a bounded `COUNT(*)` of the source SQL (`--timeout 60`) in the validation read below; its duration approximates the query time. If it takes over a minute, times out, or returns far more rows than estimated, report the new estimate and confirm again before creating. Hard limits: 100M rows, 5 GB, 60-minute warehouse statement.
+
+To keep working while it builds: where you can run a command in the background, run the normal `ds create` that way. Small sources stay fast, and you are told when it exits (exit 1 = failed). Otherwise use `ds create --no-wait`: it returns `creating` at once but always takes the background build, so even a small source takes a few minutes. Read it with `ds status <id>`; `ds status <id> --wait` waits for it and belongs only in the background. Start one build at a time: each holds one of the workspace's few concurrent build slots.
+
 Before creating, run one small approved warehouse validation against the same connection: relations reachable, joins compile with a small limit, the join does not multiply the declared grain. That read is part of the approved data-source operation - it does not authorize unrelated live exploration.
 
 Create with automatic scan unless there is a specific reason not to. The scan creates or updates the source's bound semantic model in its selected scope; `ds verify` runs that scan when needed. Read the resulting model and extend it instead of hand-creating another one over the source. Creation may be asynchronous; report `creating` honestly and poll status rather than claiming readiness.

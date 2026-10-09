@@ -3,7 +3,7 @@
 // terminal as native rows (card-terminal.tsx). Pure: register.tsx reads the
 // state and supplies the actions (a mod's `$` never crosses an import).
 
-import { MAX_ROWS, OUTCOME_BADGE, REF_KIND, cell, clean, sqlFromCommand } from './result'
+import { MAX_ROWS, OUTCOME_BADGE, REF_KIND, cell, clean, own, sqlFromCommand } from './result'
 import type { QueryResult } from './result'
 import { templateExpansions } from './sql'
 import type { Expansion } from './sql'
@@ -112,7 +112,7 @@ export function buildModel(input: {
   const expansions = baseSql && result.governed_sql ? templateExpansions(clean(baseSql), clean(result.governed_sql)) : []
   const sourceName = sourceOf(result, command, baseSql)
   const upstream = state.upstream
-  const lineageRefs = kbRefs.map(ref => ({ kind: REF_KIND[ref.kind ?? ''] ?? 'Metric', name: clean(ref.name ?? '') }))
+  const lineageRefs = kbRefs.map(ref => ({ kind: own(REF_KIND, ref.kind) ?? 'Metric', name: clean(ref.name ?? '') }))
 
   return {
     id,
@@ -153,7 +153,7 @@ export function buildModel(input: {
         name: cell(inj.rule_name ?? inj.source_id ?? 'rule'),
         clauses: (inj.added_clauses ?? []).map(clean),
         masks: (inj.transformations ?? []).map(t => cell(t.column)).filter(Boolean),
-        color: (OUTCOME_BADGE[inj.outcome ?? ''] ?? { color: '#6b7280' }).color,
+        color: (own(OUTCOME_BADGE, inj.outcome) ?? { color: '#6b7280' }).color,
         why: inj.why ? clean(inj.why) : undefined,
       })),
     }),

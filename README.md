@@ -51,6 +51,8 @@ npx -y @graphit/cli setup --editor cursor
 
 Cursor also loads Graphit's Claude Code plugin. If that plugin is on for all projects, setup says so and installs nothing. If it is on for one project only, setup still installs and warns that Graphit loads twice in that project. Update later with `npx -y @graphit/cli setup --editor cursor --update`.
 
+In Cursor (2.6+), query results draw as an interactive card in the chat. The plugin registers a local MCP server, `graphit-view` (`hooks/query-view-app/server.mjs`), that Cursor starts with Node. It makes no network calls of its own: it reads the results the query hook saved under `~/.graphit/query-view/` (pruned after 48 hours) and, for the lineage and KB tabs, runs the same `graphit` commands you would (through `npx -y @graphit/cli@<plugin version>` when `graphit` is not on your PATH).
+
 **VS Code** - `graphit setup --editor vscode --project` writes the skill into the repo's `AGENTS.md`.
 
 Each path installs the Graphit skills so the assistant can drive the CLI on your behalf.

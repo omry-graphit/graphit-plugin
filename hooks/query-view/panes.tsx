@@ -4,8 +4,8 @@
 // the state and supplies the actions (a mod's `$` never crosses an import).
 
 import type { Ui } from './card'
-import { KIND_LABEL, capitalize, cell, clean } from './result'
-import { TEMPLATE_COLOR, tokenSpans } from './spans'
+import { KIND_LABEL, capitalize, cell, clean, own } from './result'
+import { templateColor, tokenSpans } from './spans'
 import { codeChunks, formatLines, prettySql, tokenize } from './sql'
 import type { Explore, KbDef, KbSelection, SqlPane } from './state'
 import { renderFlowSvg } from './flow'
@@ -20,13 +20,13 @@ const INSET_BORDER = '#E5E5EA'
 export function drawKbPane(ui: Ui, sel: KbSelection | null, def: KbDef | undefined, copy: (text: string) => unknown): unknown {
   const { Box, Text, Button } = ui
   if (!sel) return <Text dimColor>Click a KB reference in a query result to see its definition.</Text>
-  const color = TEMPLATE_COLOR[sel.kind] ?? TEMPLATE_COLOR.Metric
+  const color = templateColor(sel.kind)
   const reference = `{{ ${cell(sel.kind)}('${cell(sel.name)}') }}`
   const compiled = clean(sel.expansion)
   const alias = sel.alias ? ` AS ${sel.alias}` : ''
 
   const rows: Array<{ label: string; value: string; isCode?: boolean }> = []
-  rows.push({ label: 'Kind', value: KIND_LABEL[def?.type ?? ''] ?? sel.kind })
+  rows.push({ label: 'Kind', value: own(KIND_LABEL, def?.type) ?? sel.kind })
   if (sel.kind === 'Dimension' && compiled === sel.name) rows.push({ label: 'Column', value: compiled, isCode: true })
   for (const part of def?.parts ?? []) rows.push({ label: capitalize(part.label), value: part.value, isCode: true })
   if (def?.group) rows.push({ label: 'Group', value: def.group })

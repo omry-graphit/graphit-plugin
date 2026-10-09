@@ -2,7 +2,7 @@
 name: graphit-explore
 description: >-
   Answer, explain or diagnose business data using Graphit. Use after Graphit routing or for a direct Graphit question, including reads of shared dashboards. Does not authorize creating reusable definitions or sharing; use graphit-build to keep a private artifact and graphit-share for shared writes.
-skill_version: "0.2.405"
+skill_version: "0.2.409"
 ---
 
 # Explore: answer the question
@@ -35,7 +35,7 @@ Load for a question, explanation or diagnosis, including a read of a shared dash
 
 1. Establish the requested meaning, period, grain, filters and units from the request and accessible definitions. Use a fitting governed metric when one answers the question. Inspect candidates in full; a matching name alone is not equivalence. Ask only if unresolved meaning would change the answer.
 2. Prefer an existing shared cached source, then the caller's own private cached source. Read the binding instead of guessing from names. State the selected source in one line so the user can redirect; no source-selection interview when the evidence is sufficient.
-3. If neither holds the needed data, use a private scratch source through ../graphit/references/data-sources.md: `--domain Private`, a `scratch_` name, only the columns and rows needed, aggregated to the question's grain with a capped time window. State the row bound and cost estimate, or say the cost is unknown; obtain any required source-operation approval. If a scratch source cannot serve the question, live warehouse access requires cost confirmation. An empty cached result alone is not permission to switch to live queries.
+3. If neither holds the needed data, propose a private scratch source through ../graphit/references/data-sources.md: `--domain Private`, a `scratch_` name, only the columns and rows needed, aggregated to the question's grain with a capped time window. Estimate its build time as that reference describes, then ask once before creating: offer the source with its row bound, estimated time and the basis for it, and, where it fits, a bounded live warehouse query instead. Say a time or cost is unknown rather than guess. Live warehouse access always needs this confirmation. Do not ask again about a source the user already approved in this conversation. After approval, start the build without waiting on it and keep exploring with what is already available; label a partial result as partial, and check the source with `graphit ds status <id>` before querying it. Never start a second source for the same question while one is building. An empty cached result alone is not permission to switch to live queries.
 4. Read ../graphit/references/governance.md and ../graphit/references/sql-reference.md for executable references, validation and receipts. Use labeled ad-hoc SQL only when the governed definitions do not fit. On a shared source give a truthful, specific reason; the current server's EXPLORE and reason requirements still apply on private sources too. A refusal is not permission to bypass a rule. Explain it using ../graphit/references/governance-explained.md when needed.
 5. If a same-named shared metric means something different, show both definitions and observed numbers, with source, grain, filters and units. Do not silently substitute one. If a number cannot be obtained, state the limitation instead of inventing a comparison. Diagnose from evidence and distinguish correlation from a supported causal claim.
 

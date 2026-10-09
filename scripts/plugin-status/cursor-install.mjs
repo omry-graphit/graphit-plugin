@@ -230,6 +230,9 @@ const ALLOWLIST = [
   ".cursor-plugin",
   "skills",
   join("hooks", "cursor-hooks.json"),
+  // Feature #1099: the graphit-view MCP App's runtime files (never its sources).
+  join("hooks", "query-view-app", "server.mjs"),
+  join("hooks", "query-view-app", "query-view.html"),
   join("scripts", "plugin-status"),
   ...["plugin-status.mjs", "block-legacy-setup.mjs", "show-query-result.mjs"].map((name) => join("scripts", name)),
 ];
@@ -281,6 +284,16 @@ function verifyBundle(dir, version) {
   for (const script of scripts) {
     const path = join(dir, script);
     if (!isWithinDirectory(path, dir) || !existsSync(path)) throw new Error(`hook script ${script} is missing`);
+  }
+  // Feature #1099: every manifest MCP server's plugin-root file exists too.
+  const servers = tryReadJson(join(dir, ".cursor-plugin", "plugin.json"))?.mcpServers ?? {};
+  for (const server of Object.values(servers)) {
+    for (const arg of Array.isArray(server?.args) ? server.args : []) {
+      const match = String(arg).match(/^\$\{CURSOR_PLUGIN_ROOT\}\/(.+)$/);
+      if (!match) continue;
+      const path = join(dir, match[1]);
+      if (!isWithinDirectory(path, dir) || !existsSync(path)) throw new Error(`MCP server file ${match[1]} is missing`);
+    }
   }
 }
 

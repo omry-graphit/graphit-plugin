@@ -4,8 +4,8 @@
 // `position: "absolute"`, in character cells (about 8 x 18 px).
 
 import type { CardModel, Ui } from './card'
-import { OUTCOME_BADGE, REF_KIND, TIER_COLOR, TIER_LABEL, cell, clean, fmtNumber, marksFor } from './result'
-import { TEMPLATE_COLOR } from './spans'
+import { OUTCOME_BADGE, REF_KIND, TIER_COLOR, TIER_LABEL, cell, clean, fmtNumber, marksFor, own } from './result'
+import { templateColor } from './spans'
 import { formatLines, lineText } from './sql'
 import type { TabId } from './state'
 import { columnWidths, fitColumns, renderCardSvg } from './svgcard'
@@ -59,11 +59,11 @@ export function drawDesktopCard(ui: Ui, m: CardModel): unknown {
     kb: () => ({
       kind: 'list',
       items: kbRefs.map(ref => {
-        const kindName = REF_KIND[ref.kind ?? ''] ?? 'Metric'
+        const kindName = own(REF_KIND, ref.kind) ?? 'Metric'
         const x = m.expansionFor(kindName, ref.name ?? '')
         return {
           title: cell(ref.name),
-          badge: { text: kindName.toUpperCase(), color: TEMPLATE_COLOR[kindName] ?? TEMPLATE_COLOR.Metric },
+          badge: { text: kindName.toUpperCase(), color: templateColor(kindName) },
           lines: [`{{ ${kindName}('${cell(ref.name)}') }}`, ...(x.expr ? [`${x.expr === x.alias ? 'Column' : 'Compiles to'}  ${x.expr}`] : [])],
         }
       }),
@@ -71,7 +71,7 @@ export function drawDesktopCard(ui: Ui, m: CardModel): unknown {
     governance: () => ({
       kind: 'list',
       items: injections.map(inj => {
-        const outcome = OUTCOME_BADGE[inj.outcome ?? ''] ?? { label: clean(inj.outcome ?? 'applied').toUpperCase(), color: '#6b7280' }
+        const outcome = own(OUTCOME_BADGE, inj.outcome) ?? { label: clean(inj.outcome ?? 'applied').toUpperCase(), color: '#6b7280' }
         return {
           title: cell(inj.rule_name ?? inj.source_id ?? 'rule'),
           badge: { text: outcome.label, color: outcome.color },
@@ -184,8 +184,8 @@ export function drawDesktopCard(ui: Ui, m: CardModel): unknown {
 
   const card = renderCardSvg({
     logoInner: m.logoInner,
-    tierLabel: TIER_LABEL[m.tier] ?? clean(m.tier),
-    tierColor: TIER_COLOR[m.tier] ?? TIER_COLOR.ad_hoc,
+    tierLabel: own(TIER_LABEL, m.tier) ?? clean(m.tier),
+    tierColor: own(TIER_COLOR, m.tier) ?? TIER_COLOR.ad_hoc,
     meta: m.meta.join(' · '),
     source: m.sourceName ? cell(m.sourceName) : undefined,
     panel: panels[active](),

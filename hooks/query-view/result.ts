@@ -25,6 +25,12 @@ export type KbReference = { kind?: string; name?: string; deprecated?: boolean }
 // The gateway's reference kinds, as template kinds.
 export const REF_KIND: Record<string, string> = { metric: 'Metric', metric_raw: 'Measure', dim: 'Dimension' }
 
+// Feature #1099: a lookup keyed by query data (a ref kind, an outcome, a tier)
+// must never reach Object.prototype - `constructor` would return a function.
+export function own<T>(map: Record<string, T>, key: string | undefined): T | undefined {
+  return key !== undefined && Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined
+}
+
 export type QueryResult = {
   rows: Array<Record<string, unknown>>
   columns?: string[]

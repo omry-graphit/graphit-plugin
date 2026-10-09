@@ -2,8 +2,8 @@
 // panel - with clickable KB references that open the KB sidebar.
 
 import type { CardModel, Ui } from './card'
-import { MARK, OUTCOME_BADGE, REF_KIND, TIER_COLOR, cell, clean, fmtNumber, marksFor } from './result'
-import { TEMPLATE_COLOR, tokenSpans } from './spans'
+import { MARK, OUTCOME_BADGE, REF_KIND, TIER_COLOR, cell, clean, fmtNumber, marksFor, own } from './result'
+import { templateColor, tokenSpans } from './spans'
 import { formatLines, lineText, tokenize } from './sql'
 import type { Expansion, Token } from './sql'
 import type { TabId } from './state'
@@ -117,7 +117,7 @@ export function drawTerminalCard(ui: Ui, m: CardModel): unknown {
                           key={`kb-${kind}-${i}-${si}`}
                           label={`{{ ${cell(tpl.templateKind)}('${cell(tpl.templateName)}') }}`}
                           plain
-                          hover={{ color: TEMPLATE_COLOR[tpl.templateKind ?? ''] ?? TEMPLATE_COLOR.Metric }}
+                          hover={{ color: templateColor(tpl.templateKind) }}
                           onPress={() => openKb(seg.x as Expansion)}
                         />
                       ) : null}
@@ -148,8 +148,8 @@ export function drawTerminalCard(ui: Ui, m: CardModel): unknown {
     kbRefs.length > 0 ? (
       <Box flexDirection="column" gap={1}>
         {kbRefs.map((ref, i) => {
-          const kindName = REF_KIND[ref.kind ?? ''] ?? 'Metric'
-          const color = TEMPLATE_COLOR[kindName] ?? TEMPLATE_COLOR.Metric
+          const kindName = own(REF_KIND, ref.kind) ?? 'Metric'
+          const color = templateColor(kindName)
           const x = m.expansionFor(kindName, ref.name ?? '')
           return (
             <Box key={`kb${i}`} flexDirection="column">
@@ -199,7 +199,7 @@ export function drawTerminalCard(ui: Ui, m: CardModel): unknown {
         <Text dimColor>{summary.join(' · ')}</Text>
         {injections.map((inj, i) => {
           const name = cell(inj.source === 'deprecated_asset' ? inj.source_id : inj.rule_name ?? inj.source_id ?? 'rule')
-          const outcome = OUTCOME_BADGE[inj.outcome ?? ''] ?? { label: clean(inj.outcome ?? 'applied').toUpperCase(), color: '#6b7280' }
+          const outcome = own(OUTCOME_BADGE, inj.outcome) ?? { label: clean(inj.outcome ?? 'applied').toUpperCase(), color: '#6b7280' }
           return (
             <Box key={`inj${i}`} flexDirection="column">
               <Box gap={1}>
@@ -312,7 +312,7 @@ export function drawTerminalCard(ui: Ui, m: CardModel): unknown {
       ) : null}
       <Box gap={1} justifyContent="space-between">
         <Box gap={1}>
-          <Text key="badge" backgroundColor={TIER_COLOR[m.tier] ?? 'gray'} color="black" bold>
+          <Text key="badge" backgroundColor={own(TIER_COLOR, m.tier) ?? 'gray'} color="black" bold>
             {` ${m.tier.replace('_', '-')} `}
           </Text>
           <Text dimColor>

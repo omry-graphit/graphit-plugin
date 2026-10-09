@@ -1,6 +1,6 @@
 // SQL tokens as colored text, a KB template in Graphit's own syntax.
 
-import { cell } from './result'
+import { cell, own } from './result'
 import type { Token, TokenKind } from './sql'
 
 export const TOKEN_COLOR: Partial<Record<TokenKind, string>> = {
@@ -19,6 +19,12 @@ export const TEMPLATE_COLOR: Record<string, string> = {
   Measure: '#8b5cf6',
 }
 
+// Feature #1099: a template kind is read from the query's SQL text
+// (`{{ constructor('x') }}`), so the lookup must never reach Object.prototype.
+export function templateColor(kind: string | undefined): string {
+  return own(TEMPLATE_COLOR, kind) ?? TEMPLATE_COLOR.Metric
+}
+
 // The surface's Text element, as $.ui.resolve hands it out.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type TextEl = any
@@ -27,7 +33,7 @@ export type TextEl = any
 export function tokenSpans(Text: TextEl, tokens: Token[], keyPrefix: string): unknown[] {
   return tokens.map((t, j) => {
     if (t.kind === 'template') {
-      const color = TEMPLATE_COLOR[t.templateKind ?? ''] ?? TEMPLATE_COLOR.Metric
+      const color = templateColor(t.templateKind)
       return (
         <Text key={`${keyPrefix}${j}`}>
           <Text dimColor>{'{{ '}</Text>
